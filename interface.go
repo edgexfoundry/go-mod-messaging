@@ -57,9 +57,9 @@ type TopicChannel struct {
 // MessageBusConfig defines the messaging information need to connect to the message bus
 // in a publish-subscribe pattern
 type MessageBusConfig struct {
-	// PublishHost contains the connection infomation for a publishing on zmq
+	// PublishHost contains the connection infomation for a publishing on 0mq
 	PublishHost HostInfo
-	// SubscribeHost contains the connection infomation for a subscribing on zmq
+	// SubscribeHost contains the connection infomation for a subscribing on 0mq
 	SubscribeHost HostInfo
 	// Type indicates the message queue platform being used. eg. "zero" for 0mq
 	Type string

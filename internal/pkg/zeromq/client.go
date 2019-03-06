@@ -69,6 +69,8 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 		}
 
 		fmt.Println("Successfully connected to 0MQ message queue")
+
+		time.Sleep(time.Second)
 	}
 
 	msgBytes, err := json.Marshal(message)
@@ -119,12 +121,16 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host stri
 			for _, topic := range topics {
 				client.subscribeSocket.SetSubscribe(topic.Topic)
 
-				data, err := client.subscribeSocket.Recv(zmq.SNDMORE)
+				msgTopic, err := client.subscribeSocket.Recv(zmq.SNDMORE)
+				fmt.Printf("Message topic: %s\n", msgTopic)
 
-				if err != nil {
+				payloadMsg, err := client.subscribeSocket.Recv(0)
+
+				if err != nil && err.Error() != "resource temporarily unavailable" {
 					messageErrors <- err
 				}
-				topic.Messages <- data
+
+				topic.Messages <- payloadMsg
 			}
 			time.Sleep(10)
 		}

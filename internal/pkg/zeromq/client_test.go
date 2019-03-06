@@ -17,7 +17,10 @@
 package zeromq
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
+	"time"
 
 	messaging "github.com/edgexfoundry/go-mod-messaging"
 )
@@ -153,22 +156,36 @@ func TestSubscribe(t *testing.T) {
 		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
 	}
 
-	for {
+	// publish messages with topic
+	time.Sleep(time.Second)
+	expectedCorreleatedID := "123"
+	expectedPayload := []byte("test bytes")
+	message := messaging.MessageEnvelope{
+		CorrelationID: expectedCorreleatedID, Payload: expectedPayload,
+	}
+
+	topic := "TestTopic"
+	err = client.Publish(message, topic)
+	if err != nil {
+		t.Fatalf("Failed to publish to ZMQ message, %v", err)
+	}
+
+	done := false
+	for !done {
 		select {
 		case msgErr := <-messageErrors:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
-		default:
-			message := messaging.MessageEnvelope{
-				CorrelationID: "123", Payload: []byte("test bytes"),
+		case msgs := <-messages:
+			fmt.Printf("Received messages: %v\n", msgs)
+			msgBytes := []byte(msgs.(string))
+			var unmarshalledData messaging.MessageEnvelope
+			if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
+				t.Fatal("Json unmarshal message envelope failed")
 			}
-
-			topic := "TestTopic"
-
-			err := client.Publish(message, topic)
-			if err != nil {
-				t.Fatalf("Failed to publish to ZMQ message, %v", err)
+			if unmarshalledData.CorrelationID != expectedCorreleatedID && string(unmarshalledData.Payload) == string(expectedPayload) {
+				t.Fatal("Received wrong message")
 			}
-			break
+			done = true
 		}
 	}
 }
