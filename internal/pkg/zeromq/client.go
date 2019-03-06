@@ -53,7 +53,7 @@ func (client *zeromqClient) Connect() error {
 
 func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic string) error {
 
-	msgQueueURL := getMessageQueueURL(&client.config)
+	msgQueueURL := getMessageQueueURL(&client.config.PublishHost)
 	var err error
 
 	if client.publishSocket == nil {
@@ -107,8 +107,7 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host stri
 		}
 	}
 
-	subscribeConfig := messaging.MessageBusConfig{Host: host, Port: client.config.Port, Protocol: client.config.Protocol}
-	msgQueueURL := getMessageQueueURL(&subscribeConfig)
+	msgQueueURL := getMessageQueueURL(&client.config.SubscribeHost)
 
 	if err = client.subscribeSocket.Connect(msgQueueURL); err != nil {
 		return err
@@ -120,7 +119,7 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host stri
 			for _, topic := range topics {
 				client.subscribeSocket.SetSubscribe(topic.Topic)
 
-				data, err := client.subscribeSocket.Recv(zmq.DONTWAIT)
+				data, err := client.subscribeSocket.Recv(zmq.SNDMORE)
 
 				if err != nil {
 					messageErrors <- err
@@ -133,13 +132,13 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host stri
 	return nil
 }
 
-func getMessageQueueURL(msgConfig *messaging.MessageBusConfig) string {
-	return fmt.Sprintf("%s://%s:%d", getMessageProtocol(msgConfig), msgConfig.Host, msgConfig.Port)
+func getMessageQueueURL(hostInfo *messaging.HostInfo) string {
+	return fmt.Sprintf("%s://%s:%d", getMessageProtocol(hostInfo), hostInfo.Host, hostInfo.Port)
 }
 
-func getMessageProtocol(msgConfig *messaging.MessageBusConfig) string {
-	if msgConfig.Protocol == "" {
+func getMessageProtocol(hostInfo *messaging.HostInfo) string {
+	if hostInfo.Protocol == "" {
 		return defaultMsgProtocol
 	}
-	return msgConfig.Protocol
+	return hostInfo.Protocol
 }

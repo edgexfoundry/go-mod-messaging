@@ -23,10 +23,16 @@ import (
 )
 
 var msgConfig = messaging.MessageBusConfig{
-	Host:     "*",
-	Port:     5563,
-	Protocol: "tcp",
-}
+	PublishHost: messaging.HostInfo{
+		Host:     "*",
+		Port:     5563,
+		Protocol: "tcp",
+	},
+	SubscribeHost: messaging.HostInfo{
+		Host:     "localhost",
+		Port:     5563,
+		Protocol: "tcp",
+	}}
 
 func TestNewClient(t *testing.T) {
 
@@ -41,13 +47,23 @@ func TestNewClient(t *testing.T) {
 		t.Fatal("Failed to create new zero ZMQ client")
 	}
 
-	if client.config.Host != "*" {
+	if client.config.PublishHost.Host != "*" {
 		t.Fatal("Failed to populate host value in config")
 	}
-	if client.config.Port != 5563 {
+	if client.config.PublishHost.Port != 5563 {
 		t.Fatal("Failed to populate port value in config")
 	}
-	if client.config.Protocol != "tcp" {
+	if client.config.PublishHost.Protocol != "tcp" {
+		t.Fatal("Failed to populate protocol value in config")
+	}
+
+	if client.config.SubscribeHost.Host != "localhost" {
+		t.Fatal("Failed to populate host value in config")
+	}
+	if client.config.SubscribeHost.Port != 5563 {
+		t.Fatal("Failed to populate port value in config")
+	}
+	if client.config.SubscribeHost.Protocol != "tcp" {
 		t.Fatal("Failed to populate protocol value in config")
 	}
 
@@ -71,7 +87,7 @@ func TestPublish(t *testing.T) {
 	client.Connect()
 
 	message := messaging.MessageEnvelope{
-		CorrelationId: "123", Payload: []byte("test bytes"),
+		CorrelationID: "123", Payload: []byte("test bytes"),
 	}
 	topic := ""
 
@@ -90,7 +106,7 @@ func TestPublishWithTopic(t *testing.T) {
 	client.Connect()
 
 	message := messaging.MessageEnvelope{
-		CorrelationId: "123", Payload: []byte("test bytes"),
+		CorrelationID: "123", Payload: []byte("test bytes"),
 	}
 
 	topic := "TestTopic"
@@ -143,7 +159,7 @@ func TestSubscribe(t *testing.T) {
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		default:
 			message := messaging.MessageEnvelope{
-				CorrelationId: "123", Payload: []byte("test bytes"),
+				CorrelationID: "123", Payload: []byte("test bytes"),
 			}
 
 			topic := "TestTopic"
@@ -159,9 +175,15 @@ func TestSubscribe(t *testing.T) {
 
 func TestGetMsgQueueURL(t *testing.T) {
 
-	url := getMessageQueueURL(&msgConfig)
+	url := getMessageQueueURL(&msgConfig.PublishHost)
 
 	if url != "tcp://*:5563" {
+		t.Fatal("Failed to create correct msg queue URL")
+	}
+
+	url = getMessageQueueURL(&msgConfig.SubscribeHost)
+
+	if url != "tcp://localhost:5563" {
 		t.Fatal("Failed to create correct msg queue URL")
 	}
 }

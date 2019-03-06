@@ -32,7 +32,7 @@ type MessageClient interface {
 	// the messageErrors channel returns the message errors from the caller
 	// since subscriber works in asynchrous fashion
 	// the function returns error for any subscribe error
-	Subscribe(topics []TopicChannel, host string, messageErrors chan error) error
+	Subscribe(topics []TopicChannel, messageErrors chan error) error
 
 	// Disconnect is to close all connections on the message bus
 	Disconnect() error
@@ -40,8 +40,8 @@ type MessageClient interface {
 
 // MessageEnvelope is the data structure for publisher
 type MessageEnvelope struct {
-	// CorrelationId is an object id to identify the envelop
-	CorrelationId string
+	// CorrelationID is an object id to identify the envelop
+	CorrelationID string
 	// Payload can be JSON marshalled into bytes
 	Payload []byte
 }
@@ -57,15 +57,23 @@ type TopicChannel struct {
 // MessageBusConfig defines the messaging information need to connect to the message bus
 // in a publish-subscribe pattern
 type MessageBusConfig struct {
+	// PublishHost contains the connection infomation for a publishing on zmq
+	PublishHost HostInfo
+	// SubscribeHost contains the connection infomation for a subscribing on zmq
+	SubscribeHost HostInfo
+	// Type indicates the message queue platform being used. eg. "zero" for 0mq
+	Type string
+	// Optional contains all other properties of message bus that is specific to
+	// certain concret implementaiton like MQTT's QoS, for example
+	Optional map[string]string
+}
+
+// HostInfo ...
+type HostInfo struct {
 	// Host is the hostname or IP address of the messaging broker, if applicable.
 	Host string
 	// Port defines the port on which to access the message queue.
 	Port int
 	// Protocol indicates the protocol to use when accessing the message queue.
 	Protocol string
-	// Type indicates the message queue platform being used. eg. "zero" for 0mq
-	Type string
-	// Optional contains all other properties of message bus that is specific to
-	// certain concret implementaiton like MQTT's QoS, for example
-	Optional map[string]string
 }
