@@ -17,8 +17,11 @@
 package zeromq
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	messaging "github.com/edgexfoundry/go-mod-messaging"
 	zmq "github.com/pebbe/zmq4"
@@ -28,49 +31,106 @@ const (
 	defaultMsgProtocol = "tcp"
 )
 
-type zeroMQEventPublisher struct {
-	publisher *zmq.Socket
-	mux       sync.Mutex
-}
-
-type zeroMQEventSubscriber struct {
-	subsriber    *zmq.Socket
-	mux          sync.Mutex
-	topicFilters []string
-}
-
 type zeromqClient struct {
-	evtPublisher *zeroMQEventPublisher
-	evtSubsriber *zeroMQEventSubscriber
+	publishSocket   *zmq.Socket
+	subscribeSocket *zmq.Socket
+	publishMux      sync.Mutex
+	subscribeMux    sync.Mutex
+	topicFilters    []string
+	config          messaging.MessageBusConfig
 }
 
 // NewZeroMqClient instantiates a new zeromq client instance based on the configuration
 func NewZeroMqClient(msgConfig messaging.MessageBusConfig) (*zeromqClient, error) {
-	newMsgPublisher, newErr := zmq.NewSocket(zmq.PUB)
-	if newErr != nil {
-		return nil, newErr
+
+	client := zeromqClient{config: msgConfig}
+	return &client, nil
+}
+
+func (client *zeromqClient) Connect() error {
+	return nil
+}
+
+func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic string) error {
+
+	msgQueueURL := getMessageQueueURL(&client.config)
+	var err error
+
+	if client.publishSocket == nil {
+
+		client.publishSocket, err = zmq.NewSocket(zmq.PUB)
+
+		if err != nil {
+			return err
+		}
+		if conErr := client.publishSocket.Bind(msgQueueURL); conErr != nil {
+
+			return conErr
+		}
+
+		fmt.Println("Successfully connected to 0MQ message queue")
 	}
 
-	msgQueueURL := getMessageQueueURL(&msgConfig)
-	fmt.Println("Connecting to 0MQ message queue at: " + msgQueueURL)
-
-	if conErr := newMsgPublisher.Bind(msgQueueURL); conErr != nil {
-		return nil, conErr
+	msgBytes, err := json.Marshal(message)
+	if err != nil {
+		return err
 	}
 
-	fmt.Println("Successfully connected to 0MQ message queue")
-	sender := &zeroMQEventPublisher{
-		publisher: newMsgPublisher,
+	client.publishMux.Lock()
+	defer client.publishMux.Unlock()
+
+	lenOfTopic, err := client.publishSocket.Send(topic, zmq.SNDMORE)
+
+	if err != nil {
+		return err
+	} else if lenOfTopic != len(topic) {
+		return errors.New("The length of the sent topic does not match the expected length")
 	}
 
-	newSubscriber, _ := zmq.NewSocket(zmq.SUB)
+	lenOfPayload, err := client.publishSocket.SendBytes(msgBytes, zmq.DONTWAIT)
 
-	receiver := &zeroMQEventSubscriber{
-		subsriber: newSubscriber,
+	if lenOfPayload != len(msgBytes) {
+		return errors.New("The length of the sent payload does not match the expected length")
 	}
 
-	client := &zeromqClient{evtPublisher: sender, evtSubsriber: receiver}
-	return client, nil
+	return err
+}
+
+func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host string, messageErrors chan error) error {
+
+	var err error
+	if client.subscribeSocket == nil {
+		client.subscribeSocket, err = zmq.NewSocket(zmq.SUB)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	subscribeConfig := messaging.MessageBusConfig{Host: host, Port: client.config.Port, Protocol: client.config.Protocol}
+	msgQueueURL := getMessageQueueURL(&subscribeConfig)
+
+	if err = client.subscribeSocket.Connect(msgQueueURL); err != nil {
+		return err
+	}
+
+	go func(msgQueueURL string) {
+
+		for {
+			for _, topic := range topics {
+				client.subscribeSocket.SetSubscribe(topic.Topic)
+
+				data, err := client.subscribeSocket.Recv(zmq.DONTWAIT)
+
+				if err != nil {
+					messageErrors <- err
+				}
+				topic.Messages <- data
+			}
+			time.Sleep(10)
+		}
+	}(msgQueueURL)
+	return nil
 }
 
 func getMessageQueueURL(msgConfig *messaging.MessageBusConfig) string {

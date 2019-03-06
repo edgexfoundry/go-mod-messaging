@@ -20,7 +20,7 @@ package messaging
 type MessageClient interface {
 	// Connect to messaging host specified in MessageBusconfig
 	// returns error if not able to connect
-	Connect(msgBusConfig *MessageBusConfig) error
+	Connect() error
 
 	// Publish is to send message to the message bus
 	// the message contains data payload to send to the message queue
@@ -32,7 +32,7 @@ type MessageClient interface {
 	// the messageErrors channel returns the message errors from the caller
 	// since subscriber works in asynchrous fashion
 	// the function returns error for any subscribe error
-	Subscribe(topics []TopicChannel, messageErrors chan error) error
+	Subscribe(topics []TopicChannel, host string, messageErrors chan error) error
 
 	// Disconnect is to close all connections on the message bus
 	Disconnect() error
