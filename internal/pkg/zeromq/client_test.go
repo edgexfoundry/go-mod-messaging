@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -27,15 +28,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	zeromqPort = 5570
+)
+
 var msgConfig = messaging.MessageBusConfig{
 	PublishHost: messaging.HostInfo{
 		Host:     "*",
-		Port:     5563,
+		Port:     zeromqPort,
 		Protocol: "tcp",
 	},
 	SubscribeHost: messaging.HostInfo{
 		Host:     "localhost",
-		Port:     5563,
+		Port:     zeromqPort,
 		Protocol: "tcp",
 	},
 }
@@ -71,7 +76,7 @@ func TestNewClient(t *testing.T) {
 	if client.config.PublishHost.Host != "*" {
 		t.Fatal("Failed to populate host value in config")
 	}
-	if client.config.PublishHost.Port != 5563 {
+	if client.config.PublishHost.Port != zeromqPort {
 		t.Fatal("Failed to populate port value in config")
 	}
 	if client.config.PublishHost.Protocol != "tcp" {
@@ -81,7 +86,7 @@ func TestNewClient(t *testing.T) {
 	if client.config.SubscribeHost.Host != "localhost" {
 		t.Fatal("Failed to populate host value in config")
 	}
-	if client.config.SubscribeHost.Port != 5563 {
+	if client.config.SubscribeHost.Port != zeromqPort {
 		t.Fatal("Failed to populate port value in config")
 	}
 	if client.config.SubscribeHost.Protocol != "tcp" {
@@ -175,20 +180,24 @@ func TestSubscribe(t *testing.T) {
 
 	done := false
 	for !done {
-		select {
-		case msgErr := <-messageErrors:
-			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
-		case msgs := <-messages:
-			fmt.Printf("Received messages: %v\n", msgs)
-			msgBytes := []byte(msgs.(string))
-			var unmarshalledData messaging.MessageEnvelope
-			if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
-				t.Fatal("Json unmarshal message envelope failed")
+		if messageErrors != nil && messages != nil {
+			select {
+			case msgErr := <-messageErrors:
+				t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+			case msgs := <-messages:
+				fmt.Printf("Received messages: %v\n", msgs)
+				msgBytes := []byte(msgs.(string))
+				var unmarshalledData messaging.MessageEnvelope
+				if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
+					t.Fatal("Json unmarshal message envelope failed")
+				}
+				if unmarshalledData.CorrelationID != expectedCorreleatedID && string(unmarshalledData.Payload) == string(expectedPayload) {
+					t.Fatal("Received wrong message")
+				}
+				done = true
 			}
-			if unmarshalledData.CorrelationID != expectedCorreleatedID && string(unmarshalledData.Payload) == string(expectedPayload) {
-				t.Fatal("Received wrong message")
-			}
-			done = true
+		} else {
+			break
 		}
 	}
 }
@@ -282,12 +291,16 @@ func TestDisconnect(t *testing.T) {
 
 	done := false
 	for !done {
-		select {
-		case msgErr := <-messageErrors:
-			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
-		case msgs := <-messages:
-			fmt.Printf("Received messages: %v\n", msgs)
-			done = true
+		if messageErrors != nil && messages != nil {
+			select {
+			case msgErr := <-messageErrors:
+				t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+			case msgs := <-messages:
+				fmt.Printf("Received messages: %v\n", msgs)
+				done = true
+			}
+		} else {
+			break
 		}
 	}
 
@@ -310,14 +323,14 @@ func TestDisconnect(t *testing.T) {
 func TestGetMsgQueueURL(t *testing.T) {
 
 	url := getMessageQueueURL(&msgConfig.PublishHost)
-
-	if url != "tcp://*:5563" {
+	port := strconv.Itoa(zeromqPort)
+	if url != "tcp://*:"+port {
 		t.Fatal("Failed to create correct msg queue URL")
 	}
 
 	url = getMessageQueueURL(&msgConfig.SubscribeHost)
 
-	if url != "tcp://localhost:5563" {
+	if url != "tcp://localhost:"+port {
 		t.Fatal("Failed to create correct msg queue URL")
 	}
 }
