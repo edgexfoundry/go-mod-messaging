@@ -322,15 +322,15 @@ func TestDisconnect(t *testing.T) {
 
 func TestGetMsgQueueURL(t *testing.T) {
 
-	url := getMessageQueueURL(&msgConfig.PublishHost)
+	url := zeroMqClient.getPublishMessageQueueURL()
 	port := strconv.Itoa(zeromqPort)
 	if url != "tcp://*:"+port {
-		t.Fatal("Failed to create correct msg queue URL")
+		t.Fatal("Failed to create correct publish msg queue URL")
 	}
 
-	url = getMessageQueueURL(&msgConfig.SubscribeHost)
+	url = zeroMqClient.getSubscribMessageQueueURL()
 
 	if url != "tcp://localhost:"+port {
-		t.Fatal("Failed to create correct msg queue URL")
+		t.Fatal("Failed to create correct subscribe msg queue URL")
 	}
 }

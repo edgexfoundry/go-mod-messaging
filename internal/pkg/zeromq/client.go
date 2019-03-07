@@ -57,7 +57,7 @@ func (client *zeromqClient) Connect() error {
 
 func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic string) error {
 
-	msgQueueURL := getMessageQueueURL(&client.config.PublishHost)
+	msgQueueURL := client.getPublishMessageQueueURL()
 	var err error
 
 	if client.publisher == nil {
@@ -105,7 +105,7 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 	client.topics = topics
 	client.errors = messageErrors
 
-	msgQueueURL := getMessageQueueURL(&client.config.SubscribeHost)
+	msgQueueURL := client.getSubscribMessageQueueURL()
 	if err := client.initSubscriber(msgQueueURL); err != nil {
 		return err
 	}
@@ -196,13 +196,26 @@ func (client *zeromqClient) initSubscriber(msgQueueURL string) (err error) {
 	return client.subscriber.Connect(msgQueueURL)
 }
 
-func getMessageQueueURL(hostInfo *messaging.HostInfo) string {
-	return fmt.Sprintf("%s://%s:%d", getMessageProtocol(hostInfo), hostInfo.Host, hostInfo.Port)
+func (client *zeromqClient) getPublishMessageQueueURL() string {
+	return fmt.Sprintf("%s://%s:%d", client.getPublishMessageProtocol(), client.config.PublishHost.Host,
+		client.config.PublishHost.Port)
 }
 
-func getMessageProtocol(hostInfo *messaging.HostInfo) string {
-	if hostInfo.Protocol == "" {
+func (client *zeromqClient) getPublishMessageProtocol() string {
+	if client.config.PublishHost.Protocol == "" {
 		return defaultMsgProtocol
 	}
-	return hostInfo.Protocol
+	return client.config.PublishHost.Protocol
+}
+
+func (client *zeromqClient) getSubscribMessageQueueURL() string {
+	return fmt.Sprintf("%s://%s:%d", client.getSubscribeMessageProtocol(), client.config.SubscribeHost.Host,
+		client.config.SubscribeHost.Port)
+}
+
+func (client *zeromqClient) getSubscribeMessageProtocol() string {
+	if client.config.SubscribeHost.Protocol == "" {
+		return defaultMsgProtocol
+	}
+	return client.config.SubscribeHost.Protocol
 }
