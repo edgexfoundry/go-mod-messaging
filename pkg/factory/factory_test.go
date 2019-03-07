@@ -37,7 +37,7 @@ func TestNewMessageClientZeroMq(t *testing.T) {
 
 	_, err := NewMessageClient(msgConfig)
 
-	if assert.Nil(t, err, "New Message client failed: ", err) == false {
+	if assert.NoError(t, err, "New Message client failed: ", err) == false {
 		t.Fatal()
 	}
 }
@@ -47,7 +47,7 @@ func TestNewMessageBogusType(t *testing.T) {
 	msgConfig.Type = "bogus"
 
 	_, err := NewMessageClient(msgConfig)
-	if assert.NotNil(t, err, "Expected message type error") == false {
+	if assert.Error(t, err, "Expected message type error") == false {
 		t.Fatal()
 	}
 }
@@ -57,7 +57,7 @@ func TestNewMessageEmptyHostAndPortNumber(t *testing.T) {
 	msgConfig.PublishHost.Host = ""
 	msgConfig.PublishHost.Port = 0
 	_, err := NewMessageClient(msgConfig)
-	if assert.NotNil(t, err, "Expected message type error") == false {
+	if assert.Error(t, err, "Expected message type error") == false {
 		t.Fatal()
 	}
 

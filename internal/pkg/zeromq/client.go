@@ -37,6 +37,7 @@ type zeromqClient struct {
 	publishMux   sync.Mutex
 	subscribeMux sync.Mutex
 	topics       []messaging.TopicChannel
+	errors       chan error
 	config       messaging.MessageBusConfig
 }
 
@@ -61,13 +62,10 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 
 	if client.publisher == nil {
 
-		client.publisher, err = zmq.NewSocket(zmq.PUB)
-
-		if err != nil {
+		if client.publisher, err = zmq.NewSocket(zmq.PUB); err != nil {
 			return err
 		}
 		if conErr := client.publisher.Bind(msgQueueURL); conErr != nil {
-
 			return conErr
 		}
 
@@ -102,8 +100,10 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 	return err
 }
 
-func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host string, messageErrors chan error) error {
+func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageErrors chan error) error {
+
 	client.topics = topics
+	client.errors = messageErrors
 
 	msgQueueURL := getMessageQueueURL(&client.config.SubscribeHost)
 	if err := client.initSubscriber(msgQueueURL); err != nil {
@@ -121,7 +121,7 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host stri
 				payloadMsg, err := client.subscriber.Recv(0)
 
 				if err != nil && err.Error() != "resource temporarily unavailable" {
-					messageErrors <- err
+					client.errors <- err
 				}
 
 				topic.Messages <- payloadMsg
@@ -133,9 +133,16 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host stri
 }
 
 func (client *zeromqClient) Disconnect() error {
+	// close error channel
+	if client.errors != nil {
+		close(client.errors)
+	}
+
 	// close all topic channels
 	for _, topic := range client.topics {
-		close(topic.Messages)
+		if topic.Messages != nil {
+			close(topic.Messages)
+		}
 	}
 
 	var closeErrs []error
@@ -143,12 +150,16 @@ func (client *zeromqClient) Disconnect() error {
 	if client.publisher != nil {
 		errPublish := client.publisher.Close()
 		client.publisher = nil
-		closeErrs = append(closeErrs, errPublish)
+		if errPublish != nil {
+			closeErrs = append(closeErrs, errPublish)
+		}
 	}
 	if client.subscriber != nil {
 		errSubscribe := client.subscriber.Close()
 		client.subscriber = nil
-		closeErrs = append(closeErrs, errSubscribe)
+		if errSubscribe != nil {
+			closeErrs = append(closeErrs, errSubscribe)
+		}
 	}
 
 	if len(closeErrs) == 0 {
@@ -166,6 +177,7 @@ func (client *zeromqClient) Disconnect() error {
 }
 
 func (client *zeromqClient) initSubscriber(msgQueueURL string) (err error) {
+
 	if client.subscriber == nil {
 		if client.subscriber, err = zmq.NewSocket(zmq.SUB); err != nil {
 			return err

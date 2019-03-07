@@ -24,6 +24,7 @@ import (
 	"time"
 
 	messaging "github.com/edgexfoundry/go-mod-messaging"
+	"github.com/stretchr/testify/assert"
 )
 
 var msgConfig = messaging.MessageBusConfig{
@@ -50,6 +51,7 @@ func TestMain(m *testing.M) {
 		fmt.Println("failed to create a new zeromq client")
 		os.Exit(-1)
 	}
+	defer zeroMqClient.Disconnect()
 	os.Exit(m.Run())
 }
 
@@ -90,14 +92,9 @@ func TestNewClient(t *testing.T) {
 
 func TestConnect(t *testing.T) {
 
-	msgConfig.Type = "zero"
-	client, _ := NewZeroMqClient(msgConfig)
-
-	if err := client.Connect(); err != nil {
+	if err := zeroMqClient.Connect(); err != nil {
 		t.Fatal("Failed to connect to zero ZMQ")
 	}
-
-	defer client.Disconnect()
 }
 
 func TestPublish(t *testing.T) {
@@ -110,8 +107,6 @@ func TestPublish(t *testing.T) {
 	topic := ""
 
 	err := zeroMqClient.Publish(message, topic)
-
-	defer zeroMqClient.Disconnect()
 
 	if err != nil {
 		t.Fatalf("Failed to publish ZMQ message, %v", err)
@@ -130,8 +125,6 @@ func TestPublishWithTopic(t *testing.T) {
 
 	err := zeroMqClient.Publish(message, topic)
 
-	defer zeroMqClient.Disconnect()
-
 	if err != nil {
 		t.Fatalf("Failed to publish ZMQ message, %v", err)
 	}
@@ -140,7 +133,6 @@ func TestPublishWithTopic(t *testing.T) {
 func TestPublishWihEmptyMsg(t *testing.T) {
 
 	zeroMqClient.Connect()
-	defer zeroMqClient.Disconnect()
 
 	message := messaging.MessageEnvelope{}
 
@@ -161,8 +153,7 @@ func TestSubscribe(t *testing.T) {
 	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
 	messageErrors := make(chan error)
 
-	err := zeroMqClient.Subscribe(topics, "localhost", messageErrors)
-	defer zeroMqClient.Disconnect()
+	err := zeroMqClient.Subscribe(topics, messageErrors)
 
 	if err != nil {
 		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
@@ -200,6 +191,120 @@ func TestSubscribe(t *testing.T) {
 			done = true
 		}
 	}
+}
+
+func TestBadSubscriberMessageConfig(t *testing.T) {
+	badMsgConfig := messaging.MessageBusConfig{
+		SubscribeHost: messaging.HostInfo{
+			Host: "\\",
+		},
+	}
+
+	testClient, err := NewZeroMqClient(badMsgConfig)
+
+	testClient.Connect()
+	defer testClient.Disconnect()
+
+	messages := make(chan interface{})
+	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
+	messageErrors := make(chan error)
+
+	err = testClient.Subscribe(topics, messageErrors)
+
+	if err == nil {
+		t.Fatalf("Expecting error from subscribe to ZMQ")
+	}
+}
+
+func TestBadPublisherMessageConfig(t *testing.T) {
+	badMsgConfig := messaging.MessageBusConfig{
+		PublishHost: messaging.HostInfo{
+			Host: "//",
+		},
+	}
+
+	testClient, err := NewZeroMqClient(badMsgConfig)
+
+	testClient.Connect()
+	defer testClient.Disconnect()
+
+	message := messaging.MessageEnvelope{
+		CorrelationID: "123", Payload: []byte("test bytes"),
+	}
+
+	topic := "TestTopic"
+
+	err = testClient.Publish(message, topic)
+
+	if err == nil {
+		t.Fatalf("Expecting error from publish to ZMQ")
+	}
+}
+
+func TestDisconnect(t *testing.T) {
+	testMsgConfig := messaging.MessageBusConfig{
+		PublishHost: messaging.HostInfo{
+			Host:     "*",
+			Port:     5564,
+			Protocol: "tcp",
+		},
+		SubscribeHost: messaging.HostInfo{
+			Host:     "localhost",
+			Port:     5564,
+			Protocol: "tcp",
+		},
+	}
+
+	testClient, err := NewZeroMqClient(testMsgConfig)
+
+	testClient.Connect()
+
+	messages := make(chan interface{})
+	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
+	messageErrors := make(chan error)
+
+	err = testClient.Subscribe(topics, messageErrors)
+
+	if err != nil {
+		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	}
+
+	message := messaging.MessageEnvelope{
+		CorrelationID: "123", Payload: []byte("test bytes"),
+	}
+	topic := ""
+
+	err = testClient.Publish(message, topic)
+
+	if assert.NoError(t, err, "Failed to publish ZMQ message") == false {
+		t.Fatal()
+	}
+
+	done := false
+	for !done {
+		select {
+		case msgErr := <-messageErrors:
+			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+		case msgs := <-messages:
+			fmt.Printf("Received messages: %v\n", msgs)
+			done = true
+		}
+	}
+
+	err = testClient.Disconnect()
+
+	if assert.NoError(t, err, "Disconnect failed") == false {
+		t.Fatal()
+	}
+
+	assert.Nil(t, testClient.publisher, "Publisher not closed")
+	assert.Nil(t, testClient.subscriber, "Subscriber not closed")
+
+	testerr := <-messageErrors
+	assert.NoError(t, testerr, "message error channel is not closed")
+
+	testMessage := <-topics[0].Messages
+	assert.Nil(t, testMessage, "topic channel is not closed")
 }
 
 func TestGetMsgQueueURL(t *testing.T) {
