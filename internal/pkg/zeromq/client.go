@@ -110,11 +110,11 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 		return err
 	}
 
-	go func(msgQueueURL string) {
-		for {
-			for _, topic := range topics {
-				client.subscriber.SetSubscribe(topic.Topic)
+	for _, topic := range topics {
+		client.subscriber.SetSubscribe(topic.Topic)
 
+		go func(topic messaging.TopicChannel) {
+			for {
 				msgTopic, err := client.subscriber.Recv(zmq.SNDMORE)
 				fmt.Printf("Message topic: %s\n", msgTopic)
 
@@ -123,12 +123,10 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 				if err != nil && err.Error() != "resource temporarily unavailable" {
 					client.errors <- err
 				}
-
 				topic.Messages <- payloadMsg
 			}
-			time.Sleep(10)
-		}
-	}(msgQueueURL)
+		}(topic)
+	}
 	return nil
 }
 
