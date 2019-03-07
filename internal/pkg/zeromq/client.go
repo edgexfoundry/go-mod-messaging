@@ -32,12 +32,12 @@ const (
 )
 
 type zeromqClient struct {
-	publishSocket   *zmq.Socket
-	subscribeSocket *zmq.Socket
-	publishMux      sync.Mutex
-	subscribeMux    sync.Mutex
-	topics          []messaging.TopicChannel
-	config          messaging.MessageBusConfig
+	publisher    *zmq.Socket
+	subscriber   *zmq.Socket
+	publishMux   sync.Mutex
+	subscribeMux sync.Mutex
+	topics       []messaging.TopicChannel
+	config       messaging.MessageBusConfig
 }
 
 // NewZeroMqClient instantiates a new zeromq client instance based on the configuration
@@ -47,6 +47,9 @@ func NewZeroMqClient(msgConfig messaging.MessageBusConfig) (*zeromqClient, error
 	return &client, nil
 }
 
+// Connect implements connect to 0mq
+// Since 0mq pub-sub pattern has different pub socket type and sub socket one
+// the socket initialzation and connection are delayed to Publish and Subscribe calls, respectively
 func (client *zeromqClient) Connect() error {
 	return nil
 }
@@ -56,20 +59,21 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 	msgQueueURL := getMessageQueueURL(&client.config.PublishHost)
 	var err error
 
-	if client.publishSocket == nil {
+	if client.publisher == nil {
 
-		client.publishSocket, err = zmq.NewSocket(zmq.PUB)
+		client.publisher, err = zmq.NewSocket(zmq.PUB)
 
 		if err != nil {
 			return err
 		}
-		if conErr := client.publishSocket.Bind(msgQueueURL); conErr != nil {
+		if conErr := client.publisher.Bind(msgQueueURL); conErr != nil {
 
 			return conErr
 		}
 
-		fmt.Println("Successfully connected to 0MQ message queue")
+		fmt.Println("Publisher successfully connected to 0MQ message queue")
 
+		// allow some time for socket binding before start publishing
 		time.Sleep(time.Second)
 	}
 
@@ -81,7 +85,7 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 	client.publishMux.Lock()
 	defer client.publishMux.Unlock()
 
-	lenOfTopic, err := client.publishSocket.Send(topic, zmq.SNDMORE)
+	lenOfTopic, err := client.publisher.Send(topic, zmq.SNDMORE)
 
 	if err != nil {
 		return err
@@ -89,7 +93,7 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 		return errors.New("The length of the sent topic does not match the expected length")
 	}
 
-	lenOfPayload, err := client.publishSocket.SendBytes(msgBytes, zmq.DONTWAIT)
+	lenOfPayload, err := client.publisher.SendBytes(msgBytes, zmq.DONTWAIT)
 
 	if lenOfPayload != len(msgBytes) {
 		return errors.New("The length of the sent payload does not match the expected length")
@@ -109,12 +113,12 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host stri
 	go func(msgQueueURL string) {
 		for {
 			for _, topic := range topics {
-				client.subscribeSocket.SetSubscribe(topic.Topic)
+				client.subscriber.SetSubscribe(topic.Topic)
 
-				msgTopic, err := client.subscribeSocket.Recv(zmq.SNDMORE)
+				msgTopic, err := client.subscriber.Recv(zmq.SNDMORE)
 				fmt.Printf("Message topic: %s\n", msgTopic)
 
-				payloadMsg, err := client.subscribeSocket.Recv(0)
+				payloadMsg, err := client.subscriber.Recv(0)
 
 				if err != nil && err.Error() != "resource temporarily unavailable" {
 					messageErrors <- err
@@ -128,16 +132,49 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host stri
 	return nil
 }
 
+func (client *zeromqClient) Disconnect() error {
+	// close all topic channels
+	for _, topic := range client.topics {
+		close(topic.Messages)
+	}
+
+	var closeErrs []error
+	// close sockets:
+	if client.publisher != nil {
+		errPublish := client.publisher.Close()
+		client.publisher = nil
+		closeErrs = append(closeErrs, errPublish)
+	}
+	if client.subscriber != nil {
+		errSubscribe := client.subscriber.Close()
+		client.subscriber = nil
+		closeErrs = append(closeErrs, errSubscribe)
+	}
+
+	if len(closeErrs) == 0 {
+		return nil
+	}
+
+	var errorStr string
+	for _, err := range closeErrs {
+		if err != nil {
+			errorStr = errorStr + fmt.Sprintf("%s  ", err.Error())
+		}
+	}
+
+	return errors.New(errorStr)
+}
+
 func (client *zeromqClient) initSubscriber(msgQueueURL string) (err error) {
-	if client.subscribeSocket == nil {
-		if client.subscribeSocket, err = zmq.NewSocket(zmq.SUB); err != nil {
+	if client.subscriber == nil {
+		if client.subscriber, err = zmq.NewSocket(zmq.SUB); err != nil {
 			return err
 		}
 	}
 
 	fmt.Printf("Subscribing to message queue: [%s] ...", msgQueueURL)
 	fmt.Println()
-	return client.subscribeSocket.Connect(msgQueueURL)
+	return client.subscriber.Connect(msgQueueURL)
 }
 
 func getMessageQueueURL(hostInfo *messaging.HostInfo) string {

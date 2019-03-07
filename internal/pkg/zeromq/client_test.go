@@ -19,6 +19,7 @@ package zeromq
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -35,7 +36,22 @@ var msgConfig = messaging.MessageBusConfig{
 		Host:     "localhost",
 		Port:     5563,
 		Protocol: "tcp",
-	}}
+	},
+}
+
+var zeroMqClient *zeromqClient
+
+func TestMain(m *testing.M) {
+	msgConfig.Type = "zero"
+	var err error
+
+	zeroMqClient, err = NewZeroMqClient(msgConfig)
+	if err != nil {
+		fmt.Println("failed to create a new zeromq client")
+		os.Exit(-1)
+	}
+	os.Exit(m.Run())
+}
 
 func TestNewClient(t *testing.T) {
 
@@ -80,21 +96,22 @@ func TestConnect(t *testing.T) {
 	if err := client.Connect(); err != nil {
 		t.Fatal("Failed to connect to zero ZMQ")
 	}
+
+	defer client.Disconnect()
 }
 
 func TestPublish(t *testing.T) {
 
-	msgConfig.Type = "zero"
-	client, _ := NewZeroMqClient(msgConfig)
-
-	client.Connect()
+	zeroMqClient.Connect()
 
 	message := messaging.MessageEnvelope{
 		CorrelationID: "123", Payload: []byte("test bytes"),
 	}
 	topic := ""
 
-	err := client.Publish(message, topic)
+	err := zeroMqClient.Publish(message, topic)
+
+	defer zeroMqClient.Disconnect()
 
 	if err != nil {
 		t.Fatalf("Failed to publish ZMQ message, %v", err)
@@ -103,10 +120,7 @@ func TestPublish(t *testing.T) {
 
 func TestPublishWithTopic(t *testing.T) {
 
-	msgConfig.Type = "zero"
-	client, _ := NewZeroMqClient(msgConfig)
-
-	client.Connect()
+	zeroMqClient.Connect()
 
 	message := messaging.MessageEnvelope{
 		CorrelationID: "123", Payload: []byte("test bytes"),
@@ -114,7 +128,9 @@ func TestPublishWithTopic(t *testing.T) {
 
 	topic := "TestTopic"
 
-	err := client.Publish(message, topic)
+	err := zeroMqClient.Publish(message, topic)
+
+	defer zeroMqClient.Disconnect()
 
 	if err != nil {
 		t.Fatalf("Failed to publish ZMQ message, %v", err)
@@ -123,16 +139,14 @@ func TestPublishWithTopic(t *testing.T) {
 
 func TestPublishWihEmptyMsg(t *testing.T) {
 
-	msgConfig.Type = "zero"
-	client, _ := NewZeroMqClient(msgConfig)
-
-	client.Connect()
+	zeroMqClient.Connect()
+	defer zeroMqClient.Disconnect()
 
 	message := messaging.MessageEnvelope{}
 
 	topic := ""
 
-	err := client.Publish(message, topic)
+	err := zeroMqClient.Publish(message, topic)
 
 	if err != nil {
 		t.Fatalf("Failed to publish ZMQ message, %v", err)
@@ -141,16 +155,14 @@ func TestPublishWihEmptyMsg(t *testing.T) {
 
 func TestSubscribe(t *testing.T) {
 
-	msgConfig.Type = "zero"
-	client, _ := NewZeroMqClient(msgConfig)
-
-	client.Connect()
+	zeroMqClient.Connect()
 
 	messages := make(chan interface{})
 	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
 	messageErrors := make(chan error)
 
-	err := client.Subscribe(topics, "localhost", messageErrors)
+	err := zeroMqClient.Subscribe(topics, "localhost", messageErrors)
+	defer zeroMqClient.Disconnect()
 
 	if err != nil {
 		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
@@ -165,7 +177,7 @@ func TestSubscribe(t *testing.T) {
 	}
 
 	topic := "TestTopic"
-	err = client.Publish(message, topic)
+	err = zeroMqClient.Publish(message, topic)
 	if err != nil {
 		t.Fatalf("Failed to publish to ZMQ message, %v", err)
 	}
