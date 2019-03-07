@@ -178,26 +178,28 @@ func TestSubscribe(t *testing.T) {
 		t.Fatalf("Failed to publish to ZMQ message, %v", err)
 	}
 
-	done := false
-	for !done {
-		if messageErrors != nil && messages != nil {
-			select {
-			case msgErr := <-messageErrors:
-				t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
-			case msgs := <-messages:
-				fmt.Printf("Received messages: %v\n", msgs)
-				msgBytes := []byte(msgs.(string))
-				var unmarshalledData messaging.MessageEnvelope
-				if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
-					t.Fatal("Json unmarshal message envelope failed")
-				}
-				if unmarshalledData.CorrelationID != expectedCorreleatedID && string(unmarshalledData.Payload) == string(expectedPayload) {
-					t.Fatal("Received wrong message")
-				}
-				done = true
+	for {
+		select {
+		case msgErr := <-messageErrors:
+			if msgErr == nil {
+				return
 			}
-		} else {
-			break
+			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+		case msgs := <-messages:
+			if msgs == nil {
+				return
+			}
+
+			fmt.Printf("Received messages: %v\n", msgs)
+			msgBytes := []byte(msgs.(string))
+			var unmarshalledData messaging.MessageEnvelope
+			if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
+				t.Fatal("Json unmarshal message envelope failed")
+			}
+			if unmarshalledData.CorrelationID != expectedCorreleatedID && string(unmarshalledData.Payload) == string(expectedPayload) {
+				t.Fatal("Received wrong message")
+			}
+			return
 		}
 	}
 }
@@ -287,21 +289,6 @@ func TestDisconnect(t *testing.T) {
 
 	if assert.NoError(t, err, "Failed to publish ZMQ message") == false {
 		t.Fatal()
-	}
-
-	done := false
-	for !done {
-		if messageErrors != nil && messages != nil {
-			select {
-			case msgErr := <-messageErrors:
-				t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
-			case msgs := <-messages:
-				fmt.Printf("Received messages: %v\n", msgs)
-				done = true
-			}
-		} else {
-			break
-		}
 	}
 
 	err = testClient.Disconnect()
