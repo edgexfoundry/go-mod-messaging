@@ -36,7 +36,7 @@ type zeromqClient struct {
 	subscribeSocket *zmq.Socket
 	publishMux      sync.Mutex
 	subscribeMux    sync.Mutex
-	topicFilters    []string
+	topics          []messaging.TopicChannel
 	config          messaging.MessageBusConfig
 }
 
@@ -99,24 +99,14 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 }
 
 func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host string, messageErrors chan error) error {
-
-	var err error
-	if client.subscribeSocket == nil {
-		client.subscribeSocket, err = zmq.NewSocket(zmq.SUB)
-
-		if err != nil {
-			return err
-		}
-	}
+	client.topics = topics
 
 	msgQueueURL := getMessageQueueURL(&client.config.SubscribeHost)
-
-	if err = client.subscribeSocket.Connect(msgQueueURL); err != nil {
+	if err := client.initSubscriber(msgQueueURL); err != nil {
 		return err
 	}
 
 	go func(msgQueueURL string) {
-
 		for {
 			for _, topic := range topics {
 				client.subscribeSocket.SetSubscribe(topic.Topic)
@@ -136,6 +126,18 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, host stri
 		}
 	}(msgQueueURL)
 	return nil
+}
+
+func (client *zeromqClient) initSubscriber(msgQueueURL string) (err error) {
+	if client.subscribeSocket == nil {
+		if client.subscribeSocket, err = zmq.NewSocket(zmq.SUB); err != nil {
+			return err
+		}
+	}
+
+	fmt.Printf("Subscribing to message queue: [%s] ...", msgQueueURL)
+	fmt.Println()
+	return client.subscribeSocket.Connect(msgQueueURL)
 }
 
 func getMessageQueueURL(hostInfo *messaging.HostInfo) string {

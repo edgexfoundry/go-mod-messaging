@@ -35,6 +35,7 @@ type MessageClient interface {
 	Subscribe(topics []TopicChannel, messageErrors chan error) error
 
 	// Disconnect is to close all connections on the message bus
+	// and TopicChannel will also be closed
 	Disconnect() error
 }
 
