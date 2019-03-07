@@ -116,7 +116,7 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 		go func(topic messaging.TopicChannel) {
 
 			for {
-				msgTopic, err := client.subscriber.Recv(0)
+				msgTopic, err := client.subscriber.Recv(zmq.SNDMORE)
 
 				if err != nil && err.Error() != "resource temporarily unavailable" {
 					fmt.Printf("Error received from subscribe: %s\n", err)
