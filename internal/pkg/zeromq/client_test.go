@@ -150,6 +150,102 @@ func TestPublishWihEmptyMsg(t *testing.T) {
 	}
 }
 
+func createAndSubscribeClient(topic string, messages chan interface{}, messageErrors chan error) *zeromqClient {
+
+	testMsgConfig := messaging.MessageBusConfig{
+		PublishHost: messaging.HostInfo{
+			Host:     "*",
+			Port:     5565,
+			Protocol: "tcp",
+		},
+		SubscribeHost: messaging.HostInfo{
+			Host:     "localhost",
+			Port:     5565,
+			Protocol: "tcp",
+		},
+	}
+
+	client, _ := NewZeroMqClient(testMsgConfig)
+	client.Connect()
+
+	topics := []messaging.TopicChannel{{Topic: topic, Messages: messages}}
+	zeroMqClient.Subscribe(topics, messageErrors)
+
+	return client
+}
+
+func TestPublishWihMultipleSubscribers(t *testing.T) {
+
+	topic := ""
+
+	messages1 := make(chan interface{})
+	messageErrors1 := make(chan error)
+	client1 := createAndSubscribeClient(topic, messages1, messageErrors1)
+
+	messages2 := make(chan interface{})
+	messageErrors2 := make(chan error)
+	_ = createAndSubscribeClient(topic, messages2, messageErrors2)
+
+	// publish messages with topic
+	time.Sleep(time.Second)
+
+	expectedCorreleationID := "123"
+	expectedPayload := []byte("test bytes")
+	message := messaging.MessageEnvelope{
+		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
+	}
+
+	err := client1.Publish(message, topic)
+	if err != nil {
+		t.Fatalf("Failed to publish to ZMQ message, %v", err)
+	}
+
+	testTimer := time.NewTimer(2 * time.Second)
+	defer testTimer.Stop()
+	receivedMsg1 := ""
+	receivedMsg2 := ""
+
+	for {
+		select {
+		case msgErr := <-messageErrors1:
+			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+		case msgs := <-messages1:
+			fmt.Printf("Received messages: %v\n", msgs)
+
+			msgBytes := []byte(msgs.(string))
+			var unmarshalledData messaging.MessageEnvelope
+			if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
+				t.Fatal("Json unmarshal message envelope failed")
+			}
+
+			receivedMsg1 = string(unmarshalledData.Payload)
+			if unmarshalledData.CorrelationID != expectedCorreleationID && string(unmarshalledData.Payload) == string(expectedPayload) {
+				t.Fatal("Received wrong message")
+			}
+		case msgErr := <-messageErrors2:
+			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+		case msgs := <-messages2:
+			fmt.Printf("Received messages: %v\n", msgs)
+
+			msgBytes := []byte(msgs.(string))
+			var unmarshalledData messaging.MessageEnvelope
+			if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
+				t.Fatal("Json unmarshal message envelope failed")
+			}
+
+			receivedMsg2 = string(unmarshalledData.Payload)
+			if unmarshalledData.CorrelationID != expectedCorreleationID && string(unmarshalledData.Payload) == string(expectedPayload) {
+				t.Fatal("Received wrong message")
+			}
+		case <-testTimer.C:
+			if receivedMsg1 != receivedMsg2 && receivedMsg1 != "" {
+				t.Fatal("Received messages don't match")
+			}
+			return
+		}
+	}
+}
+
 func TestSubscribe(t *testing.T) {
 
 	zeroMqClient.Connect()
