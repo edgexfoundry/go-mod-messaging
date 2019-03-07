@@ -68,7 +68,8 @@ type MessageBusConfig struct {
 	Optional map[string]string
 }
 
-// HostInfo ...
+// HostInfo is the URL information of the host as the following scheme:
+// <Protocol>://<Host>:<Port>
 type HostInfo struct {
 	// Host is the hostname or IP address of the messaging broker, if applicable.
 	Host string

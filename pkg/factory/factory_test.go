@@ -24,9 +24,11 @@ import (
 )
 
 var msgConfig = messaging.MessageBusConfig{
-	Host:     "localhost",
-	Port:     5563,
-	Protocol: "tcp",
+	PublishHost: messaging.HostInfo{
+		Host:     "*",
+		Port:     5563,
+		Protocol: "tcp",
+	},
 }
 
 func TestNewMessageClientZeroMq(t *testing.T) {
@@ -52,8 +54,8 @@ func TestNewMessageBogusType(t *testing.T) {
 
 func TestNewMessageEmptyHostAndPortNumber(t *testing.T) {
 
-	msgConfig.Host = ""
-	msgConfig.Port = 0
+	msgConfig.PublishHost.Host = ""
+	msgConfig.PublishHost.Port = 0
 	_, err := NewMessageClient(msgConfig)
 	if assert.NotNil(t, err, "Expected message type error") == false {
 		t.Fatal()

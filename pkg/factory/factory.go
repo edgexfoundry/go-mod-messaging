@@ -32,8 +32,8 @@ const (
 // the "Type" from the configuration
 func NewMessageClient(msgConfig messaging.MessageBusConfig) (msgClient messaging.MessageClient, createErr error) {
 
-	if msgConfig.Host == "" || msgConfig.Port == 0 {
-		return nil, fmt.Errorf("unable to create messageClient: message broker host and/or port not set")
+	if isHostInfoEmpty(&msgConfig.PublishHost) {
+		return nil, fmt.Errorf("unable to create messageClient: message publisher host and/or port not set")
 	}
 
 	switch lowerMsgType := strings.ToLower(msgConfig.Type); lowerMsgType {
@@ -43,4 +43,8 @@ func NewMessageClient(msgConfig messaging.MessageBusConfig) (msgClient messaging
 	default:
 		return nil, fmt.Errorf("unknown message type '%s' requested", msgConfig.Type)
 	}
+}
+
+func isHostInfoEmpty(hostInfo *messaging.HostInfo) bool {
+	return hostInfo == nil || hostInfo.Host == "" || hostInfo.Port == 0
 }
