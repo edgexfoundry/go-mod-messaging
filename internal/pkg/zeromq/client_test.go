@@ -154,9 +154,21 @@ func TestSubscribe(t *testing.T) {
 
 	zeroMqClient.Connect()
 
+	publishTopic := "testTopic"
+
+	// no filter
+	runSubscribe(t, publishTopic, "")
+	// filter doesn't match topic
+	runSubscribe(t, publishTopic, "NotTestTopic")
+	// filter matches topic
+	runSubscribe(t, publishTopic, publishTopic)
+}
+
+func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
+
 	messages := make(chan interface{})
-	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
 	messageErrors := make(chan error)
+	topics := []messaging.TopicChannel{{Topic: filterTopic, Messages: messages}}
 
 	err := zeroMqClient.Subscribe(topics, messageErrors)
 
@@ -166,17 +178,20 @@ func TestSubscribe(t *testing.T) {
 
 	// publish messages with topic
 	time.Sleep(time.Second)
-	expectedCorreleatedID := "123"
+	expectedCorreleationID := "123"
 	expectedPayload := []byte("test bytes")
 	message := messaging.MessageEnvelope{
-		CorrelationID: expectedCorreleatedID, Payload: expectedPayload,
+		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
 	}
 
-	topic := "TestTopic"
-	err = zeroMqClient.Publish(message, topic)
+	err = zeroMqClient.Publish(message, publishTopic)
 	if err != nil {
 		t.Fatalf("Failed to publish to ZMQ message, %v", err)
 	}
+
+	testTimer := time.NewTimer(2 * time.Second)
+	defer testTimer.Stop()
+	payloadReturned := ""
 
 	for {
 		select {
@@ -189,15 +204,23 @@ func TestSubscribe(t *testing.T) {
 			if msgs == nil {
 				return
 			}
-
 			fmt.Printf("Received messages: %v\n", msgs)
+
 			msgBytes := []byte(msgs.(string))
 			var unmarshalledData messaging.MessageEnvelope
 			if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
 				t.Fatal("Json unmarshal message envelope failed")
 			}
-			if unmarshalledData.CorrelationID != expectedCorreleatedID && string(unmarshalledData.Payload) == string(expectedPayload) {
+
+			payloadReturned = string(unmarshalledData.Payload)
+
+			if unmarshalledData.CorrelationID != expectedCorreleationID && string(unmarshalledData.Payload) == string(expectedPayload) {
 				t.Fatal("Received wrong message")
+			}
+			return
+		case <-testTimer.C:
+			if payloadReturned != "" {
+				t.Fatal("Received message with filter on, should have filtered message")
 			}
 			return
 		}
