@@ -26,7 +26,7 @@ import (
 var msgConfig = messaging.MessageBusConfig{
 	PublishHost: messaging.HostInfo{
 		Host:     "*",
-		Port:     5563,
+		Port:     5570,
 		Protocol: "tcp",
 	},
 }

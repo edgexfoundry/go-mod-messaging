@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	messaging "github.com/edgexfoundry/go-mod-messaging"
+	"github.com/edgexfoundry/go-mod-messaging/internal/pkg/zeromq"
 )
 
 const (
@@ -38,8 +39,7 @@ func NewMessageClient(msgConfig messaging.MessageBusConfig) (msgClient messaging
 
 	switch lowerMsgType := strings.ToLower(msgConfig.Type); lowerMsgType {
 	case ZeroMQ:
-		// TBD
-		return msgClient, createErr
+		return zeromq.NewZeroMqClient(msgConfig)
 	default:
 		return nil, fmt.Errorf("unknown message type '%s' requested", msgConfig.Type)
 	}
