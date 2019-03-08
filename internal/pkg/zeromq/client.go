@@ -84,20 +84,13 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 	client.publishMux.Lock()
 	defer client.publishMux.Unlock()
 
-	_, err = client.publisher.SendMessage(topic, msgBytes)
+	msgTotalBytes, err := client.publisher.SendMessage(topic, msgBytes)
 
 	if err != nil {
 		return err
+	} else if msgTotalBytes != len(topic)+len(msgBytes) {
+		return errors.New("The length of the sent messages does not match the expected length")
 	}
-	// else if lenOfTopic != len(topic) {
-	// 	return errors.New("The length of the sent topic does not match the expected length")
-	// }
-
-	// lenOfPayload, err := client.publisher.SendBytes(msgBytes, zmq.DONTWAIT)
-
-	// if lenOfPayload != len(msgBytes) {
-	// 	return errors.New("The length of the sent payload does not match the expected length")
-	// }
 
 	return err
 }
@@ -113,19 +106,11 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 	}
 
 	for _, topic := range topics {
-		fmt.Printf("filter: %s\n", topic.Topic)
+		fmt.Printf("Subscribe topic filter: %s\n", topic.Topic)
 
 		go func(topic messaging.TopicChannel) {
 
 			for {
-				// msgTopic, err := client.subscriber.Recv(0)
-
-				// if err != nil && err.Error() != "resource temporarily unavailable" {
-				// 	fmt.Printf("Error received from subscribe: %s\n", err)
-				// 	client.errors <- err
-				// }
-
-				// fmt.Printf("Message topic: %s\n", msgTopic)
 				client.subscriber.SetSubscribe(topic.Topic)
 				payloadMsg, err := client.subscriber.RecvMessage(0)
 
@@ -134,8 +119,8 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 					client.errors <- err
 				}
 
-				fmt.Printf("Message payload: %s\n", payloadMsg)
 				topic.Messages <- payloadMsg
+				fmt.Printf("Message payload: %s\n", payloadMsg)
 			}
 		}(topic)
 	}

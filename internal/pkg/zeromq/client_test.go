@@ -252,12 +252,18 @@ func TestSubscribe(t *testing.T) {
 
 	publishTopic := "testTopic"
 
-	// no filter
-	runSubscribe(t, publishTopic, "")
+	// filter topics
+	filterTopics := []string{"", "DONT-MATCH", publishTopic}
+	//filterTopics := []string{publishTopic}
+	for _, filterTopic := range filterTopics {
+		runSubscribe(t, publishTopic, filterTopic)
+		zeroMqClient.subscriber.SetUnsubscribe(filterTopic)
+		time.Sleep(time.Second)
+	}
 	// filter doesn't match topic
-	runSubscribe(t, publishTopic, "DONT-MATCH")
+	//runSubscribe(t, publishTopic, "DONT-MATCH")
 	// filter matches topic
-	runSubscribe(t, publishTopic, publishTopic)
+	//runSubscribe(t, publishTopic, publishTopic)
 }
 
 func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
@@ -285,7 +291,7 @@ func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
 		t.Fatalf("Failed to publish to ZMQ message, %v", err)
 	}
 
-	testTimer := time.NewTimer(2 * time.Second)
+	testTimer := time.NewTimer(3 * time.Second)
 	defer testTimer.Stop()
 	payloadReturned := ""
 
@@ -302,17 +308,17 @@ func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
 			}
 			fmt.Printf("Received messages: %v\n", msgs)
 
-			// msgBytes := []byte(msgs.(string))
-			// var unmarshalledData messaging.MessageEnvelope
-			// if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
-			// 	t.Fatal("Json unmarshal message envelope failed")
-			// }
+			msgBytes := []byte(msgs.([]string)[1])
+			var unmarshalledData messaging.MessageEnvelope
+			if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
+				t.Fatal("Json unmarshal message envelope failed")
+			}
 
-			// payloadReturned = string(unmarshalledData.Payload)
+			payloadReturned = string(unmarshalledData.Payload)
 
-			// if unmarshalledData.CorrelationID != expectedCorreleationID && string(unmarshalledData.Payload) == string(expectedPayload) {
-			// 	t.Fatal("Received wrong message")
-			// }
+			if unmarshalledData.CorrelationID != expectedCorreleationID && string(unmarshalledData.Payload) == string(expectedPayload) {
+				t.Fatal("Received wrong message")
+			}
 			return
 		case <-testTimer.C:
 			if payloadReturned != "" {
