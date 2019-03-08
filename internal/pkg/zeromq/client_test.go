@@ -398,7 +398,7 @@ func TestDisconnect(t *testing.T) {
 	assert.NoError(t, testerr, "message error channel is not closed")
 
 	testMessage := <-topics[0].Messages
-	assert.Nil(t, testMessage, "topic channel is not closed")
+	assert.Equal(t, messaging.MessageEnvelope{}, testMessage, "topic channel is not closed")
 }
 
 func TestGetMsgQueueURL(t *testing.T) {
