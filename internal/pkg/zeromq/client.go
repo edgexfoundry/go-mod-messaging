@@ -84,19 +84,20 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 	client.publishMux.Lock()
 	defer client.publishMux.Unlock()
 
-	lenOfTopic, err := client.publisher.Send(topic, zmq.SNDMORE)
+	_, err = client.publisher.SendMessage(topic, msgBytes)
 
 	if err != nil {
 		return err
-	} else if lenOfTopic != len(topic) {
-		return errors.New("The length of the sent topic does not match the expected length")
 	}
+	// else if lenOfTopic != len(topic) {
+	// 	return errors.New("The length of the sent topic does not match the expected length")
+	// }
 
-	lenOfPayload, err := client.publisher.SendBytes(msgBytes, zmq.DONTWAIT)
+	// lenOfPayload, err := client.publisher.SendBytes(msgBytes, zmq.DONTWAIT)
 
-	if lenOfPayload != len(msgBytes) {
-		return errors.New("The length of the sent payload does not match the expected length")
-	}
+	// if lenOfPayload != len(msgBytes) {
+	// 	return errors.New("The length of the sent payload does not match the expected length")
+	// }
 
 	return err
 }
@@ -112,26 +113,28 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 	}
 
 	for _, topic := range topics {
-		client.subscriber.SetSubscribe(topic.Topic)
+		fmt.Printf("filter: %s\n", topic.Topic)
 
 		go func(topic messaging.TopicChannel) {
 
 			for {
-				msgTopic, err := client.subscriber.Recv(zmq.SNDMORE)
+				// msgTopic, err := client.subscriber.Recv(0)
+
+				// if err != nil && err.Error() != "resource temporarily unavailable" {
+				// 	fmt.Printf("Error received from subscribe: %s\n", err)
+				// 	client.errors <- err
+				// }
+
+				// fmt.Printf("Message topic: %s\n", msgTopic)
+				client.subscriber.SetSubscribe(topic.Topic)
+				payloadMsg, err := client.subscriber.RecvMessage(0)
 
 				if err != nil && err.Error() != "resource temporarily unavailable" {
 					fmt.Printf("Error received from subscribe: %s\n", err)
 					client.errors <- err
 				}
 
-				fmt.Printf("Message topic: %s\n", msgTopic)
-
-				payloadMsg, err := client.subscriber.Recv(0)
-
-				if err != nil && err.Error() != "resource temporarily unavailable" {
-					fmt.Printf("Error received from subscribe: %s\n", err)
-					client.errors <- err
-				}
+				fmt.Printf("Message payload: %s\n", payloadMsg)
 				topic.Messages <- payloadMsg
 			}
 		}(topic)
