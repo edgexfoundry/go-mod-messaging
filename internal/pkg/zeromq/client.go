@@ -40,12 +40,13 @@ type zeromqClient struct {
 	topics       []messaging.TopicChannel
 	errors       chan error
 	config       messaging.MessageBusConfig
+	exit         chan bool
 }
 
 // NewZeroMqClient instantiates a new zeromq client instance based on the configuration
 func NewZeroMqClient(msgConfig messaging.MessageBusConfig) (*zeromqClient, error) {
 
-	client := zeromqClient{config: msgConfig}
+	client := zeromqClient{config: msgConfig, exit: make(chan bool)}
 	return &client, nil
 }
 
@@ -105,29 +106,40 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 		return err
 	}
 
+	exitSignal := false
+
 	for _, topic := range topics {
+		client.subscriber.SetSubscribe(topic.Topic)
 		fmt.Printf("Subscribe topic filter: %s\n", topic.Topic)
 
 		go func(topic messaging.TopicChannel) {
 
-			for {
-				client.subscriber.SetSubscribe(topic.Topic)
-				payloadMsg, err := client.subscriber.RecvMessage(0)
+			for exitSignal == false {
+				select {
+				default:
+					payloadMsg, err := client.subscriber.RecvMessage(0)
 
-				if err != nil && err.Error() != "resource temporarily unavailable" {
-					fmt.Printf("Error received from subscribe: %s\n", err)
-					client.errors <- err
+					if err != nil && err.Error() != "resource temporarily unavailable" {
+						fmt.Printf("Error received from subscribe: %s\n", err)
+						client.errors <- err
+					}
+
+					topic.Messages <- payloadMsg
+					fmt.Printf("Message payload: %s\n", payloadMsg)
+
+				case exitSignal = <-client.exit:
+					fmt.Println("interrupt received, exiting...")
+					return
 				}
-
-				topic.Messages <- payloadMsg
-				fmt.Printf("Message payload: %s\n", payloadMsg)
 			}
 		}(topic)
 	}
+
 	return nil
 }
 
 func (client *zeromqClient) Disconnect() error {
+	go func() { client.exit <- true }()
 
 	// close error channel
 	if client.errors != nil {

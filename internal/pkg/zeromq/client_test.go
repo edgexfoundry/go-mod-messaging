@@ -248,31 +248,48 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 
 func TestSubscribe(t *testing.T) {
 
-	zeroMqClient.Connect()
+	portNum := 5580
 
 	publishTopic := "testTopic"
 
 	// filter topics
 	filterTopics := []string{"", "DONT-MATCH", publishTopic}
-	//filterTopics := []string{publishTopic}
-	for _, filterTopic := range filterTopics {
-		runSubscribe(t, publishTopic, filterTopic)
-		zeroMqClient.subscriber.SetUnsubscribe(filterTopic)
-		time.Sleep(time.Second)
+	for idx, filterTopic := range filterTopics {
+		zmqClient, err := getZeroMqClient(portNum + idx)
+		defer zmqClient.Disconnect()
+		if err != nil {
+			t.Fatalf("Failed to create a new 0mq client with port %d", portNum)
+		}
+		zmqClient.Connect()
+		runSubscribe(t, zmqClient, publishTopic, filterTopic)
 	}
-	// filter doesn't match topic
-	//runSubscribe(t, publishTopic, "DONT-MATCH")
-	// filter matches topic
-	//runSubscribe(t, publishTopic, publishTopic)
 }
 
-func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
+func getZeroMqClient(zmqPort int) (*zeromqClient, error) {
+	zmqConfig := messaging.MessageBusConfig{
+		PublishHost: messaging.HostInfo{
+			Host:     "*",
+			Port:     zmqPort,
+			Protocol: "tcp",
+		},
+		SubscribeHost: messaging.HostInfo{
+			Host:     "localhost",
+			Port:     zmqPort,
+			Protocol: "tcp",
+		},
+		Type: "zero",
+	}
+
+	return NewZeroMqClient(zmqConfig)
+}
+
+func runSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic string, filterTopic string) {
 
 	messages := make(chan interface{})
 	messageErrors := make(chan error)
 	topics := []messaging.TopicChannel{{Topic: filterTopic, Messages: messages}}
 
-	err := zeroMqClient.Subscribe(topics, messageErrors)
+	err := zmqClient.Subscribe(topics, messageErrors)
 
 	if err != nil {
 		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
@@ -286,7 +303,7 @@ func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
 		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
 	}
 
-	err = zeroMqClient.Publish(message, publishTopic)
+	err = zmqClient.Publish(message, publishTopic)
 	if err != nil {
 		t.Fatalf("Failed to publish to ZMQ message, %v", err)
 	}
@@ -381,12 +398,12 @@ func TestDisconnect(t *testing.T) {
 	testMsgConfig := messaging.MessageBusConfig{
 		PublishHost: messaging.HostInfo{
 			Host:     "*",
-			Port:     5564,
+			Port:     5577,
 			Protocol: "tcp",
 		},
 		SubscribeHost: messaging.HostInfo{
 			Host:     "localhost",
-			Port:     5564,
+			Port:     5577,
 			Protocol: "tcp",
 		},
 	}
@@ -415,6 +432,8 @@ func TestDisconnect(t *testing.T) {
 	if assert.NoError(t, err, "Failed to publish ZMQ message") == false {
 		t.Fatal()
 	}
+
+	time.Sleep(time.Second * 3)
 
 	err = testClient.Disconnect()
 
