@@ -17,7 +17,6 @@
 package zeromq
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -150,7 +149,7 @@ func TestPublishWihEmptyMsg(t *testing.T) {
 	}
 }
 
-func createAndSubscribeClient(topic string, messages chan interface{}, messageErrors chan error) *zeromqClient {
+func createAndSubscribeClient(topic string, messages chan messaging.MessageEnvelope, messageErrors chan error) *zeromqClient {
 
 	testMsgConfig := messaging.MessageBusConfig{
 		PublishHost: messaging.HostInfo{
@@ -178,11 +177,11 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 
 	topic := ""
 
-	messages1 := make(chan interface{})
+	messages1 := make(chan messaging.MessageEnvelope)
 	messageErrors1 := make(chan error)
 	client1 := createAndSubscribeClient(topic, messages1, messageErrors1)
 
-	messages2 := make(chan interface{})
+	messages2 := make(chan messaging.MessageEnvelope)
 	messageErrors2 := make(chan error)
 	_ = createAndSubscribeClient(topic, messages2, messageErrors2)
 
@@ -211,30 +210,16 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages1:
 			fmt.Printf("Received messages: %v\n", msgs)
-
-			msgBytes := []byte(msgs.(string))
-			var unmarshalledData messaging.MessageEnvelope
-			if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
-				t.Fatal("Json unmarshal message envelope failed")
-			}
-
-			receivedMsg1 = string(unmarshalledData.Payload)
-			if unmarshalledData.CorrelationID != expectedCorreleationID && string(unmarshalledData.Payload) == string(expectedPayload) {
+			receivedMsg1 = string(msgs.Payload)
+			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
 				t.Fatal("Received wrong message")
 			}
 		case msgErr := <-messageErrors2:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages2:
 			fmt.Printf("Received messages: %v\n", msgs)
-
-			msgBytes := []byte(msgs.(string))
-			var unmarshalledData messaging.MessageEnvelope
-			if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
-				t.Fatal("Json unmarshal message envelope failed")
-			}
-
-			receivedMsg2 = string(unmarshalledData.Payload)
-			if unmarshalledData.CorrelationID != expectedCorreleationID && string(unmarshalledData.Payload) == string(expectedPayload) {
+			receivedMsg2 = string(msgs.Payload)
+			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
 				t.Fatal("Received wrong message")
 			}
 		case <-testTimer.C:
@@ -262,7 +247,7 @@ func TestSubscribe(t *testing.T) {
 
 func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
 
-	messages := make(chan interface{})
+	messages := make(chan messaging.MessageEnvelope)
 	messageErrors := make(chan error)
 	topics := []messaging.TopicChannel{{Topic: filterTopic, Messages: messages}}
 
@@ -297,20 +282,10 @@ func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
 			}
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages:
-			if msgs == nil {
-				return
-			}
 			fmt.Printf("Received messages: %v\n", msgs)
+			payloadReturned = string(msgs.Payload)
 
-			msgBytes := []byte(msgs.(string))
-			var unmarshalledData messaging.MessageEnvelope
-			if err := json.Unmarshal(msgBytes, &unmarshalledData); err != nil {
-				t.Fatal("Json unmarshal message envelope failed")
-			}
-
-			payloadReturned = string(unmarshalledData.Payload)
-
-			if unmarshalledData.CorrelationID != expectedCorreleationID && string(unmarshalledData.Payload) == string(expectedPayload) {
+			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
 				t.Fatal("Received wrong message")
 			}
 			return
@@ -335,7 +310,7 @@ func TestBadSubscriberMessageConfig(t *testing.T) {
 	testClient.Connect()
 	defer testClient.Disconnect()
 
-	messages := make(chan interface{})
+	messages := make(chan messaging.MessageEnvelope)
 	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
 	messageErrors := make(chan error)
 
@@ -389,7 +364,7 @@ func TestDisconnect(t *testing.T) {
 
 	testClient.Connect()
 
-	messages := make(chan interface{})
+	messages := make(chan messaging.MessageEnvelope)
 	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
 	messageErrors := make(chan error)
 

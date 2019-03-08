@@ -122,6 +122,7 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 				if err != nil && err.Error() != "resource temporarily unavailable" {
 					fmt.Printf("Error received from subscribe: %s\n", err)
 					client.errors <- err
+					continue
 				}
 
 				fmt.Printf("Message topic: %s\n", msgTopic)
@@ -131,8 +132,16 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 				if err != nil && err.Error() != "resource temporarily unavailable" {
 					fmt.Printf("Error received from subscribe: %s\n", err)
 					client.errors <- err
+					continue
 				}
-				topic.Messages <- payloadMsg
+
+				msgEnvelope := messaging.MessageEnvelope{}
+				if err := json.Unmarshal([]byte(payloadMsg), &msgEnvelope); err != nil {
+					client.errors <- err
+					continue
+				}
+
+				topic.Messages <- msgEnvelope
 			}
 		}(topic)
 	}
