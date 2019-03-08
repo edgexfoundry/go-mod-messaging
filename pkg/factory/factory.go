@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	messaging "github.com/edgexfoundry/go-mod-messaging"
 	"github.com/edgexfoundry/go-mod-messaging/internal/pkg/zeromq"
+	"github.com/edgexfoundry/go-mod-messaging/pkg/messaging"
 )
 
 const (

@@ -23,7 +23,8 @@ import (
 	"sync"
 	"time"
 
-	messaging "github.com/edgexfoundry/go-mod-messaging"
+	"github.com/edgexfoundry/go-mod-messaging/pkg/messaging"
+
 	zmq "github.com/pebbe/zmq4"
 )
 

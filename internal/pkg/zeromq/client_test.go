@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	messaging "github.com/edgexfoundry/go-mod-messaging"
+	"github.com/edgexfoundry/go-mod-messaging/pkg/messaging"
 	"github.com/stretchr/testify/assert"
 )
 
