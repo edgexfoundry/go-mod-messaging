@@ -98,9 +98,6 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 		return err
 	}
 
-	// client.publishMux.Lock()
-	// defer client.publishMux.Unlock()
-
 	msgTotalBytes, err := client.publisher.SendMessage(topic, msgBytes)
 
 	if err != nil {
