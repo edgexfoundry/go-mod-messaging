@@ -59,7 +59,7 @@ func NewZeroMqClient(msgConfig messaging.MessageBusConfig) (*zeromqClient, error
 
 // Connect implements connect to 0mq
 // Since 0mq pub-sub pattern has different pub socket type and sub socket one
-// the socket initialzation and connection are delayed to Publish and Subscribe calls, respectively
+// the socket initialization and connection are delayed to Publish and Subscribe calls, respectively
 func (client *zeromqClient) Connect() error {
 	return nil
 }
@@ -126,8 +126,6 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 
 	for _, topic := range topics {
 		client.subscriber.SetSubscribe(topic.Topic)
-		fmt.Printf("Subscribe topic filter: %s", topic.Topic)
-		fmt.Println()
 
 		client.waitGrp.Add(1)
 		go func(topic messaging.TopicChannel) {
@@ -157,14 +155,13 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 					}
 
 					msgEnvelope := messaging.MessageEnvelope{}
-					unmarshallErr := json.Unmarshal([]byte(payloadMsg[payload]), &msgEnvelope)
-					if unmarshallErr != nil {
-						client.errors <- unmarshallErr
+					unmarshalErr := json.Unmarshal([]byte(payloadMsg[payload]), &msgEnvelope)
+					if unmarshalErr != nil {
+						client.errors <- unmarshalErr
 						continue
 					}
 
 					topic.Messages <- &msgEnvelope
-					fmt.Printf("Receiving message payload: %v\n", msgEnvelope)
 				}
 			}
 		}(topic)
@@ -176,7 +173,6 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 func (client *zeromqClient) Disconnect() error {
 	// already disconnected, NOP
 	if client.publisherDisconnected && client.subscriberDisconnected {
-		fmt.Println("both pub-sub already disconnected")
 		return nil
 	}
 
@@ -195,7 +191,7 @@ func (client *zeromqClient) Disconnect() error {
 	if client.subscriber != nil && !client.subscriberDisconnected {
 		errSubscribe := client.subscriber.Disconnect(client.getSubscribMessageQueueURL())
 		if errSubscribe != nil {
-			fmt.Println("got subsriber disconnect error")
+			fmt.Println("got subscriber disconnect error")
 			disconnectErrs = append(disconnectErrs, errSubscribe)
 		} else {
 			client.subscriberDisconnected = true
