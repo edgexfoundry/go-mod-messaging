@@ -149,7 +149,7 @@ func TestPublishWihEmptyMsg(t *testing.T) {
 	}
 }
 
-func createAndSubscribeClient(topic string, messages chan messaging.MessageEnvelope, messageErrors chan error) *zeromqClient {
+func createAndSubscribeClient(topic string, messages chan *messaging.MessageEnvelope, messageErrors chan error) *zeromqClient {
 
 	testMsgConfig := messaging.MessageBusConfig{
 		PublishHost: messaging.HostInfo{
@@ -177,11 +177,11 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 
 	topic := ""
 
-	messages1 := make(chan messaging.MessageEnvelope)
+	messages1 := make(chan *messaging.MessageEnvelope)
 	messageErrors1 := make(chan error)
 	client1 := createAndSubscribeClient(topic, messages1, messageErrors1)
 
-	messages2 := make(chan messaging.MessageEnvelope)
+	messages2 := make(chan *messaging.MessageEnvelope)
 	messageErrors2 := make(chan error)
 	_ = createAndSubscribeClient(topic, messages2, messageErrors2)
 
@@ -209,7 +209,7 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgErr := <-messageErrors1:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages1:
-			fmt.Printf("Received messages: %v\n", msgs)
+			fmt.Printf("Received messages: %v\n", *msgs)
 			receivedMsg1 = string(msgs.Payload)
 			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
 				t.Fatal("Received wrong message")
@@ -217,7 +217,7 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgErr := <-messageErrors2:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages2:
-			fmt.Printf("Received messages: %v\n", msgs)
+			fmt.Printf("Received messages: %v\n", *msgs)
 			receivedMsg2 = string(msgs.Payload)
 			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
 				t.Fatal("Received wrong message")
@@ -270,7 +270,7 @@ func getZeroMqClient(zmqPort int) (*zeromqClient, error) {
 
 func runSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic string, filterTopic string) {
 
-	messages := make(chan messaging.MessageEnvelope)
+	messages := make(chan *messaging.MessageEnvelope)
 	messageErrors := make(chan error)
 	topics := []messaging.TopicChannel{{Topic: filterTopic, Messages: messages}}
 
@@ -305,7 +305,7 @@ func runSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic string, fi
 			}
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages:
-			fmt.Printf("Received messages: %v\n", msgs)
+			fmt.Printf("Received messages: %v\n", *msgs)
 			payloadReturned = string(msgs.Payload)
 
 			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
@@ -333,7 +333,7 @@ func TestBadSubscriberMessageConfig(t *testing.T) {
 	testClient.Connect()
 	defer testClient.Disconnect()
 
-	messages := make(chan messaging.MessageEnvelope)
+	messages := make(chan *messaging.MessageEnvelope)
 	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
 	messageErrors := make(chan error)
 
@@ -387,7 +387,7 @@ func TestDisconnect(t *testing.T) {
 
 	testClient.Connect()
 
-	messages := make(chan messaging.MessageEnvelope)
+	messages := make(chan *messaging.MessageEnvelope)
 	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
 	messageErrors := make(chan error)
 

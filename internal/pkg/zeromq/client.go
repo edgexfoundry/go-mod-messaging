@@ -29,6 +29,11 @@ import (
 )
 
 const (
+	correlationID = iota
+	payload
+)
+
+const (
 	defaultMsgProtocol = "tcp"
 )
 
@@ -38,7 +43,7 @@ type zeromqClient struct {
 	//publishMux   sync.Mutex
 	//subscribeMux sync.Mutex
 	closed  chan struct{}
-	waitGrp []sync.WaitGroup
+	waitGrp sync.WaitGroup
 	topics  []messaging.TopicChannel
 	errors  chan error
 	config  messaging.MessageBusConfig
@@ -83,8 +88,8 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 		return err
 	}
 
-	client.publishMux.Lock()
-	defer client.publishMux.Unlock()
+	// client.publishMux.Lock()
+	// defer client.publishMux.Unlock()
 
 	msgTotalBytes, err := client.publisher.SendMessage(topic, msgBytes)
 
@@ -107,22 +112,28 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 		return err
 	}
 
-	exitSignal := false
+	//client.waitGrp.Add(len(topics))
 
 	for _, topic := range topics {
 		client.subscriber.SetSubscribe(topic.Topic)
 		fmt.Printf("Subscribe topic filter: %s\n", topic.Topic)
 
+		client.waitGrp.Add(1)
 		go func(topic messaging.TopicChannel) {
+			defer client.waitGrp.Done()
 
-			for exitSignal == false {
+			for {
 				select {
+				case <-client.closed:
+					fmt.Println("=== client closed")
+					return
 				default:
 					payloadMsg, err := client.subscriber.RecvMessage(0)
 
 					if err != nil && err.Error() != "resource temporarily unavailable" {
 						fmt.Printf("Error received from subscribe: %s\n", err)
 						client.errors <- err
+						return
 					}
 
 					fmt.Printf("the length of payloadMsg = %d\n", len(payloadMsg))
@@ -131,17 +142,20 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 						fmt.Printf("[%d]  [%s]\n", i, msg)
 					}
 
-					msgEnvelope := messaging.MessageEnvelope{}
-
-					unmarshallErr := json.Unmarshal([]byte(payloadMsg[1]), &msgEnvelope)
-					if unmarshallErr != nil {
-						client.errors <- unmarshallErr
-						continue
+					if len(payloadMsg) != 2 {
+						client.errors <- fmt.Errorf("Expecting to have 2 incoming messages but found: %d", len(payloadMsg))
+						return
 					}
 
-					topic.Messages <- msgEnvelope
-					fmt.Printf("Message payload: %v\n", msgEnvelope)
+					msgEnvelope := messaging.MessageEnvelope{}
+					unmarshallErr := json.Unmarshal([]byte(payloadMsg[payload]), &msgEnvelope)
+					if unmarshallErr != nil {
+						client.errors <- unmarshallErr
+						return
+					}
 
+					topic.Messages <- &msgEnvelope
+					fmt.Printf("Message payload: %v\n", msgEnvelope)
 				}
 			}
 		}(topic)
@@ -180,6 +194,9 @@ func (client *zeromqClient) Disconnect() error {
 			closeErrs = append(closeErrs, errSubscribe)
 		}
 	}
+
+	close(client.closed)
+	client.waitGrp.Wait()
 
 	if len(closeErrs) == 0 {
 		return nil
