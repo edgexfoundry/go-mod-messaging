@@ -212,6 +212,9 @@ func (client *zeromqClient) Disconnect() error {
 
 	close(client.closed)
 
+	// waiting for some time before we return for cleaning up takes time
+	time.Sleep(time.Second * 2)
+
 	if len(disconnectErrs) == 0 {
 		return nil
 	}
