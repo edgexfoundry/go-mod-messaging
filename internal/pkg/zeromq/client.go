@@ -141,7 +141,7 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 					continue
 				}
 
-				topic.Messages <- msgEnvelope
+				topic.Messages <- &msgEnvelope
 			}
 		}(topic)
 	}

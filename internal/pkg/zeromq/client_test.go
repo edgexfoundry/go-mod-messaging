@@ -149,7 +149,7 @@ func TestPublishWihEmptyMsg(t *testing.T) {
 	}
 }
 
-func createAndSubscribeClient(topic string, messages chan messaging.MessageEnvelope, messageErrors chan error) *zeromqClient {
+func createAndSubscribeClient(topic string, messages chan *messaging.MessageEnvelope, messageErrors chan error) *zeromqClient {
 
 	testMsgConfig := messaging.MessageBusConfig{
 		PublishHost: messaging.HostInfo{
@@ -177,11 +177,11 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 
 	topic := ""
 
-	messages1 := make(chan messaging.MessageEnvelope)
+	messages1 := make(chan *messaging.MessageEnvelope)
 	messageErrors1 := make(chan error)
 	client1 := createAndSubscribeClient(topic, messages1, messageErrors1)
 
-	messages2 := make(chan messaging.MessageEnvelope)
+	messages2 := make(chan *messaging.MessageEnvelope)
 	messageErrors2 := make(chan error)
 	_ = createAndSubscribeClient(topic, messages2, messageErrors2)
 
@@ -247,7 +247,7 @@ func TestSubscribe(t *testing.T) {
 
 func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
 
-	messages := make(chan messaging.MessageEnvelope)
+	messages := make(chan *messaging.MessageEnvelope)
 	messageErrors := make(chan error)
 	topics := []messaging.TopicChannel{{Topic: filterTopic, Messages: messages}}
 
@@ -310,7 +310,7 @@ func TestBadSubscriberMessageConfig(t *testing.T) {
 	testClient.Connect()
 	defer testClient.Disconnect()
 
-	messages := make(chan messaging.MessageEnvelope)
+	messages := make(chan *messaging.MessageEnvelope)
 	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
 	messageErrors := make(chan error)
 
@@ -364,7 +364,7 @@ func TestDisconnect(t *testing.T) {
 
 	testClient.Connect()
 
-	messages := make(chan messaging.MessageEnvelope)
+	messages := make(chan *messaging.MessageEnvelope)
 	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
 	messageErrors := make(chan error)
 
@@ -398,7 +398,7 @@ func TestDisconnect(t *testing.T) {
 	assert.NoError(t, testerr, "message error channel is not closed")
 
 	testMessage := <-topics[0].Messages
-	assert.Equal(t, messaging.MessageEnvelope{}, testMessage, "topic channel is not closed")
+	assert.Nil(t, testMessage, "topic channel is not closed")
 }
 
 func TestGetMsgQueueURL(t *testing.T) {
