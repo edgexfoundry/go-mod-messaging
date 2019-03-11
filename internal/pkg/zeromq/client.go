@@ -33,20 +33,21 @@ const (
 )
 
 type zeromqClient struct {
-	publisher    *zmq.Socket
-	subscriber   *zmq.Socket
-	publishMux   sync.Mutex
-	subscribeMux sync.Mutex
-	topics       []messaging.TopicChannel
-	errors       chan error
-	config       messaging.MessageBusConfig
-	exit         chan bool
+	publisher  *zmq.Socket
+	subscriber *zmq.Socket
+	//publishMux   sync.Mutex
+	//subscribeMux sync.Mutex
+	closed  chan struct{}
+	waitGrp []sync.WaitGroup
+	topics  []messaging.TopicChannel
+	errors  chan error
+	config  messaging.MessageBusConfig
 }
 
 // NewZeroMqClient instantiates a new zeromq client instance based on the configuration
 func NewZeroMqClient(msgConfig messaging.MessageBusConfig) (*zeromqClient, error) {
 
-	client := zeromqClient{config: msgConfig, exit: make(chan bool)}
+	client := zeromqClient{config: msgConfig, closed: make(chan struct{})}
 	return &client, nil
 }
 
@@ -124,12 +125,23 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 						client.errors <- err
 					}
 
-					topic.Messages <- payloadMsg
-					fmt.Printf("Message payload: %s\n", payloadMsg)
+					fmt.Printf("the length of payloadMsg = %d\n", len(payloadMsg))
 
-				case exitSignal = <-client.exit:
-					fmt.Println("interrupt received, exiting...")
-					return
+					for i, msg := range payloadMsg {
+						fmt.Printf("[%d]  [%s]\n", i, msg)
+					}
+
+					msgEnvelope := messaging.MessageEnvelope{}
+
+					unmarshallErr := json.Unmarshal([]byte(payloadMsg[1]), &msgEnvelope)
+					if unmarshallErr != nil {
+						client.errors <- unmarshallErr
+						continue
+					}
+
+					topic.Messages <- msgEnvelope
+					fmt.Printf("Message payload: %v\n", msgEnvelope)
+
 				}
 			}
 		}(topic)
@@ -139,7 +151,6 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 }
 
 func (client *zeromqClient) Disconnect() error {
-	go func() { client.exit <- true }()
 
 	// close error channel
 	if client.errors != nil {
