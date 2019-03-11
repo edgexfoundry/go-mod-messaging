@@ -209,7 +209,7 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgErr := <-messageErrors1:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages1:
-			fmt.Printf("Received messages: %v\n", msgs)
+			fmt.Printf("Received messages: %v\n", *msgs)
 			receivedMsg1 = string(msgs.Payload)
 			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
 				t.Fatal("Received wrong message")
@@ -217,7 +217,7 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgErr := <-messageErrors2:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages2:
-			fmt.Printf("Received messages: %v\n", msgs)
+			fmt.Printf("Received messages: %v\n", *msgs)
 			receivedMsg2 = string(msgs.Payload)
 			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
 				t.Fatal("Received wrong message")
@@ -233,25 +233,48 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 
 func TestSubscribe(t *testing.T) {
 
-	zeroMqClient.Connect()
+	portNum := 5580
 
 	publishTopic := "testTopic"
 
-	// no filter
-	runSubscribe(t, publishTopic, "")
-	// filter doesn't match topic
-	runSubscribe(t, publishTopic, "NotTestTopic")
-	// filter matches topic
-	runSubscribe(t, publishTopic, publishTopic)
+	// filter topics
+	filterTopics := []string{"", "DONT-MATCH", publishTopic}
+	for idx, filterTopic := range filterTopics {
+		zmqClient, err := getZeroMqClient(portNum + idx)
+		defer zmqClient.Disconnect()
+		if err != nil {
+			t.Fatalf("Failed to create a new 0mq client with port %d", portNum)
+		}
+		zmqClient.Connect()
+		runPublishSubscribe(t, zmqClient, publishTopic, filterTopic)
+	}
 }
 
-func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
+func getZeroMqClient(zmqPort int) (*zeromqClient, error) {
+	zmqConfig := messaging.MessageBusConfig{
+		PublishHost: messaging.HostInfo{
+			Host:     "127.0.0.1",
+			Port:     zmqPort,
+			Protocol: "tcp",
+		},
+		SubscribeHost: messaging.HostInfo{
+			Host:     "localhost",
+			Port:     zmqPort,
+			Protocol: "tcp",
+		},
+		Type: "zero",
+	}
+
+	return NewZeroMqClient(zmqConfig)
+}
+
+func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic string, filterTopic string) {
 
 	messages := make(chan *messaging.MessageEnvelope)
 	messageErrors := make(chan error)
 	topics := []messaging.TopicChannel{{Topic: filterTopic, Messages: messages}}
 
-	err := zeroMqClient.Subscribe(topics, messageErrors)
+	err := zmqClient.Subscribe(topics, messageErrors)
 
 	if err != nil {
 		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
@@ -265,37 +288,40 @@ func runSubscribe(t *testing.T, publishTopic string, filterTopic string) {
 		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
 	}
 
-	err = zeroMqClient.Publish(message, publishTopic)
+	err = zmqClient.Publish(message, publishTopic)
 	if err != nil {
 		t.Fatalf("Failed to publish to ZMQ message, %v", err)
 	}
 
-	testTimer := time.NewTimer(2 * time.Second)
+	testTimer := time.NewTimer(3 * time.Second)
 	defer testTimer.Stop()
 	payloadReturned := ""
 
-	for {
+	done := false
+	for !done {
 		select {
 		case msgErr := <-messageErrors:
 			if msgErr == nil {
-				return
+				done = true
 			}
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages:
-			fmt.Printf("Received messages: %v\n", msgs)
+			fmt.Printf("In test caller, received messages: %v\n", *msgs)
 			payloadReturned = string(msgs.Payload)
 
 			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
-				t.Fatal("Received wrong message")
+				t.Fatal("In test caller, received wrong message")
 			}
-			return
+			done = true
 		case <-testTimer.C:
+			fmt.Println("tick.")
 			if payloadReturned != "" {
 				t.Fatal("Received message with filter on, should have filtered message")
 			}
-			return
+			done = true
 		}
 	}
+	fmt.Println("Done")
 }
 
 func TestBadSubscriberMessageConfig(t *testing.T) {
@@ -347,15 +373,16 @@ func TestBadPublisherMessageConfig(t *testing.T) {
 }
 
 func TestDisconnect(t *testing.T) {
+
 	testMsgConfig := messaging.MessageBusConfig{
 		PublishHost: messaging.HostInfo{
-			Host:     "*",
-			Port:     5564,
+			Host:     "127.0.0.1",
+			Port:     5577,
 			Protocol: "tcp",
 		},
 		SubscribeHost: messaging.HostInfo{
 			Host:     "localhost",
-			Port:     5564,
+			Port:     5577,
 			Protocol: "tcp",
 		},
 	}
@@ -364,26 +391,10 @@ func TestDisconnect(t *testing.T) {
 
 	testClient.Connect()
 
-	messages := make(chan *messaging.MessageEnvelope)
-	topics := []messaging.TopicChannel{{Topic: "", Messages: messages}}
-	messageErrors := make(chan error)
-
-	err = testClient.Subscribe(topics, messageErrors)
-
-	if err != nil {
-		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
-	}
-
-	message := messaging.MessageEnvelope{
-		CorrelationID: "123", Payload: []byte("test bytes"),
-	}
 	topic := ""
+	runPublishSubscribe(t, testClient, topic, "")
 
-	err = testClient.Publish(message, topic)
-
-	if assert.NoError(t, err, "Failed to publish ZMQ message") == false {
-		t.Fatal()
-	}
+	time.Sleep(time.Second * 3)
 
 	err = testClient.Disconnect()
 
@@ -391,14 +402,43 @@ func TestDisconnect(t *testing.T) {
 		t.Fatal()
 	}
 
-	assert.Nil(t, testClient.publisher, "Publisher not closed")
-	assert.Nil(t, testClient.subscriber, "Subscriber not closed")
+	assert.True(t, testClient.publisherDisconnected, "Publisher not closed")
+	assert.True(t, testClient.subscriberDisconnected, "Subscriber not closed")
+	err = <-testClient.errors
+	assert.Nil(t, err, "message error channel is not closed")
+	msgEnvelop := <-testClient.topics[0].Messages
+	assert.Nil(t, msgEnvelop, "topic channel is not closed")
+}
 
-	testerr := <-messageErrors
-	assert.NoError(t, testerr, "message error channel is not closed")
+func TestDisconnectError(t *testing.T) {
 
-	testMessage := <-topics[0].Messages
-	assert.Nil(t, testMessage, "topic channel is not closed")
+	testMsgConfig := messaging.MessageBusConfig{
+		PublishHost: messaging.HostInfo{
+			Host:     "*",
+			Port:     5577,
+			Protocol: "tcp",
+		},
+		SubscribeHost: messaging.HostInfo{
+			Host:     "localhost",
+			Port:     5577,
+			Protocol: "tcp",
+		},
+	}
+
+	testClient, err := NewZeroMqClient(testMsgConfig)
+
+	testClient.Connect()
+
+	topic := ""
+	runPublishSubscribe(t, testClient, topic, "")
+
+	time.Sleep(time.Second * 3)
+
+	err = testClient.Disconnect()
+
+	if assert.Error(t, err, "Expecting Disconnect error") == false {
+		t.Fatal()
+	}
 }
 
 func TestGetMsgQueueURL(t *testing.T) {

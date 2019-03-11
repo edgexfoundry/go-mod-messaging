@@ -25,7 +25,13 @@ import (
 
 	"github.com/edgexfoundry/go-mod-messaging/pkg/messaging"
 
+	"github.com/pebbe/zmq4"
 	zmq "github.com/pebbe/zmq4"
+)
+
+const (
+	correlationID = iota
+	payload
 )
 
 const (
@@ -33,19 +39,21 @@ const (
 )
 
 type zeromqClient struct {
-	publisher    *zmq.Socket
-	subscriber   *zmq.Socket
-	publishMux   sync.Mutex
-	subscribeMux sync.Mutex
-	topics       []messaging.TopicChannel
-	errors       chan error
-	config       messaging.MessageBusConfig
+	publisher              *zmq.Socket
+	subscriber             *zmq.Socket
+	topics                 []messaging.TopicChannel
+	errors                 chan error
+	config                 messaging.MessageBusConfig
+	closed                 chan bool
+	waitGrp                sync.WaitGroup
+	publisherDisconnected  bool
+	subscriberDisconnected bool
 }
 
 // NewZeroMqClient instantiates a new zeromq client instance based on the configuration
 func NewZeroMqClient(msgConfig messaging.MessageBusConfig) (*zeromqClient, error) {
 
-	client := zeromqClient{config: msgConfig}
+	client := zeromqClient{config: msgConfig, closed: make(chan bool), publisherDisconnected: true, subscriberDisconnected: true}
 	return &client, nil
 }
 
@@ -70,8 +78,17 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 			return conErr
 		}
 
+		client.publisherDisconnected = false
 		fmt.Println("Publisher successfully connected to 0MQ message queue")
 
+		// allow some time for socket binding before start publishing
+		time.Sleep(time.Second)
+	} else if client.publisherDisconnected {
+		// reconnect with the endpoint
+		if conErr := client.publisher.Bind(msgQueueURL); conErr != nil {
+			return conErr
+		}
+		client.publisherDisconnected = false
 		// allow some time for socket binding before start publishing
 		time.Sleep(time.Second)
 	}
@@ -81,21 +98,15 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 		return err
 	}
 
-	client.publishMux.Lock()
-	defer client.publishMux.Unlock()
+	// client.publishMux.Lock()
+	// defer client.publishMux.Unlock()
 
-	lenOfTopic, err := client.publisher.Send(topic, zmq.SNDMORE)
+	msgTotalBytes, err := client.publisher.SendMessage(topic, msgBytes)
 
 	if err != nil {
 		return err
-	} else if lenOfTopic != len(topic) {
-		return errors.New("The length of the sent topic does not match the expected length")
-	}
-
-	lenOfPayload, err := client.publisher.SendBytes(msgBytes, zmq.DONTWAIT)
-
-	if lenOfPayload != len(msgBytes) {
-		return errors.New("The length of the sent payload does not match the expected length")
+	} else if msgTotalBytes != len(topic)+len(msgBytes) {
+		return errors.New("The length of the sent messages does not match the expected length")
 	}
 
 	return err
@@ -111,44 +122,88 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 		return err
 	}
 
+	client.subscriberDisconnected = false
+
 	for _, topic := range topics {
 		client.subscriber.SetSubscribe(topic.Topic)
+		fmt.Printf("Subscribe topic filter: %s", topic.Topic)
+		fmt.Println()
 
+		client.waitGrp.Add(1)
 		go func(topic messaging.TopicChannel) {
+			defer client.waitGrp.Done()
 
 			for {
-				msgTopic, err := client.subscriber.Recv(zmq.SNDMORE)
+				select {
+				case <-client.closed:
+					return
+				default:
+					payloadMsg, err := client.subscriber.RecvMessage(zmq4.DONTWAIT)
 
-				if err != nil && err.Error() != "resource temporarily unavailable" {
-					fmt.Printf("Error received from subscribe: %s\n", err)
-					client.errors <- err
-					continue
+					if err != nil && err.Error() != "resource temporarily unavailable" {
+						fmt.Printf("Error received from subscribe: %s", err)
+						fmt.Println()
+						client.errors <- err
+						continue
+					}
+
+					if len(payloadMsg) == 0 {
+						continue
+					}
+
+					if len(payloadMsg) != 2 {
+						client.errors <- fmt.Errorf("Expecting to have 2 incoming messages but found: %d", len(payloadMsg))
+						continue
+					}
+
+					msgEnvelope := messaging.MessageEnvelope{}
+					unmarshallErr := json.Unmarshal([]byte(payloadMsg[payload]), &msgEnvelope)
+					if unmarshallErr != nil {
+						client.errors <- unmarshallErr
+						continue
+					}
+
+					topic.Messages <- &msgEnvelope
+					fmt.Printf("Receiving message payload: %v\n", msgEnvelope)
 				}
-
-				fmt.Printf("Message topic: %s\n", msgTopic)
-
-				payloadMsg, err := client.subscriber.Recv(0)
-
-				if err != nil && err.Error() != "resource temporarily unavailable" {
-					fmt.Printf("Error received from subscribe: %s\n", err)
-					client.errors <- err
-					continue
-				}
-
-				msgEnvelope := messaging.MessageEnvelope{}
-				if err := json.Unmarshal([]byte(payloadMsg), &msgEnvelope); err != nil {
-					client.errors <- err
-					continue
-				}
-
-				topic.Messages <- &msgEnvelope
 			}
 		}(topic)
 	}
+
 	return nil
 }
 
 func (client *zeromqClient) Disconnect() error {
+	// already disconnected, NOP
+	if client.publisherDisconnected && client.subscriberDisconnected {
+		fmt.Println("both pub-sub already disconnected")
+		return nil
+	}
+
+	var disconnectErrs []error
+	// use 0mq's disconnect / unbind API to disconnect from the endpoint
+	if client.publisher != nil && !client.publisherDisconnected {
+		errPublish := client.publisher.Unbind(client.getPublishMessageQueueURL())
+		if errPublish != nil {
+			fmt.Println("got publisher disconnect error")
+			disconnectErrs = append(disconnectErrs, errPublish)
+		} else {
+			client.publisherDisconnected = true
+		}
+	}
+
+	if client.subscriber != nil && !client.subscriberDisconnected {
+		errSubscribe := client.subscriber.Disconnect(client.getSubscribMessageQueueURL())
+		if errSubscribe != nil {
+			fmt.Println("got subsriber disconnect error")
+			disconnectErrs = append(disconnectErrs, errSubscribe)
+		} else {
+			client.subscriberDisconnected = true
+		}
+	}
+
+	client.closed <- true
+	client.waitGrp.Wait()
 
 	// close error channel
 	if client.errors != nil {
@@ -162,29 +217,14 @@ func (client *zeromqClient) Disconnect() error {
 		}
 	}
 
-	var closeErrs []error
-	// close sockets:
-	if client.publisher != nil {
-		errPublish := client.publisher.Close()
-		client.publisher = nil
-		if errPublish != nil {
-			closeErrs = append(closeErrs, errPublish)
-		}
-	}
-	if client.subscriber != nil {
-		errSubscribe := client.subscriber.Close()
-		client.subscriber = nil
-		if errSubscribe != nil {
-			closeErrs = append(closeErrs, errSubscribe)
-		}
-	}
+	close(client.closed)
 
-	if len(closeErrs) == 0 {
+	if len(disconnectErrs) == 0 {
 		return nil
 	}
 
 	var errorStr string
-	for _, err := range closeErrs {
+	for _, err := range disconnectErrs {
 		if err != nil {
 			errorStr = errorStr + fmt.Sprintf("%s  ", err.Error())
 		}
