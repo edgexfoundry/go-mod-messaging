@@ -400,6 +400,97 @@ func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic str
 	fmt.Println("Done")
 }
 
+func TestSubscribeMultipleTopics(t *testing.T) {
+	zmqClientPort := 5590
+
+	zmqClient, err := getZeroMqClient(zmqClientPort)
+	if err != nil {
+		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+	}
+	defer zmqClient.Disconnect()
+
+	publishTopics := []string{"apple", "orange", "banana", "kiwi"}
+
+	zmqClient.Connect()
+
+	//filterTopics := []string{"test", "DONT", "d"}
+	messages1 := make(chan *messaging.MessageEnvelope)
+	messages2 := make(chan *messaging.MessageEnvelope)
+	messages3 := make(chan *messaging.MessageEnvelope)
+	messageErrors := make(chan error)
+	topics := []messaging.TopicChannel{
+		{Topic: publishTopics[0], Messages: messages1},
+		{Topic: publishTopics[1], Messages: messages2},
+		{Topic: publishTopics[2], Messages: messages3},
+	}
+
+	err = zmqClient.Subscribe(topics, messageErrors)
+
+	if err != nil {
+		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	}
+
+	// publish messages with topic
+	expectedCorreleationID := "123"
+	expectedPayload := []byte("test bytes")
+	message := messaging.MessageEnvelope{
+		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
+	}
+
+	time.Sleep(time.Second * 10)
+	// publish 4 times:
+	for idx := range topics {
+		err = zmqClient.Publish(message, publishTopics[idx])
+		if err != nil {
+			t.Fatalf("Failed to publish to ZMQ message, %v", err)
+		}
+	}
+
+	testTimer := time.NewTimer(3 * time.Second)
+	defer testTimer.Stop()
+	payloadReturned := ""
+
+	done := false
+	for !done {
+		select {
+		case msgErr := <-messageErrors:
+			if msgErr == nil {
+				done = true
+			}
+			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+		case msgs := <-messages1:
+			fmt.Printf("In test caller, received messages1: %v\n", *msgs)
+			payloadReturned = string(msgs.Payload)
+
+			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
+				t.Fatal("In test caller, received wrong message1")
+			}
+		case msgs := <-messages2:
+			fmt.Printf("In test caller, received messages2: %v\n", *msgs)
+			payloadReturned = string(msgs.Payload)
+
+			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
+				t.Fatal("In test caller, received wrong message2")
+			}
+		case msgs := <-messages3:
+			fmt.Printf("In test caller, received messages3: %v\n", *msgs)
+			payloadReturned = string(msgs.Payload)
+
+			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
+				t.Fatal("In test caller, received wrong message3")
+			}
+		case <-testTimer.C:
+			fmt.Println("timed-out.")
+			if payloadReturned != "" {
+				t.Fatal("Received message with filter on, should have filtered message")
+			}
+			done = true
+		}
+	}
+	fmt.Println("Done")
+
+}
+
 func TestBadSubscriberMessageConfig(t *testing.T) {
 	badMsgConfig := messaging.MessageBusConfig{
 		SubscribeHost: messaging.HostInfo{

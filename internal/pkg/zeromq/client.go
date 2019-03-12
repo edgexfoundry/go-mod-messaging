@@ -122,15 +122,15 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 	client.subscriberDisconnected = false
 
 	for _, topic := range topics {
-		client.subscriber.SetSubscribe(topic.Topic)
-
 		client.waitGrp.Add(1)
 		go func(topic messaging.TopicChannel) {
 			defer client.waitGrp.Done()
 
+			client.subscriber.SetSubscribe(topic.Topic)
 			for {
 				select {
 				case <-client.closed:
+					client.subscriber.SetUnsubscribe(topic.Topic)
 					return
 				default:
 					payloadMsg, err := client.subscriber.RecvMessage(zmq4.DONTWAIT)
@@ -164,7 +164,7 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 					}
 
 					topic.Messages <- &msgEnvelope
-					fmt.Printf("receiving message: %v", msgEnvelope)
+					//fmt.Printf("receiving message: %v", msgEnvelope)
 				}
 			}
 		}(topic)
