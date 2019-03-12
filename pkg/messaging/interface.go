@@ -27,6 +27,7 @@ type MessageClient interface {
 	Publish(message MessageEnvelope, topic string) error
 
 	// Subscribe is to receive messages from topic channels
+	// if message does not require a topic, then use empty string ("") for topic
 	// the topic channel contains subscribed message channel and topic to associate with it
 	// the channel is used for multiple threads of subscribers for 1 publisher (1-to-many)
 	// the messageErrors channel returns the message errors from the caller

@@ -30,8 +30,8 @@ import (
 )
 
 const (
-	correlationID = iota
-	payload
+	topicIndex = iota
+	payloadIndex
 )
 
 const (
@@ -142,23 +142,29 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 						continue
 					}
 
-					if len(payloadMsg) == 0 {
+					var payloadBytes []byte
+					switch msgLen := len(payloadMsg); msgLen {
+					case 0:
+						time.Sleep(10 * time.Millisecond)
 						continue
-					}
-
-					if len(payloadMsg) != 2 {
-						client.errors <- fmt.Errorf("Expecting to have 2 incoming messages but found: %d", len(payloadMsg))
+					case 1:
+						payloadBytes = []byte(payloadMsg[topicIndex])
+					case 2:
+						payloadBytes = []byte(payloadMsg[payloadIndex])
+					default:
+						client.errors <- fmt.Errorf("Found more than 2 incoming messages (1 is no topic, 2 is topic and message), but found: %d", msgLen)
 						continue
 					}
 
 					msgEnvelope := messaging.MessageEnvelope{}
-					unmarshalErr := json.Unmarshal([]byte(payloadMsg[payload]), &msgEnvelope)
+					unmarshalErr := json.Unmarshal(payloadBytes, &msgEnvelope)
 					if unmarshalErr != nil {
 						client.errors <- unmarshalErr
 						continue
 					}
 
 					topic.Messages <- &msgEnvelope
+					fmt.Printf("receiving message: %v", msgEnvelope)
 				}
 			}
 		}(topic)
@@ -176,21 +182,39 @@ func (client *zeromqClient) Disconnect() error {
 	var disconnectErrs []error
 	// use 0mq's disconnect / unbind API to disconnect from the endpoint
 	if client.publisher != nil && !client.publisherDisconnected {
+		client.publisher.SetLinger(time.Duration(time.Second))
+
 		errPublish := client.publisher.Unbind(client.getPublishMessageQueueURL())
 		if errPublish != nil {
 			fmt.Println("got publisher disconnect error")
 			disconnectErrs = append(disconnectErrs, errPublish)
-		} else {
+		}
+
+		// close publisher socket
+		errPublishClose := client.publisher.Close()
+		if errPublishClose != nil {
+			fmt.Println("got publisher close error")
+			disconnectErrs = append(disconnectErrs, errPublishClose)
+		} else if errPublish == nil {
 			client.publisherDisconnected = true
 		}
 	}
 
 	if client.subscriber != nil && !client.subscriberDisconnected {
+		client.subscriber.SetLinger(time.Duration(time.Second))
+
 		errSubscribe := client.subscriber.Disconnect(client.getSubscribMessageQueueURL())
 		if errSubscribe != nil {
 			fmt.Println("got subscriber disconnect error")
 			disconnectErrs = append(disconnectErrs, errSubscribe)
-		} else {
+		}
+
+		// close subscriber socket
+		errSubscribeClose := client.subscriber.Close()
+		if errSubscribeClose != nil {
+			fmt.Println("got subscriber close error")
+			disconnectErrs = append(disconnectErrs, errSubscribeClose)
+		} else if errSubscribe == nil {
 			client.subscriberDisconnected = true
 		}
 	}

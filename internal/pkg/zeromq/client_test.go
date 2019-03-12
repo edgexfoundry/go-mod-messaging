@@ -17,6 +17,7 @@
 package zeromq
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -24,6 +25,7 @@ import (
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/pkg/messaging"
+	zmq "github.com/pebbe/zmq4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -173,6 +175,80 @@ func createAndSubscribeClient(topic string, messages chan *messaging.MessageEnve
 	return client
 }
 
+func TestCustomPublishWithNoTopic(t *testing.T) {
+	zmqClientPort := 5888
+	zmqClient, err := getZeroMqClient(zmqClientPort)
+	if err != nil {
+		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+	}
+	defer zmqClient.Disconnect()
+
+	filterTopic := ""
+	messages := make(chan *messaging.MessageEnvelope)
+	messageErrors := make(chan error)
+	topics := []messaging.TopicChannel{{Topic: filterTopic, Messages: messages}}
+
+	err = zmqClient.Subscribe(topics, messageErrors)
+
+	if err != nil {
+		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	}
+
+	expectedCorreleationID := "123"
+	expectedPayload := []byte("test bytes")
+	message := messaging.MessageEnvelope{
+		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
+	}
+	dataBytes, err := json.Marshal(message)
+
+	// custom publisher
+	customPublisher, err := zmq.NewSocket(zmq.PUB)
+	if err != nil {
+		t.Fatalf("Failed to open publish socket: %v", err)
+	}
+	publisherMsgQueue := zmqClient.getPublishMessageQueueURL()
+	if conErr := customPublisher.Bind(publisherMsgQueue); conErr != nil {
+		t.Fatalf("Failed to bind to publisher message queue [%s]: %v", publisherMsgQueue, conErr)
+	}
+
+	// publish messages with topic
+	time.Sleep(time.Second)
+	_, err = customPublisher.SendBytes(dataBytes, 0)
+	if err != nil {
+		t.Fatalf("Failed to send bytes: %v", err)
+	}
+
+	payloadReturned := ""
+	testTimer := time.NewTimer(2 * time.Second)
+	defer testTimer.Stop()
+
+	done := false
+	for !done {
+		select {
+		case msgErr := <-messageErrors:
+			if msgErr == nil {
+				done = true
+			}
+			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+		case msgs := <-messages:
+			fmt.Printf("In test caller, received messages: %v\n", *msgs)
+			payloadReturned = string(msgs.Payload)
+
+			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
+				t.Fatal("In test caller, received wrong message")
+			}
+			done = true
+		case <-testTimer.C:
+			fmt.Println("timed-out")
+			if payloadReturned != "" {
+				t.Fatal("Received message with filter on, should have filtered message")
+			}
+			done = true
+		}
+	}
+	fmt.Println("Done")
+}
+
 func TestPublishWihMultipleSubscribers(t *testing.T) {
 
 	topic := ""
@@ -314,7 +390,7 @@ func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic str
 			}
 			done = true
 		case <-testTimer.C:
-			fmt.Println("tick.")
+			fmt.Println("timed-out.")
 			if payloadReturned != "" {
 				t.Fatal("Received message with filter on, should have filtered message")
 			}
