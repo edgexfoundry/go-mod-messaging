@@ -248,6 +248,65 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 	}
 }
 
+func TestCustomPublishWithWrongMessageLength(t *testing.T) {
+	zmqClientPort := 5889
+	zmqClient, err := getZeroMqClient(zmqClientPort)
+	if err != nil {
+		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+	}
+	defer zmqClient.Disconnect()
+
+	filterTopic := ""
+	messages := make(chan *messaging.MessageEnvelope)
+	messageErrors := make(chan error)
+	topics := []messaging.TopicChannel{{Topic: filterTopic, Messages: messages}}
+
+	err = zmqClient.Subscribe(topics, messageErrors)
+
+	if err != nil {
+		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	}
+
+	// custom publisher
+	customPublisher, err := zmq.NewSocket(zmq.PUB)
+	if err != nil {
+		t.Fatalf("Failed to open publish socket: %v", err)
+	}
+	publisherMsgQueue := zmqClient.getPublishMessageQueueURL()
+	if conErr := customPublisher.Bind(publisherMsgQueue); conErr != nil {
+		t.Fatalf("Failed to bind to publisher message queue [%s]: %v", publisherMsgQueue, conErr)
+	}
+
+	// publish messages with topic
+	time.Sleep(time.Second)
+	_, err = customPublisher.SendMessage("message1", "message2", "message3")
+	if err != nil {
+		t.Fatalf("Failed to send multiple messages: %v", err)
+	}
+
+	payloadReturned := ""
+	testTimer := time.NewTimer(time.Second)
+	defer testTimer.Stop()
+
+	done := false
+	for !done {
+		select {
+		case msgErr := <-messageErrors:
+			if msgErr == nil {
+				t.Fatalf("expecting to get the error for wrong publisher message length")
+			}
+		case <-messages:
+			t.Fatalf("expecting to get the message error for wrong publisher message length and not getting the message here")
+		case <-testTimer.C:
+			fmt.Println("timed-out")
+			if payloadReturned != "" {
+				t.Fatal("Received message with filter on, should have filtered message")
+			}
+			done = true
+		}
+	}
+}
+
 func TestPublishWihMultipleSubscribers(t *testing.T) {
 
 	topic := ""
@@ -322,6 +381,41 @@ func TestSubscribe(t *testing.T) {
 		}
 		zmqClient.Connect()
 		runPublishSubscribe(t, zmqClient, publishTopic, filterTopic)
+	}
+}
+
+func TestSubscribeZeroLengthTopic(t *testing.T) {
+	portNum := 5780
+
+	zmqClient, err := getZeroMqClient(portNum)
+	if err != nil {
+		t.Fatalf("Failed to create a new 0mq client with port %d", portNum)
+	}
+	zmqClient.Connect()
+	defer zmqClient.Disconnect()
+
+	err = zmqClient.Subscribe(nil, make(chan error))
+
+	if err == nil {
+		t.Fatalf("Expecting to get error on nil topics to subscribe to ZMQ message")
+	}
+}
+
+func TestSubscribeExceedsMaxNumberTopic(t *testing.T) {
+	portNum := 5781
+
+	zmqClient, err := getZeroMqClient(portNum)
+	if err != nil {
+		t.Fatalf("Failed to create a new 0mq client with port %d", portNum)
+	}
+	zmqClient.Connect()
+	defer zmqClient.Disconnect()
+
+	mockTopics := make([]messaging.TopicChannel, maxZeroMqSubscribeTopics+1)
+	err = zmqClient.Subscribe(mockTopics, make(chan error))
+
+	if err == nil {
+		t.Fatalf("Expecting to get error on exceeding max number of topics to subscribe to ZMQ message")
 	}
 }
 

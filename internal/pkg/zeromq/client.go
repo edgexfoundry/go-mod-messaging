@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/pkg/messaging"
@@ -132,45 +131,23 @@ func (client *zeromqClient) subscribeTopic(subscriber *zeromqSubscriber, aTopic 
 		return err
 	}
 
-	var mutex = &sync.Mutex{}
 	go func(topic *messaging.TopicChannel) {
 
-		mutex.Lock()
 		subscriber.connection.SetSubscribe(topic.Topic)
-		mutex.Unlock()
 		for {
 
-			// mutex.Lock()
 			payloadMsg, err := subscriber.connection.RecvMessage(0)
-			// mutex.Unlock()
 
 			if err != nil && err.Error() == "Context was terminated" {
 				fmt.Println("Disconnecting and closing socket")
-
 				subscriber.connection.SetLinger(time.Duration(0))
 				subscriber.connection.Close()
-
 				return
 			}
 
 			if err != nil && err.Error() != "resource temporarily unavailable" {
 				fmt.Printf("Error received from subscribe: %s", err)
 				fmt.Println()
-				exiting := false
-				if err.Error() == "Socket is closed" {
-					exiting = true
-				}
-				// prevent from blocking if the caller is not reading from the error channel
-				go func(quit bool, revErr chan error) {
-					revErr <- err
-					if quit {
-						return
-					}
-				}(exiting, client.errors)
-
-				if exiting {
-					return
-				}
 				continue
 			}
 
