@@ -20,12 +20,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/pkg/messaging"
 
-	"github.com/pebbe/zmq4"
 	zmq "github.com/pebbe/zmq4"
 )
 
@@ -39,21 +37,20 @@ const (
 )
 
 type zeromqClient struct {
-	publisher              *zmq.Socket
-	subscriber             *zmq.Socket
-	topics                 []messaging.TopicChannel
-	errors                 chan error
-	config                 messaging.MessageBusConfig
-	closed                 chan bool
-	waitGrp                sync.WaitGroup
-	publisherDisconnected  bool
-	subscriberDisconnected bool
+	config     messaging.MessageBusConfig
+	publisher  *zmq.Socket
+	subscriber *zmq.Socket
+	topics     []messaging.TopicChannel
+	errors     chan error
+	context    *zmq.Context
 }
 
 // NewZeroMqClient instantiates a new zeromq client instance based on the configuration
 func NewZeroMqClient(msgConfig messaging.MessageBusConfig) (*zeromqClient, error) {
 
-	client := zeromqClient{config: msgConfig, closed: make(chan bool), publisherDisconnected: true, subscriberDisconnected: true}
+	ctx, _ := zmq.NewContext()
+	client := zeromqClient{config: msgConfig, context: ctx}
+
 	return &client, nil
 }
 
@@ -71,24 +68,15 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 
 	if client.publisher == nil {
 
-		if client.publisher, err = zmq.NewSocket(zmq.PUB); err != nil {
+		if client.publisher, err = client.context.NewSocket(zmq.PUB); err != nil {
 			return err
 		}
 		if conErr := client.publisher.Bind(msgQueueURL); conErr != nil {
 			return conErr
 		}
 
-		client.publisherDisconnected = false
 		fmt.Println("Publisher successfully connected to 0MQ message queue")
 
-		// allow some time for socket binding before start publishing
-		time.Sleep(time.Second)
-	} else if client.publisherDisconnected {
-		// reconnect with the endpoint
-		if conErr := client.publisher.Bind(msgQueueURL); conErr != nil {
-			return conErr
-		}
-		client.publisherDisconnected = false
 		// allow some time for socket binding before start publishing
 		time.Sleep(time.Second)
 	}
@@ -119,21 +107,38 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 		return err
 	}
 
-	client.subscriberDisconnected = false
-
 	for _, topic := range topics {
-		client.waitGrp.Add(1)
 		go func(topic messaging.TopicChannel) {
-			defer client.waitGrp.Done()
 
 			client.subscriber.SetSubscribe(topic.Topic)
 			for {
 				select {
-				case <-client.closed:
-					client.subscriber.SetUnsubscribe(topic.Topic)
-					return
 				default:
-					payloadMsg, err := client.subscriber.RecvMessage(zmq4.DONTWAIT)
+					payloadMsg, err := client.subscriber.RecvMessage(0)
+
+					if err != nil && err.Error() == "Context was terminated" {
+						fmt.Println("Disconnecting and closing socket")
+
+						client.subscriber.SetLinger(time.Duration(0))
+						client.subscriber.Close()
+
+						if client.publisher != nil {
+							client.publisher.SetLinger(time.Duration(0))
+							defer client.publisher.Close()
+						}
+						// close error channel
+						if client.errors != nil {
+							close(client.errors)
+						}
+
+						// close all topic channels
+						for _, topic := range client.topics {
+							if topic.Messages != nil {
+								close(topic.Messages)
+							}
+						}
+						return
+					}
 
 					if err != nil && err.Error() != "resource temporarily unavailable" {
 						fmt.Printf("Error received from subscribe: %s", err)
@@ -162,9 +167,7 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 						client.errors <- unmarshalErr
 						continue
 					}
-
 					topic.Messages <- &msgEnvelope
-					//fmt.Printf("receiving message: %v", msgEnvelope)
 				}
 			}
 		}(topic)
@@ -174,89 +177,22 @@ func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageEr
 }
 
 func (client *zeromqClient) Disconnect() error {
-	// already disconnected, NOP
-	if client.publisherDisconnected && client.subscriberDisconnected {
-		return nil
+
+	if client.subscriber != nil {
+		fmt.Println("Terminating the context")
+		// this will allow the subscriber socket to stop blocking so it can close itself
+		return client.context.Term()
+	} else if client.publisher != nil {
+		client.publisher.SetLinger(time.Duration(0))
+		return client.publisher.Close()
 	}
-
-	var disconnectErrs []error
-	// use 0mq's disconnect / unbind API to disconnect from the endpoint
-	if client.publisher != nil && !client.publisherDisconnected {
-		client.publisher.SetLinger(time.Duration(time.Second))
-
-		errPublish := client.publisher.Unbind(client.getPublishMessageQueueURL())
-		if errPublish != nil {
-			fmt.Println("got publisher disconnect error")
-			disconnectErrs = append(disconnectErrs, errPublish)
-		}
-
-		// close publisher socket
-		errPublishClose := client.publisher.Close()
-		if errPublishClose != nil {
-			fmt.Println("got publisher close error")
-			disconnectErrs = append(disconnectErrs, errPublishClose)
-		} else if errPublish == nil {
-			client.publisherDisconnected = true
-		}
-	}
-
-	if client.subscriber != nil && !client.subscriberDisconnected {
-		client.subscriber.SetLinger(time.Duration(time.Second))
-
-		errSubscribe := client.subscriber.Disconnect(client.getSubscribMessageQueueURL())
-		if errSubscribe != nil {
-			fmt.Println("got subscriber disconnect error")
-			disconnectErrs = append(disconnectErrs, errSubscribe)
-		}
-
-		// close subscriber socket
-		errSubscribeClose := client.subscriber.Close()
-		if errSubscribeClose != nil {
-			fmt.Println("got subscriber close error")
-			disconnectErrs = append(disconnectErrs, errSubscribeClose)
-		} else if errSubscribe == nil {
-			client.subscriberDisconnected = true
-		}
-	}
-
-	client.closed <- true
-	client.waitGrp.Wait()
-
-	// close error channel
-	if client.errors != nil {
-		close(client.errors)
-	}
-
-	// close all topic channels
-	for _, topic := range client.topics {
-		if topic.Messages != nil {
-			close(topic.Messages)
-		}
-	}
-
-	close(client.closed)
-
-	// waiting for some time before we return for cleaning up takes time
-	time.Sleep(time.Second * 2)
-
-	if len(disconnectErrs) == 0 {
-		return nil
-	}
-
-	var errorStr string
-	for _, err := range disconnectErrs {
-		if err != nil {
-			errorStr = errorStr + fmt.Sprintf("%s  ", err.Error())
-		}
-	}
-
-	return errors.New(errorStr)
+	return nil
 }
 
 func (client *zeromqClient) initSubscriber(msgQueueURL string) (err error) {
 
 	if client.subscriber == nil {
-		if client.subscriber, err = zmq.NewSocket(zmq.SUB); err != nil {
+		if client.subscriber, err = client.context.NewSocket(zmq.SUB); err != nil {
 			return err
 		}
 	}
