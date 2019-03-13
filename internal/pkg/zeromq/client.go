@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/pkg/messaging"
@@ -33,23 +34,21 @@ const (
 )
 
 const (
-	defaultMsgProtocol = "tcp"
+	defaultMsgProtocol       = "tcp"
+	maxZeroMqSubscribeTopics = 10
 )
 
 type zeromqClient struct {
-	config     messaging.MessageBusConfig
-	publisher  *zmq.Socket
-	subscriber *zmq.Socket
-	topics     []messaging.TopicChannel
-	errors     chan error
-	context    *zmq.Context
+	config      messaging.MessageBusConfig
+	publisher   *zmq.Socket
+	subscribers []zeromqSubscriber
+	errors      chan error
 }
 
 // NewZeroMqClient instantiates a new zeromq client instance based on the configuration
 func NewZeroMqClient(msgConfig messaging.MessageBusConfig) (*zeromqClient, error) {
 
-	ctx, _ := zmq.NewContext()
-	client := zeromqClient{config: msgConfig, context: ctx}
+	client := zeromqClient{config: msgConfig}
 
 	return &client, nil
 }
@@ -68,7 +67,7 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 
 	if client.publisher == nil {
 
-		if client.publisher, err = client.context.NewSocket(zmq.PUB); err != nil {
+		if client.publisher, err = zmq.NewSocket(zmq.PUB); err != nil {
 			return err
 		}
 		if conErr := client.publisher.Bind(msgQueueURL); conErr != nil {
@@ -99,107 +98,161 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 
 func (client *zeromqClient) Subscribe(topics []messaging.TopicChannel, messageErrors chan error) error {
 
-	client.topics = topics
+	if len(topics) == 0 {
+		return errors.New("zero-length topics not allow")
+	} else if len(topics) > maxZeroMqSubscribeTopics {
+		return fmt.Errorf("Number of topics(%d) exceeds the maximum capacity(%d)", len(topics), maxZeroMqSubscribeTopics)
+	}
+
 	client.errors = messageErrors
+	client.subscribers = make([]zeromqSubscriber, len(topics))
+	var errorsSubscribe []error
+	for idx, topic := range topics {
+		subErr := client.subscribeTopic(&client.subscribers[idx], &topic)
+		if subErr != nil {
+			errorsSubscribe = append(errorsSubscribe, subErr)
+		}
+	}
+
+	if len(errorsSubscribe) == 0 {
+		return nil
+	}
+
+	var errorStr string
+	for _, err := range errorsSubscribe {
+		errorStr = errorStr + fmt.Sprintf("%s  ", err.Error())
+	}
+	return errors.New(errorStr)
+}
+
+func (client *zeromqClient) subscribeTopic(subscriber *zeromqSubscriber, aTopic *messaging.TopicChannel) error {
 
 	msgQueueURL := client.getSubscribMessageQueueURL()
-	if err := client.initSubscriber(msgQueueURL); err != nil {
+	if err := subscriber.init(msgQueueURL, aTopic); err != nil {
 		return err
 	}
 
-	for _, topic := range topics {
-		go func(topic messaging.TopicChannel) {
+	var mutex = &sync.Mutex{}
+	go func(topic *messaging.TopicChannel) {
 
-			client.subscriber.SetSubscribe(topic.Topic)
-			for {
-				select {
-				default:
-					payloadMsg, err := client.subscriber.RecvMessage(0)
+		mutex.Lock()
+		subscriber.connection.SetSubscribe(topic.Topic)
+		mutex.Unlock()
+		for {
 
-					if err != nil && err.Error() == "Context was terminated" {
-						fmt.Println("Disconnecting and closing socket")
+			// mutex.Lock()
+			payloadMsg, err := subscriber.connection.RecvMessage(0)
+			// mutex.Unlock()
 
-						client.subscriber.SetLinger(time.Duration(0))
-						client.subscriber.Close()
+			if err != nil && err.Error() == "Context was terminated" {
+				fmt.Println("Disconnecting and closing socket")
 
-						if client.publisher != nil {
-							client.publisher.SetLinger(time.Duration(0))
-							defer client.publisher.Close()
-						}
-						// close error channel
-						if client.errors != nil {
-							close(client.errors)
-						}
+				subscriber.connection.SetLinger(time.Duration(0))
+				subscriber.connection.Close()
 
-						// close all topic channels
-						for _, topic := range client.topics {
-							if topic.Messages != nil {
-								close(topic.Messages)
-							}
-						}
+				return
+			}
+
+			if err != nil && err.Error() != "resource temporarily unavailable" {
+				fmt.Printf("Error received from subscribe: %s", err)
+				fmt.Println()
+				exiting := false
+				if err.Error() == "Socket is closed" {
+					exiting = true
+				}
+				// prevent from blocking if the caller is not reading from the error channel
+				go func(quit bool, revErr chan error) {
+					revErr <- err
+					if quit {
 						return
 					}
+				}(exiting, client.errors)
 
-					if err != nil && err.Error() != "resource temporarily unavailable" {
-						fmt.Printf("Error received from subscribe: %s", err)
-						fmt.Println()
-						client.errors <- err
-						continue
-					}
-
-					var payloadBytes []byte
-					switch msgLen := len(payloadMsg); msgLen {
-					case 0:
-						time.Sleep(10 * time.Millisecond)
-						continue
-					case 1:
-						payloadBytes = []byte(payloadMsg[topicIndex])
-					case 2:
-						payloadBytes = []byte(payloadMsg[payloadIndex])
-					default:
-						client.errors <- fmt.Errorf("Found more than 2 incoming messages (1 is no topic, 2 is topic and message), but found: %d", msgLen)
-						continue
-					}
-
-					msgEnvelope := messaging.MessageEnvelope{}
-					unmarshalErr := json.Unmarshal(payloadBytes, &msgEnvelope)
-					if unmarshalErr != nil {
-						client.errors <- unmarshalErr
-						continue
-					}
-					topic.Messages <- &msgEnvelope
+				if exiting {
+					return
 				}
+				continue
 			}
-		}(topic)
-	}
+
+			var payloadBytes []byte
+			switch msgLen := len(payloadMsg); msgLen {
+			case 1:
+				payloadBytes = []byte(payloadMsg[topicIndex])
+			case 2:
+				payloadBytes = []byte(payloadMsg[payloadIndex])
+			default:
+				client.errors <- fmt.Errorf("Found more than 2 incoming messages (1 is no topic, 2 is topic and message), but found: %d", msgLen)
+				continue
+			}
+
+			msgEnvelope := messaging.MessageEnvelope{}
+			unmarshalErr := json.Unmarshal(payloadBytes, &msgEnvelope)
+			if unmarshalErr != nil {
+				client.errors <- unmarshalErr
+				continue
+			}
+
+			topic.Messages <- &msgEnvelope
+		}
+	}(&subscriber.topic)
 
 	return nil
+}
+
+func (client *zeromqClient) allSubscribersDisconnected() bool {
+	allDisconnected := true
+	for _, subscriber := range client.subscribers {
+		if subscriber.connection.String() != "Socket(CLOSED)" {
+			allDisconnected = false
+			break
+		}
+	}
+	return allDisconnected
 }
 
 func (client *zeromqClient) Disconnect() error {
 
-	if client.subscriber != nil {
-		fmt.Println("Terminating the context")
-		// this will allow the subscriber socket to stop blocking so it can close itself
-		return client.context.Term()
-	} else if client.publisher != nil {
-		client.publisher.SetLinger(time.Duration(0))
-		return client.publisher.Close()
-	}
-	return nil
-}
+	var disconnectErrs []error
+	for _, subscriber := range client.subscribers {
+		err := subscriber.context.Term()
 
-func (client *zeromqClient) initSubscriber(msgQueueURL string) (err error) {
-
-	if client.subscriber == nil {
-		if client.subscriber, err = client.context.NewSocket(zmq.SUB); err != nil {
-			return err
+		if err != nil {
+			disconnectErrs = append(disconnectErrs, err)
 		}
 	}
 
-	fmt.Printf("Subscribing to message queue: [%s] ...", msgQueueURL)
-	fmt.Println()
-	return client.subscriber.Connect(msgQueueURL)
+	if client.publisher != nil {
+		client.publisher.SetLinger(time.Duration(0))
+		err := client.publisher.Close()
+		if err != nil {
+			disconnectErrs = append(disconnectErrs, err)
+		}
+	}
+
+	// close error channel
+	if client.errors != nil {
+		close(client.errors)
+	}
+
+	// close all topic channels
+	for _, subscriber := range client.subscribers {
+		if subscriber.topic.Messages != nil {
+			close(subscriber.topic.Messages)
+		}
+	}
+
+	if len(disconnectErrs) == 0 {
+		return nil
+	}
+
+	var errorStr string
+	for _, err := range disconnectErrs {
+		if err != nil {
+			errorStr = errorStr + fmt.Sprintf("%s  ", err.Error())
+		}
+	}
+
+	return errors.New(errorStr)
 }
 
 func (client *zeromqClient) getPublishMessageQueueURL() string {
