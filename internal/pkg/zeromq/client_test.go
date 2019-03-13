@@ -234,7 +234,7 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 			fmt.Printf("In test caller, received messages: %v\n", *msgs)
 			payloadReturned = string(msgs.Payload)
 
-			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
+			if msgs.CorrelationID != expectedCorreleationID || string(msgs.Payload) != string(expectedPayload) {
 				t.Fatal("In test caller, received wrong message")
 			}
 			done = true
@@ -287,7 +287,7 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgs := <-messages1:
 			fmt.Printf("Received messages: %v\n", *msgs)
 			receivedMsg1 = string(msgs.Payload)
-			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
+			if msgs.CorrelationID != expectedCorreleationID || string(msgs.Payload) != string(expectedPayload) {
 				t.Fatal("Received wrong message")
 			}
 		case msgErr := <-messageErrors2:
@@ -295,7 +295,7 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgs := <-messages2:
 			fmt.Printf("Received messages: %v\n", *msgs)
 			receivedMsg2 = string(msgs.Payload)
-			if msgs.CorrelationID != expectedCorreleationID && string(msgs.Payload) == string(expectedPayload) {
+			if msgs.CorrelationID != expectedCorreleationID || string(msgs.Payload) != string(expectedPayload) {
 				t.Fatal("Received wrong message")
 			}
 		case <-testTimer.C:
