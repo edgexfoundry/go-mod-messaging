@@ -297,31 +297,30 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 			Protocol: "tcp",
 		},
 	}
-	topic := ""
+	topic := "a"
 
 	messages1 := make(chan *messaging.MessageEnvelope)
 	messageErrors1 := make(chan error)
-	client1 := createAndSubscribeClient(testMsgConfig, topic, messages1, messageErrors1)
+	client1 := createAndSubscribeClient(t, testMsgConfig, topic, messages1, messageErrors1)
 
 	messages2 := make(chan *messaging.MessageEnvelope)
 	messageErrors2 := make(chan error)
-	_ = createAndSubscribeClient(testMsgConfig, topic, messages2, messageErrors2)
+	_ = createAndSubscribeClient(t, testMsgConfig, topic, messages2, messageErrors2)
 
 	// publish messages with topic
-	time.Sleep(time.Second)
-
 	expectedCorreleationID := "123"
 	expectedPayload := []byte("test bytes")
 	message := messaging.MessageEnvelope{
 		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
 	}
 
+	time.Sleep(time.Second * 3)
 	err := client1.Publish(message, topic)
 	if err != nil {
 		t.Fatalf("Failed to publish to ZMQ message, %v", err)
 	}
 
-	testTimer := time.NewTimer(time.Second)
+	testTimer := time.NewTimer(3 * time.Second)
 	defer testTimer.Stop()
 	receivedMsg1 := ""
 	receivedMsg2 := ""
@@ -347,8 +346,10 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case <-testTimer.C:
 			fmt.Printf("msg1: %s, msg2: %s\n", receivedMsg1, receivedMsg2)
 
-			if receivedMsg1 == receivedMsg2 && receivedMsg1 == "" {
-				t.Fatal("Received messages don't match")
+			if receivedMsg1 != receivedMsg2 {
+				t.Fatalf("Received messages don't match- msg1 %s  msg2 %s", receivedMsg1, receivedMsg2)
+			} else if receivedMsg1 == "" && receivedMsg2 == "" {
+				t.Fatal("not received messages")
 			}
 			return
 		}
@@ -496,18 +497,25 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 // 	}
 // }
 
-func createClient(testMsgConfig messaging.MessageBusConfig) *zeromqClient {
-	client, _ := NewZeroMqClient(testMsgConfig)
-	return client
+func createClient(testMsgConfig messaging.MessageBusConfig) (*zeromqClient, error) {
+	client, err := NewZeroMqClient(testMsgConfig)
+	return client, err
 }
 
-func createAndSubscribeClient(testMsgConfig messaging.MessageBusConfig, topic string, messages chan *messaging.MessageEnvelope, messageErrors chan error) *zeromqClient {
+func createAndSubscribeClient(t *testing.T, testMsgConfig messaging.MessageBusConfig, topic string, messages chan *messaging.MessageEnvelope, messageErrors chan error) *zeromqClient {
 
-	client, _ := NewZeroMqClient(testMsgConfig)
+	client, err := createClient(testMsgConfig)
+	if err != nil {
+		t.Fatalf("failed to create client with config %v", testMsgConfig)
+	}
+
 	client.Connect()
 
 	topics := []messaging.TopicChannel{{Topic: topic, Messages: messages}}
-	zeroMqClient.Subscribe(topics, messageErrors)
+	err = client.Subscribe(topics, messageErrors)
+	if err != nil {
+		t.Fatalf("failed to subscribe with topic: %v", err)
+	}
 
 	return client
 }
@@ -600,8 +608,10 @@ func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic str
 	time.Sleep(time.Second)
 	expectedCorreleationID := "123"
 	expectedPayload := []byte("test bytes")
+	exptectedContentType := "application/json"
 	message := messaging.MessageEnvelope{
 		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
+		ContentType: exptectedContentType,
 	}
 
 	err = zmqClient.Publish(message, publishTopic)
@@ -625,7 +635,9 @@ func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic str
 			fmt.Printf("In test caller, received messages: %v\n", *msgs)
 			payloadReturned = string(msgs.Payload)
 
-			if msgs.CorrelationID != expectedCorreleationID || string(msgs.Payload) != string(expectedPayload) {
+			if msgs.CorrelationID != expectedCorreleationID ||
+				string(msgs.Payload) != string(expectedPayload) ||
+				msgs.ContentType != exptectedContentType {
 				t.Fatal("In test caller, received wrong message")
 			}
 			done = true
@@ -672,9 +684,13 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 	// publish messages with topic
 	expectedCorreleationIDs := []string{"101", "102", "103"}
 	expectedPayloads := [][]byte{[]byte("apple juice"), []byte("orange juice"), []byte("banana slices")}
+	exptectedContentTypes := []string{"application/json", "application/cbor", "video"}
 	var messages []messaging.MessageEnvelope
 	for idx := range expectedCorreleationIDs {
-		message := messaging.MessageEnvelope{CorrelationID: expectedCorreleationIDs[idx], Payload: expectedPayloads[idx]}
+		message := messaging.MessageEnvelope{
+			CorrelationID: expectedCorreleationIDs[idx],
+			Payload:       expectedPayloads[idx],
+			ContentType:   exptectedContentTypes[idx]}
 		messages = append(messages, message)
 	}
 
@@ -701,19 +717,25 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 		case msgs := <-messages1:
 			fmt.Printf("In test caller, received messages1: %v\n", *msgs)
 
-			if msgs.CorrelationID != expectedCorreleationIDs[0] || string(msgs.Payload) != string(expectedPayloads[0]) {
+			if msgs.CorrelationID != expectedCorreleationIDs[0] ||
+				string(msgs.Payload) != string(expectedPayloads[0]) ||
+				msgs.ContentType != exptectedContentTypes[0] {
 				t.Fatal("In test caller, received wrong message1")
 			}
 		case msgs := <-messages2:
 			fmt.Printf("In test caller, received messages2: %v\n", *msgs)
 
-			if msgs.CorrelationID != expectedCorreleationIDs[1] || string(msgs.Payload) != string(expectedPayloads[1]) {
+			if msgs.CorrelationID != expectedCorreleationIDs[1] ||
+				string(msgs.Payload) != string(expectedPayloads[1]) ||
+				msgs.ContentType != exptectedContentTypes[1] {
 				t.Fatal("In test caller, received wrong message2")
 			}
 		case msgs := <-messages3:
 			fmt.Printf("In test caller, received messages3: %v\n", *msgs)
 
-			if msgs.CorrelationID != expectedCorreleationIDs[2] || string(msgs.Payload) != string(expectedPayloads[2]) {
+			if msgs.CorrelationID != expectedCorreleationIDs[2] ||
+				string(msgs.Payload) != string(expectedPayloads[2]) ||
+				msgs.ContentType != exptectedContentTypes[2] {
 				t.Fatal("In test caller, received wrong message3")
 			}
 		case <-testTimer.C:
