@@ -74,9 +74,6 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 			return fmt.Errorf("Error: %v [%s]", conErr, msgQueueURL)
 		}
 
-		fmt.Printf("Publisher successfully connected to 0MQ message queue on %s", msgQueueURL)
-		fmt.Println()
-
 		// allow some time for socket binding before start publishing
 		time.Sleep(time.Second)
 	}
@@ -141,15 +138,12 @@ func (client *zeromqClient) subscribeTopic(subscriber *zeromqSubscriber, aTopic 
 			payloadMsg, err := subscriber.connection.RecvMessage(0)
 
 			if err != nil && err.Error() == "Context was terminated" {
-				fmt.Println("Disconnecting and closing socket")
 				subscriber.connection.SetLinger(time.Duration(0))
 				subscriber.connection.Close()
 				return
 			}
 
 			if err != nil && err.Error() != "resource temporarily unavailable" {
-				fmt.Printf("Error received from subscribe: %s", err)
-				fmt.Println()
 				continue
 			}
 
