@@ -119,6 +119,39 @@ func TestPublish(t *testing.T) {
 	}
 }
 
+func TestMultiplePublishBindsOnSamePortError(t *testing.T) {
+	zmqClientPort := 5788
+	zmqClient1, err := getZeroMqClient(zmqClientPort)
+	if err != nil {
+		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+	}
+	defer zmqClient1.Disconnect()
+
+	zmqClient2, err := getZeroMqClient(zmqClientPort)
+	if err != nil {
+		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+	}
+	defer zmqClient2.Disconnect()
+
+	message := messaging.MessageEnvelope{
+		CorrelationID: "123", Payload: []byte("test bytes"),
+	}
+	topic := ""
+
+	err = zmqClient1.Publish(message, topic)
+	if err != nil {
+		t.Fatalf("Failed to publish ZMQ message, %v", err)
+	}
+
+	// the second instance of publisher on the same port
+	// this should give an error
+	err = zmqClient2.Publish(message, topic)
+	fmt.Println(err)
+	if err == nil {
+		t.Fatalf("Expecting to get an error")
+	}
+}
+
 func TestPublishWithTopic(t *testing.T) {
 
 	zeroMqClient.Connect()

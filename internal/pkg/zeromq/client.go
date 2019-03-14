@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	topicIndex = iota
+	singleMessagePayloadIndex = iota
 	payloadIndex
 )
 
@@ -70,10 +70,12 @@ func (client *zeromqClient) Publish(message messaging.MessageEnvelope, topic str
 			return err
 		}
 		if conErr := client.publisher.Bind(msgQueueURL); conErr != nil {
-			return conErr
+			// wrapping the error with msgQueueURL info:
+			return fmt.Errorf("Error: %v [%s]", conErr, msgQueueURL)
 		}
 
-		fmt.Println("Publisher successfully connected to 0MQ message queue")
+		fmt.Printf("Publisher successfully connected to 0MQ message queue on %s", msgQueueURL)
+		fmt.Println()
 
 		// allow some time for socket binding before start publishing
 		time.Sleep(time.Second)
@@ -154,7 +156,7 @@ func (client *zeromqClient) subscribeTopic(subscriber *zeromqSubscriber, aTopic 
 			var payloadBytes []byte
 			switch msgLen := len(payloadMsg); msgLen {
 			case 1:
-				payloadBytes = []byte(payloadMsg[topicIndex])
+				payloadBytes = []byte(payloadMsg[singleMessagePayloadIndex])
 			case 2:
 				payloadBytes = []byte(payloadMsg[payloadIndex])
 			default:
