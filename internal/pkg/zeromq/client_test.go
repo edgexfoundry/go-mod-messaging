@@ -119,6 +119,39 @@ func TestPublish(t *testing.T) {
 	}
 }
 
+func TestMultiplePublishBindsOnSamePortError(t *testing.T) {
+	zmqClientPort := 5788
+	zmqClient1, err := getZeroMqClient(zmqClientPort)
+	if err != nil {
+		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+	}
+	defer zmqClient1.Disconnect()
+
+	zmqClient2, err := getZeroMqClient(zmqClientPort)
+	if err != nil {
+		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+	}
+	defer zmqClient2.Disconnect()
+
+	message := messaging.MessageEnvelope{
+		CorrelationID: "123", Payload: []byte("test bytes"),
+	}
+	topic := ""
+
+	err = zmqClient1.Publish(message, topic)
+	if err != nil {
+		t.Fatalf("Failed to publish ZMQ message, %v", err)
+	}
+
+	// the second instance of publisher on the same port
+	// this should give an error
+	err = zmqClient2.Publish(message, topic)
+	fmt.Println(err)
+	if err == nil {
+		t.Fatalf("Expecting to get an error")
+	}
+}
+
 func TestPublishWithTopic(t *testing.T) {
 
 	zeroMqClient.Connect()
@@ -325,8 +358,6 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 	}
 
 	// publish messages with topic
-	time.Sleep(time.Second)
-
 	expectedCorreleationID := "123"
 	expectedPayload := []byte("test bytes")
 	message := messaging.MessageEnvelope{
@@ -338,7 +369,7 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		t.Fatalf("Failed to publish to ZMQ message, %v", err)
 	}
 
-	testTimer := time.NewTimer(time.Second)
+	testTimer := time.NewTimer(3 * time.Second)
 	defer testTimer.Stop()
 	receivedMsg1 := ""
 	receivedMsg2 := ""
@@ -364,8 +395,10 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case <-testTimer.C:
 			fmt.Printf("msg1: %s, msg2: %s\n", receivedMsg1, receivedMsg2)
 
-			if receivedMsg1 == receivedMsg2 && receivedMsg1 == "" {
-				t.Fatal("Received messages don't match")
+			if receivedMsg1 != receivedMsg2 {
+				t.Fatalf("Received messages don't match- msg1 %s  msg2 %s", receivedMsg1, receivedMsg2)
+			} else if receivedMsg1 == "" && receivedMsg2 == "" {
+				t.Fatal("not received messages")
 			}
 			return
 		}
@@ -564,8 +597,10 @@ func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic str
 	time.Sleep(time.Second)
 	expectedCorreleationID := "123"
 	expectedPayload := []byte("test bytes")
+	exptectedContentType := "application/json"
 	message := messaging.MessageEnvelope{
 		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
+		ContentType: exptectedContentType,
 	}
 
 	err = zmqClient.Publish(message, publishTopic)
@@ -589,7 +624,9 @@ func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic str
 			fmt.Printf("In test caller, received messages: %v\n", *msgs)
 			payloadReturned = string(msgs.Payload)
 
-			if msgs.CorrelationID != expectedCorreleationID || string(msgs.Payload) != string(expectedPayload) {
+			if msgs.CorrelationID != expectedCorreleationID ||
+				string(msgs.Payload) != string(expectedPayload) ||
+				msgs.ContentType != exptectedContentType {
 				t.Fatal("In test caller, received wrong message")
 			}
 			done = true
@@ -636,9 +673,13 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 	// publish messages with topic
 	expectedCorreleationIDs := []string{"101", "102", "103"}
 	expectedPayloads := [][]byte{[]byte("apple juice"), []byte("orange juice"), []byte("banana slices")}
+	exptectedContentTypes := []string{"application/json", "application/cbor", "video"}
 	var messages []messaging.MessageEnvelope
 	for idx := range expectedCorreleationIDs {
-		message := messaging.MessageEnvelope{CorrelationID: expectedCorreleationIDs[idx], Payload: expectedPayloads[idx]}
+		message := messaging.MessageEnvelope{
+			CorrelationID: expectedCorreleationIDs[idx],
+			Payload:       expectedPayloads[idx],
+			ContentType:   exptectedContentTypes[idx]}
 		messages = append(messages, message)
 	}
 
@@ -665,19 +706,25 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 		case msgs := <-messages1:
 			fmt.Printf("In test caller, received messages1: %v\n", *msgs)
 
-			if msgs.CorrelationID != expectedCorreleationIDs[0] || string(msgs.Payload) != string(expectedPayloads[0]) {
+			if msgs.CorrelationID != expectedCorreleationIDs[0] ||
+				string(msgs.Payload) != string(expectedPayloads[0]) ||
+				msgs.ContentType != exptectedContentTypes[0] {
 				t.Fatal("In test caller, received wrong message1")
 			}
 		case msgs := <-messages2:
 			fmt.Printf("In test caller, received messages2: %v\n", *msgs)
 
-			if msgs.CorrelationID != expectedCorreleationIDs[1] || string(msgs.Payload) != string(expectedPayloads[1]) {
+			if msgs.CorrelationID != expectedCorreleationIDs[1] ||
+				string(msgs.Payload) != string(expectedPayloads[1]) ||
+				msgs.ContentType != exptectedContentTypes[1] {
 				t.Fatal("In test caller, received wrong message2")
 			}
 		case msgs := <-messages3:
 			fmt.Printf("In test caller, received messages3: %v\n", *msgs)
 
-			if msgs.CorrelationID != expectedCorreleationIDs[2] || string(msgs.Payload) != string(expectedPayloads[2]) {
+			if msgs.CorrelationID != expectedCorreleationIDs[2] ||
+				string(msgs.Payload) != string(expectedPayloads[2]) ||
+				msgs.ContentType != exptectedContentTypes[2] {
 				t.Fatal("In test caller, received wrong message3")
 			}
 		case <-testTimer.C:

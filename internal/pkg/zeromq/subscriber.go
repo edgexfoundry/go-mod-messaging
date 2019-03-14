@@ -17,8 +17,6 @@
 package zeromq
 
 import (
-	"fmt"
-
 	"github.com/edgexfoundry/go-mod-messaging/pkg/messaging"
 
 	zmq "github.com/pebbe/zmq4"
@@ -47,7 +45,5 @@ func (subscriber *zeromqSubscriber) init(msgQueueURL string, aTopic *messaging.T
 		subscriber.topic = *aTopic
 	}
 
-	fmt.Printf("Subscribing to message queue: [%s] ...", msgQueueURL)
-	fmt.Println()
 	return subscriber.connection.Connect(msgQueueURL)
 }
