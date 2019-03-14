@@ -44,8 +44,10 @@ type MessageClient interface {
 type MessageEnvelope struct {
 	// CorrelationID is an object id to identify the envelop
 	CorrelationID string
-	// Payload can be JSON marshalled into bytes
+	// Payload is byte representation of the data being transferred.
 	Payload []byte
+	// ContentType is the marshaled type of payload, i.e. application/json, application/xml, application/cbor, etc
+	ContentType string
 }
 
 // TopicChannel is the data structure for subscriber
