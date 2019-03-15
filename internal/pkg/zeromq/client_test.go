@@ -54,7 +54,7 @@ func TestMain(m *testing.M) {
 
 	zeroMqClient, err = NewZeroMqClient(msgConfig)
 	if err != nil {
-		fmt.Println("failed to create a new zeromq client")
+		fmt.Println("Failed to create a new zeromq client")
 		os.Exit(-1)
 	}
 	defer zeroMqClient.Disconnect()
@@ -66,40 +66,37 @@ func TestNewClient(t *testing.T) {
 	msgConfig.Type = "zero"
 	client, err := NewZeroMqClient(msgConfig)
 
-	if err != nil {
-		t.Fatal(err)
+	if !assert.Nil(t, err, "Error creating to create ZMQ client") {
+		t.Fatal()
 	}
-
-	if client == nil {
-		t.Fatal("Failed to create new zero ZMQ client")
+	if !assert.NotNil(t, client, "Failed to create ZMQ client") {
+		t.Fatal()
 	}
-
-	if client.config.PublishHost.Host != "*" {
-		t.Fatal("Failed to populate host value in config")
+	if !assert.Equal(t, "*", client.config.PublishHost.Host, "Failed to populate host value in config") {
+		t.Fatal()
 	}
-	if client.config.PublishHost.Port != zeromqPort {
-		t.Fatal("Failed to populate port value in config")
+	if !assert.Equal(t, zeromqPort, client.config.PublishHost.Port, "Failed to populate port value in config") {
+		t.Fatal()
 	}
-	if client.config.PublishHost.Protocol != "tcp" {
-		t.Fatal("Failed to populate protocol value in config")
+	if !assert.Equal(t, "tcp", client.config.PublishHost.Protocol, "Failed to populate protocol value in config") {
+		t.Fatal()
 	}
-
-	if client.config.SubscribeHost.Host != "localhost" {
-		t.Fatal("Failed to populate host value in config")
+	if !assert.Equal(t, "localhost", client.config.SubscribeHost.Host, "Failed to populate host value in config") {
+		t.Fatal()
 	}
-	if client.config.SubscribeHost.Port != zeromqPort {
-		t.Fatal("Failed to populate port value in config")
+	if !assert.Equal(t, zeromqPort, client.config.SubscribeHost.Port, "Failed to populate port value in config") {
+		t.Fatal()
 	}
-	if client.config.SubscribeHost.Protocol != "tcp" {
-		t.Fatal("Failed to populate protocol value in config")
+	if !assert.Equal(t, "tcp", client.config.SubscribeHost.Protocol, "Failed to populate protocol value in config") {
+		t.Fatal()
 	}
-
 }
 
 func TestConnect(t *testing.T) {
 
-	if err := zeroMqClient.Connect(); err != nil {
-		t.Fatal("Failed to connect to zero ZMQ")
+	err := zeroMqClient.Connect()
+	if !assert.Nil(t, err, "Failed to connect to zero ZMQ") {
+		t.Fatal()
 	}
 }
 
@@ -114,23 +111,27 @@ func TestPublish(t *testing.T) {
 
 	err := zeroMqClient.Publish(message, topic)
 
-	if err != nil {
-		t.Fatalf("Failed to publish ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to publish ZMQ message") {
+		t.Fatal()
 	}
 }
 
 func TestMultiplePublishBindsOnSamePortError(t *testing.T) {
 	zmqClientPort := 5788
 	zmqClient1, err := getZeroMqClient(zmqClientPort)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+
+	if !assert.Nil(t, err, "Failed to create zmqClient1") {
+		t.Fatal()
 	}
+
 	defer zmqClient1.Disconnect()
 
 	zmqClient2, err := getZeroMqClient(zmqClientPort)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+
+	if !assert.Nil(t, err, "Failed to create zmqClient2") {
+		t.Fatal()
 	}
+
 	defer zmqClient2.Disconnect()
 
 	message := messaging.MessageEnvelope{
@@ -139,16 +140,17 @@ func TestMultiplePublishBindsOnSamePortError(t *testing.T) {
 	topic := ""
 
 	err = zmqClient1.Publish(message, topic)
-	if err != nil {
-		t.Fatalf("Failed to publish ZMQ message, %v", err)
+
+	if !assert.Nil(t, err, "Failed to publish ZMQ message") {
+		t.Fatal()
 	}
 
 	// the second instance of publisher on the same port
 	// this should give an error
 	err = zmqClient2.Publish(message, topic)
-	fmt.Println(err)
-	if err == nil {
-		t.Fatalf("Expecting to get an error")
+
+	if !assert.NotNil(t, err, "Expecting to get an error publishing") {
+		t.Fatal()
 	}
 }
 
@@ -164,8 +166,8 @@ func TestPublishWithTopic(t *testing.T) {
 
 	err := zeroMqClient.Publish(message, topic)
 
-	if err != nil {
-		t.Fatalf("Failed to publish ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to publish ZMQ message") {
+		t.Fatal()
 	}
 }
 
@@ -179,17 +181,19 @@ func TestPublishWihEmptyMsg(t *testing.T) {
 
 	err := zeroMqClient.Publish(message, topic)
 
-	if err != nil {
-		t.Fatalf("Failed to publish ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to publish ZMQ message") {
+		t.Fatal()
 	}
 }
 
 func TestCustomPublishWithNoTopic(t *testing.T) {
 	zmqClientPort := 5888
 	zmqClient, err := getZeroMqClient(zmqClientPort)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+
+	if !assert.Nil(t, err, "Failed to create zmqClient") {
+		t.Fatal()
 	}
+
 	defer zmqClient.Disconnect()
 
 	filterTopic := ""
@@ -199,8 +203,8 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 
 	err = zmqClient.Subscribe(topics, messageErrors)
 
-	if err != nil {
-		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message") {
+		t.Fatal()
 	}
 
 	expectedCorreleationID := "123"
@@ -212,19 +216,25 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 
 	// custom publisher
 	customPublisher, err := zmq.NewSocket(zmq.PUB)
-	if err != nil {
-		t.Fatalf("Failed to open publish socket: %v", err)
+
+	if !assert.Nil(t, err, "Failed to open publish socket") {
+		t.Fatal()
 	}
+
 	publisherMsgQueue := zmqClient.getPublishMessageQueueURL()
-	if conErr := customPublisher.Bind(publisherMsgQueue); conErr != nil {
-		t.Fatalf("Failed to bind to publisher message queue [%s]: %v", publisherMsgQueue, conErr)
+
+	conErr := customPublisher.Bind(publisherMsgQueue)
+
+	if !assert.Nilf(t, conErr, "Failed to bind to publisher message queue [%s]", publisherMsgQueue) {
+		t.Fatal()
 	}
 
 	// publish messages with topic
 	time.Sleep(time.Second)
 	_, err = customPublisher.SendBytes(dataBytes, 0)
-	if err != nil {
-		t.Fatalf("Failed to send bytes: %v", err)
+
+	if !assert.Nil(t, err, "Failed to send bytes") {
+		t.Fatal()
 	}
 
 	payloadReturned := ""
@@ -235,21 +245,20 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 	for !done {
 		select {
 		case msgErr := <-messageErrors:
-			if msgErr == nil {
-				done = true
-			}
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages:
 			fmt.Printf("In test caller, received messages: %v\n", *msgs)
 			payloadReturned = string(msgs.Payload)
 
-			if msgs.CorrelationID != expectedCorreleationID || string(msgs.Payload) != string(expectedPayload) {
-				t.Fatal("In test caller, received wrong message")
+			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID) ||
+				!assert.Equal(t, string(expectedPayload), string(msgs.Payload)) {
+				t.Fatal("Received wrong message")
 			}
 			done = true
 		case <-testTimer.C:
 			fmt.Println("timed-out")
-			if payloadReturned != "" {
+
+			if !assert.Empty(t, payloadReturned) {
 				t.Fatal("Received message with filter on, should have filtered message")
 			}
 			done = true
@@ -260,9 +269,11 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 func TestCustomPublishWithWrongMessageLength(t *testing.T) {
 	zmqClientPort := 5889
 	zmqClient, err := getZeroMqClient(zmqClientPort)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+
+	if !assert.Nil(t, err, "Failed to create zmqClient") {
+		t.Fatal()
 	}
+
 	defer zmqClient.Disconnect()
 
 	filterTopic := ""
@@ -272,25 +283,32 @@ func TestCustomPublishWithWrongMessageLength(t *testing.T) {
 
 	err = zmqClient.Subscribe(topics, messageErrors)
 
-	if err != nil {
-		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to subscribe to ZMQ") {
+		t.Fatal()
 	}
 
 	// custom publisher
 	customPublisher, err := zmq.NewSocket(zmq.PUB)
-	if err != nil {
-		t.Fatalf("Failed to open publish socket: %v", err)
+
+	if !assert.Nil(t, err, "Failed to open publish socket") {
+		t.Fatal()
 	}
+
 	publisherMsgQueue := zmqClient.getPublishMessageQueueURL()
-	if conErr := customPublisher.Bind(publisherMsgQueue); conErr != nil {
-		t.Fatalf("Failed to bind to publisher message queue [%s]: %v", publisherMsgQueue, conErr)
+
+	conErr := customPublisher.Bind(publisherMsgQueue)
+
+	if !assert.Nil(t, conErr, "Failed to bind to publisher message queue") {
+		t.Fatal()
 	}
 
 	// publish messages with topic
 	time.Sleep(time.Second)
+
 	_, err = customPublisher.SendMessage("message1", "message2", "message3")
-	if err != nil {
-		t.Fatalf("Failed to send multiple messages: %v", err)
+
+	if !assert.Nil(t, err, "Failed to send multiple messages") {
+		t.Fatal()
 	}
 
 	payloadReturned := ""
@@ -301,14 +319,15 @@ func TestCustomPublishWithWrongMessageLength(t *testing.T) {
 	for !done {
 		select {
 		case msgErr := <-messageErrors:
-			if msgErr == nil {
-				t.Fatalf("expecting to get the error for wrong publisher message length")
+			if !assert.NotNil(t, msgErr) {
+				t.Fatal("Expecting to get the error for wrong publisher message length")
 			}
 		case <-messages:
 			t.Fatalf("expecting to get the message error for wrong publisher message length and not getting the message here")
 		case <-testTimer.C:
 			fmt.Println("timed-out")
-			if payloadReturned != "" {
+
+			if !assert.Empty(t, payloadReturned) {
 				t.Fatal("Received message with filter on, should have filtered message")
 			}
 			done = true
@@ -322,13 +341,15 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 	publishTopic := ""
 
 	client1, err := getZeroMqClient(clientPort)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", clientPort, err)
+
+	if !assert.Nil(t, err, "Failed to create client1") {
+		t.Fatal()
 	}
 
 	client2, err := getZeroMqClient(clientPort)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", clientPort, err)
+
+	if !assert.Nil(t, err, "Failed to create client2") {
+		t.Fatal()
 	}
 
 	client1.Connect()
@@ -349,12 +370,15 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 	}
 
 	err = client1.Subscribe(topics1, messageErrors1)
-	if err != nil {
-		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+
+	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message for client1") {
+		t.Fatal()
 	}
+
 	err = client2.Subscribe(topics2, messageErrors2)
-	if err != nil {
-		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+
+	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message for client1") {
+		t.Fatal()
 	}
 
 	// publish messages with topic
@@ -365,8 +389,9 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 	}
 
 	err = client1.Publish(message, publishTopic)
-	if err != nil {
-		t.Fatalf("Failed to publish to ZMQ message, %v", err)
+
+	if !assert.Nil(t, err, "Failed to publish to ZMQ message") {
+		t.Fatal()
 	}
 
 	testTimer := time.NewTimer(3 * time.Second)
@@ -381,7 +406,9 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgs := <-messages1:
 			fmt.Printf("Received messages: %v\n", *msgs)
 			receivedMsg1 = string(msgs.Payload)
-			if msgs.CorrelationID != expectedCorreleationID || string(msgs.Payload) != string(expectedPayload) {
+
+			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID, "CorreleationIDs don't match") ||
+				!assert.Equal(t, string(expectedPayload), string(msgs.Payload), "Payloads don't match") {
 				t.Fatal("Received wrong message")
 			}
 		case msgErr := <-messageErrors2:
@@ -389,16 +416,19 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgs := <-messages2:
 			fmt.Printf("Received messages: %v\n", *msgs)
 			receivedMsg2 = string(msgs.Payload)
-			if msgs.CorrelationID != expectedCorreleationID || string(msgs.Payload) != string(expectedPayload) {
+
+			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID, "CorreleationIDs don't match") ||
+				!assert.Equal(t, string(expectedPayload), string(msgs.Payload), "Payloads don't match") {
 				t.Fatal("Received wrong message")
 			}
 		case <-testTimer.C:
 			fmt.Printf("msg1: %s, msg2: %s\n", receivedMsg1, receivedMsg2)
 
-			if receivedMsg1 != receivedMsg2 {
-				t.Fatalf("Received messages don't match- msg1 %s  msg2 %s", receivedMsg1, receivedMsg2)
-			} else if receivedMsg1 == "" && receivedMsg2 == "" {
-				t.Fatal("not received messages")
+			if !assert.Equalf(t, receivedMsg1, receivedMsg2, "Received messages don't match- msg1 %s  msg2 %s", receivedMsg1, receivedMsg2) {
+				t.Fatal()
+			}
+			if !assert.NotEmpty(t, receivedMsg1, "Received messages are empty") {
+				t.Fatal()
 			}
 			return
 		}
@@ -411,18 +441,18 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 	zmqClientPort2 := 5533
 
 	zmqClientCoreData, err := getZeroMqClient(zmqClientPort1)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort1, err)
+	if !assert.Nil(t, err, "Failed to create zmqClientCoreData") {
+		t.Fatal()
 	}
 
 	zmqClientAppFunc1, err := getZeroMqClient(zmqClientPort2)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort2, err)
+	if !assert.Nil(t, err, "Failed to create zmqClientAppFunc1") {
+		t.Fatal()
 	}
 
 	zmqClientAppFunc2, err := getZeroMqClient(zmqClientPort2)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort2, err)
+	if !assert.Nil(t, err, "Failed to create zmqClientAppFunc2") {
+		t.Fatal()
 	}
 
 	zmqClientCoreData.Connect()
@@ -450,27 +480,25 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 	}
 
 	err = zmqClientAppFunc1.Subscribe(appFuncTopic1, appFuncMessageErrors1)
-
-	if err != nil {
-		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message") {
+		t.Fatal()
 	}
 
 	err = zmqClientAppFunc2.Subscribe(appFuncTopic2, appFuncMessageErrors2)
-
-	if err != nil {
-		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message") {
+		t.Fatal()
 	}
 
 	time.Sleep(time.Second)
 
 	err = zmqClientCoreData.Publish(coreDataMessage, coreDataPublishTopic)
-	if err != nil {
-		t.Fatalf("Failed to publish to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to publish ZMQ message") {
+		t.Fatal()
 	}
 
 	err = zmqClientAppFunc1.Publish(appFuncMessage, appFunctionPublishTopic)
-	if err != nil {
-		t.Fatalf("Failed to publish to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to publish ZMQ message") {
+		t.Fatal()
 	}
 
 	testTimer := time.NewTimer(time.Second)
@@ -480,25 +508,21 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 	for !done {
 		select {
 		case msgErr := <-appFuncMessageErrors1:
-			if msgErr == nil {
-				done = true
-			}
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-appFuncMessages1:
 			fmt.Printf("App Functions 1 Message: %v\n", *msgs)
 
-			if msgs.CorrelationID != coreDataMessage.CorrelationID || string(msgs.Payload) != string(coreDataMessage.Payload) {
+			if !assert.Equal(t, appFuncMessage.CorrelationID, msgs.CorrelationID) ||
+				!assert.Equal(t, string(appFuncMessage.Payload), string(msgs.Payload)) {
 				t.Fatal("App Functions 1, received wrong message1")
 			}
 		case msgErr := <-appFuncMessageErrors2:
-			if msgErr == nil {
-				done = true
-			}
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-appFuncMessages2:
 			fmt.Printf("App Functions 2 Message: %v\n", *msgs)
 
-			if msgs.CorrelationID != appFuncMessage.CorrelationID || string(msgs.Payload) != string(appFuncMessage.Payload) {
+			if !assert.Equal(t, appFuncMessage.CorrelationID, msgs.CorrelationID) ||
+				!assert.Equal(t, string(appFuncMessage.Payload), string(msgs.Payload)) {
 				t.Fatal("App Functions 2, received wrong message1")
 			}
 		case <-testTimer.C:
@@ -519,10 +543,11 @@ func TestSubscribe(t *testing.T) {
 	filterTopics := []string{"", "DONT-MATCH", publishTopic}
 	for idx, filterTopic := range filterTopics {
 		zmqClient, err := getZeroMqClient(portNum + idx)
-		defer zmqClient.Disconnect()
-		if err != nil {
-			t.Fatalf("Failed to create a new 0mq client with port %d", portNum)
+		if !assert.Nil(t, err, "Failed to create a new ZMQ client") {
+			t.Fatal()
 		}
+		defer zmqClient.Disconnect()
+
 		zmqClient.Connect()
 		runPublishSubscribe(t, zmqClient, publishTopic, filterTopic)
 	}
@@ -532,16 +557,17 @@ func TestSubscribeZeroLengthTopic(t *testing.T) {
 	portNum := 5780
 
 	zmqClient, err := getZeroMqClient(portNum)
-	if err != nil {
-		t.Fatalf("Failed to create a new 0mq client with port %d", portNum)
+	if !assert.Nil(t, err, "Failed to create a new ZMQ client") {
+		t.Fatal()
 	}
+
 	zmqClient.Connect()
 	defer zmqClient.Disconnect()
 
 	err = zmqClient.Subscribe(nil, make(chan error))
 
-	if err == nil {
-		t.Fatalf("Expecting to get error on nil topics to subscribe to ZMQ message")
+	if !assert.NotNil(t, err, "Expecting to get error when subscribing to nil topics") {
+		t.Fatal()
 	}
 }
 
@@ -549,18 +575,17 @@ func TestSubscribeExceedsMaxNumberTopic(t *testing.T) {
 	portNum := 5781
 
 	zmqClient, err := getZeroMqClient(portNum)
-	if err != nil {
-		t.Fatalf("Failed to create a new 0mq client with port %d", portNum)
+	if !assert.Nil(t, err, "Failed to create a new ZMQ client") {
+		t.Fatal()
 	}
+
 	zmqClient.Connect()
 	defer zmqClient.Disconnect()
 
 	mockTopics := make([]messaging.TopicChannel, maxZeroMqSubscribeTopics+1)
 	err = zmqClient.Subscribe(mockTopics, make(chan error))
 
-	if err == nil {
-		t.Fatalf("Expecting to get error on exceeding max number of topics to subscribe to ZMQ message")
-	}
+	assert.NotNil(t, err, "Expecting to get error on exceeding max number of topics to subscribe to ZMQ message")
 }
 
 func getZeroMqClient(zmqPort int) (*zeromqClient, error) {
@@ -589,23 +614,23 @@ func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic str
 
 	err := zmqClient.Subscribe(topics, messageErrors)
 
-	if err != nil {
-		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message") {
+		t.Fatal()
 	}
 
 	// publish messages with topic
 	time.Sleep(time.Second)
 	expectedCorreleationID := "123"
 	expectedPayload := []byte("test bytes")
-	exptectedContentType := "application/json"
+	expectedContentType := "application/json"
 	message := messaging.MessageEnvelope{
 		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
-		ContentType: exptectedContentType,
+		ContentType: expectedContentType,
 	}
 
 	err = zmqClient.Publish(message, publishTopic)
-	if err != nil {
-		t.Fatalf("Failed to publish to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to publish to ZMQ message") {
+		t.Fatal()
 	}
 
 	testTimer := time.NewTimer(time.Second)
@@ -616,24 +641,21 @@ func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic str
 	for !done {
 		select {
 		case msgErr := <-messageErrors:
-			if msgErr == nil {
-				done = true
-			}
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages:
 			fmt.Printf("In test caller, received messages: %v\n", *msgs)
 			payloadReturned = string(msgs.Payload)
 
-			if msgs.CorrelationID != expectedCorreleationID ||
-				string(msgs.Payload) != string(expectedPayload) ||
-				msgs.ContentType != exptectedContentType {
+			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID) ||
+				!assert.Equal(t, string(expectedPayload), string(msgs.Payload)) {
 				t.Fatal("In test caller, received wrong message")
 			}
 			done = true
 		case <-testTimer.C:
 			fmt.Println("timed-out.")
-			if payloadReturned != "" {
-				t.Fatal("Received message with filter on, should have filtered message")
+
+			if !assert.Empty(t, payloadReturned, "Failed to receive message") {
+				t.Fatal()
 			}
 			done = true
 		}
@@ -645,8 +667,8 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 	zmqClientPort := 5590
 
 	zmqClient, err := getZeroMqClient(zmqClientPort)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqClientPort, err)
+	if !assert.Nil(t, err, "Failed to create new zmqClient") {
+		t.Fatal()
 	}
 
 	publishTopics := []string{"apple", "orange", "banana"}
@@ -665,21 +687,20 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 	}
 
 	err = zmqClient.Subscribe(topics, messageErrors)
-
-	if err != nil {
-		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message") {
+		t.Fatal()
 	}
 
 	// publish messages with topic
 	expectedCorreleationIDs := []string{"101", "102", "103"}
 	expectedPayloads := [][]byte{[]byte("apple juice"), []byte("orange juice"), []byte("banana slices")}
-	exptectedContentTypes := []string{"application/json", "application/cbor", "video"}
+	expectedContentTypes := []string{"application/json", "application/cbor", "video"}
 	var messages []messaging.MessageEnvelope
 	for idx := range expectedCorreleationIDs {
 		message := messaging.MessageEnvelope{
 			CorrelationID: expectedCorreleationIDs[idx],
 			Payload:       expectedPayloads[idx],
-			ContentType:   exptectedContentTypes[idx]}
+			ContentType:   expectedContentTypes[idx]}
 		messages = append(messages, message)
 	}
 
@@ -687,8 +708,8 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 	// publish a few times:
 	for idx := range topics {
 		err = zmqClient.Publish(messages[idx], publishTopics[idx])
-		if err != nil {
-			t.Fatalf("Failed to publish to ZMQ message, %v", err)
+		if !assert.Nil(t, err, "Failed to publish to ZMQ message") {
+			t.Fatal()
 		}
 	}
 
@@ -699,16 +720,13 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 	for !done {
 		select {
 		case msgErr := <-messageErrors:
-			if msgErr == nil {
-				done = true
-			}
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages1:
 			fmt.Printf("In test caller, received messages1: %v\n", *msgs)
 
 			if msgs.CorrelationID != expectedCorreleationIDs[0] ||
 				string(msgs.Payload) != string(expectedPayloads[0]) ||
-				msgs.ContentType != exptectedContentTypes[0] {
+				msgs.ContentType != expectedContentTypes[0] {
 				t.Fatal("In test caller, received wrong message1")
 			}
 		case msgs := <-messages2:
@@ -716,7 +734,7 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 
 			if msgs.CorrelationID != expectedCorreleationIDs[1] ||
 				string(msgs.Payload) != string(expectedPayloads[1]) ||
-				msgs.ContentType != exptectedContentTypes[1] {
+				msgs.ContentType != expectedContentTypes[1] {
 				t.Fatal("In test caller, received wrong message2")
 			}
 		case msgs := <-messages3:
@@ -724,7 +742,7 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 
 			if msgs.CorrelationID != expectedCorreleationIDs[2] ||
 				string(msgs.Payload) != string(expectedPayloads[2]) ||
-				msgs.ContentType != exptectedContentTypes[2] {
+				msgs.ContentType != expectedContentTypes[2] {
 				t.Fatal("In test caller, received wrong message3")
 			}
 		case <-testTimer.C:
@@ -740,23 +758,26 @@ func TestSubscribeMultipleAndEmptyTopic(t *testing.T) {
 	zmqPort := 5599
 
 	publishClient, err := getZeroMqClient(zmqPort)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqPort, err)
+	if !assert.Nil(t, err, "Failed to create publishClient") {
+		t.Fatal()
 	}
+
 	publishClient.Connect()
 	defer publishClient.Disconnect()
 
 	subscribeClient1, err := getZeroMqClient(zmqPort)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqPort, err)
+	if !assert.Nil(t, err, "Failed to create subscribeClient1") {
+		t.Fatal()
 	}
+
 	subscribeClient1.Connect()
 	defer subscribeClient1.Disconnect()
 
 	subscribeClient2, err := getZeroMqClient(zmqPort)
-	if err != nil {
-		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqPort, err)
+	if !assert.Nil(t, err, "Failed to create subscribeClient2") {
+		t.Fatal()
 	}
+
 	subscribeClient2.Connect()
 	defer subscribeClient2.Disconnect()
 
@@ -770,10 +791,13 @@ func TestSubscribeMultipleAndEmptyTopic(t *testing.T) {
 	messageErrors2 := make(chan error)
 
 	err = subscribeClient1.Subscribe([]messaging.TopicChannel{{Topic: subscribeTopic1, Messages: messages1}}, messageErrors1)
-	err = subscribeClient2.Subscribe([]messaging.TopicChannel{{Topic: subscribeTopic2, Messages: messages2}}, messageErrors2)
+	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message") {
+		t.Fatal()
+	}
 
-	if err != nil {
-		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	err = subscribeClient2.Subscribe([]messaging.TopicChannel{{Topic: subscribeTopic2, Messages: messages2}}, messageErrors2)
+	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message") {
+		t.Fatal()
 	}
 
 	message1 := messaging.MessageEnvelope{
@@ -788,12 +812,13 @@ func TestSubscribeMultipleAndEmptyTopic(t *testing.T) {
 	time.Sleep(time.Second)
 	// publish both messages:
 	err = publishClient.Publish(message1, publishTopic)
-	if err != nil {
-		t.Fatalf("Failed to publish to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to publish messages to ZMQ") {
+		t.Fatal()
 	}
+
 	err = publishClient.Publish(message2, "")
-	if err != nil {
-		t.Fatalf("Failed to publish to ZMQ message, %v", err)
+	if !assert.Nil(t, err, "Failed to publish message to ZMQ") {
+		t.Fatal()
 	}
 
 	testTimer := time.NewTimer(time.Second)
@@ -805,14 +830,8 @@ func TestSubscribeMultipleAndEmptyTopic(t *testing.T) {
 	for !done {
 		select {
 		case msgErr := <-messageErrors1:
-			if msgErr == nil {
-				done = true
-			}
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgErr := <-messageErrors2:
-			if msgErr == nil {
-				done = true
-			}
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages1:
 			fmt.Printf("In test caller, received messages1: %v\n", string(msgs.Payload))
@@ -821,10 +840,9 @@ func TestSubscribeMultipleAndEmptyTopic(t *testing.T) {
 			fmt.Printf("In test caller, received messages2: %v\n", string(msgs.Payload))
 			receivedMsgs++
 		case <-testTimer.C:
-
 			fmt.Println("time's up")
-			if receivedMsgs != 3 {
-				t.Fatalf("Failed to wrong number of messages expecting: %d, received: %d", expectingMsgs, receivedMsgs)
+			if !assert.Equalf(t, 3, receivedMsgs, "Failed  wrong number of messages expecting: %d, received: %d", expectingMsgs, receivedMsgs) {
+				t.Fatal()
 			}
 			done = true
 		}
@@ -849,9 +867,8 @@ func TestBadSubscriberMessageConfig(t *testing.T) {
 
 	err = testClient.Subscribe(topics, messageErrors)
 
-	if err == nil {
-		defer testClient.Disconnect()
-		t.Fatalf("Expecting error from subscribe to ZMQ")
+	if !assert.NotNil(t, err, "Expecting error from subscriber to ZMQ") {
+		t.Fatal()
 	}
 }
 
@@ -875,8 +892,8 @@ func TestBadPublisherMessageConfig(t *testing.T) {
 
 	err = testClient.Publish(message, topic)
 
-	if err == nil {
-		t.Fatalf("Expecting error from publish to ZMQ")
+	if !assert.NotNil(t, err, "Expecting error from publish to ZMQ") {
+		t.Fatal()
 	}
 }
 
@@ -905,14 +922,19 @@ func TestDisconnect(t *testing.T) {
 
 	err = testClient.Disconnect()
 
-	if assert.NoError(t, err, "Disconnect failed") == false {
+	if !assert.NoError(t, err, "Disconnect failed") {
 		t.Fatal()
 	}
 
-	assert.True(t, testClient.allSubscribersDisconnected(), "Subscriber not closed")
+	if !assert.True(t, testClient.allSubscribersDisconnected(), "Subscriber not closed") {
+		t.Fatal()
+	}
 
 	err = <-testClient.errors
-	assert.Nil(t, err, "message error channel is not closed")
+	if !assert.Nil(t, err, "Message error channel is not closed") {
+		t.Fatal()
+	}
+
 	msgEnvelop := <-testClient.subscribers[0].topic.Messages
 	assert.Nil(t, msgEnvelop, "topic channel is not closed")
 }
@@ -921,13 +943,15 @@ func TestGetMsgQueueURL(t *testing.T) {
 
 	url := zeroMqClient.getPublishMessageQueueURL()
 	port := strconv.Itoa(zeromqPort)
-	if url != "tcp://*:"+port {
-		t.Fatal("Failed to create correct publish msg queue URL")
+
+	if !assert.Equal(t, url, "tcp://*:"+port, "Failed to create correct URL for publisher") {
+		t.Fatal()
 	}
 
 	url = zeroMqClient.getSubscribMessageQueueURL()
 
-	if url != "tcp://localhost:"+port {
-		t.Fatal("Failed to create correct subscribe msg queue URL")
+	if !assert.Equal(t, url, "tcp://localhost:"+port, "Failed to create correct URL for subscriber") {
+		t.Fatal()
 	}
+
 }
