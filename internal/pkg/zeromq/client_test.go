@@ -735,6 +735,103 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 	fmt.Println("Done")
 }
 
+func TestSubscribeMultipleAndEmptyTopic(t *testing.T) {
+
+	zmqPort := 5599
+
+	publishClient, err := getZeroMqClient(zmqPort)
+	if err != nil {
+		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqPort, err)
+	}
+	publishClient.Connect()
+	defer publishClient.Disconnect()
+
+	subscribeClient1, err := getZeroMqClient(zmqPort)
+	if err != nil {
+		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqPort, err)
+	}
+	subscribeClient1.Connect()
+	defer subscribeClient1.Disconnect()
+
+	subscribeClient2, err := getZeroMqClient(zmqPort)
+	if err != nil {
+		t.Fatalf("Failed to create zmqClient with port number %d: %v", zmqPort, err)
+	}
+	subscribeClient2.Connect()
+	defer subscribeClient2.Disconnect()
+
+	publishTopic := "goldfish"
+	subscribeTopic1 := publishTopic
+	subscribeTopic2 := ""
+
+	messages1 := make(chan *messaging.MessageEnvelope)
+	messages2 := make(chan *messaging.MessageEnvelope)
+	messageErrors1 := make(chan error)
+	messageErrors2 := make(chan error)
+
+	err = subscribeClient1.Subscribe([]messaging.TopicChannel{{Topic: subscribeTopic1, Messages: messages1}}, messageErrors1)
+	err = subscribeClient2.Subscribe([]messaging.TopicChannel{{Topic: subscribeTopic2, Messages: messages2}}, messageErrors2)
+
+	if err != nil {
+		t.Fatalf("Failed to subscribe to ZMQ message, %v", err)
+	}
+
+	message1 := messaging.MessageEnvelope{
+		CorrelationID: "123",
+		Payload:       []byte("yellow goldfish"),
+		ContentType:   "application/json"}
+	message2 := messaging.MessageEnvelope{
+		CorrelationID: "123",
+		Payload:       []byte("black guppy"),
+		ContentType:   "application/json"}
+
+	time.Sleep(time.Second)
+	// publish both messages:
+	err = publishClient.Publish(message1, publishTopic)
+	if err != nil {
+		t.Fatalf("Failed to publish to ZMQ message, %v", err)
+	}
+	err = publishClient.Publish(message2, "")
+	if err != nil {
+		t.Fatalf("Failed to publish to ZMQ message, %v", err)
+	}
+
+	testTimer := time.NewTimer(time.Second)
+	defer testTimer.Stop()
+
+	done := false
+	receivedMsgs := 0
+	expectingMsgs := 3
+	for !done {
+		select {
+		case msgErr := <-messageErrors1:
+			if msgErr == nil {
+				done = true
+			}
+			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+		case msgErr := <-messageErrors2:
+			if msgErr == nil {
+				done = true
+			}
+			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+		case msgs := <-messages1:
+			fmt.Printf("In test caller, received messages1: %v\n", string(msgs.Payload))
+			receivedMsgs++
+		case msgs := <-messages2:
+			fmt.Printf("In test caller, received messages2: %v\n", string(msgs.Payload))
+			receivedMsgs++
+		case <-testTimer.C:
+
+			fmt.Println("time's up")
+			if receivedMsgs != 3 {
+				t.Fatalf("Failed to wrong number of messages expecting: %d, received: %d", expectingMsgs, receivedMsgs)
+			}
+			done = true
+		}
+	}
+	fmt.Println("Done")
+}
+
 func TestBadSubscriberMessageConfig(t *testing.T) {
 	badMsgConfig := messaging.MessageBusConfig{
 		SubscribeHost: messaging.HostInfo{
