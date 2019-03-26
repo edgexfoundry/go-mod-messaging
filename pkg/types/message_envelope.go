@@ -22,7 +22,7 @@ import (
 
 const (
 	correlationId = "correlation-id"
-	contentType = "content-type"
+	contentType = "Content-Type"
 )
 
 // MessageEnvelope is the data structure for messages. It wraps the generic message payload with attributes.
