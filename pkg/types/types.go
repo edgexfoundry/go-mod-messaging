@@ -16,16 +16,6 @@
 
 package types
 
-// MessageEnvelope is the data structure for publisher
-type MessageEnvelope struct {
-	// CorrelationID is an object id to identify the envelop
-	CorrelationID string
-	// Payload is byte representation of the data being transferred.
-	Payload []byte
-	// ContentType is the marshaled type of payload, i.e. application/json, application/xml, application/cbor, etc
-	ContentType string
-}
-
 // TopicChannel is the data structure for subscriber
 type TopicChannel struct {
 	// Topic for subscriber to filter on if any
