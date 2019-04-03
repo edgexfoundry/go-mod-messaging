@@ -18,11 +18,11 @@ package types
 
 import (
 	"context"
-	)
+)
 
 const (
 	correlationId = "correlation-id"
-	contentType = "Content-Type"
+	contentType   = "Content-Type"
 )
 
 // MessageEnvelope is the data structure for messages. It wraps the generic message payload with attributes.
@@ -38,9 +38,9 @@ type MessageEnvelope struct {
 // NewMessageEnvelope creates a new MessageEnvelope for the specified payload with attributes from the specified context
 func NewMessageEnvelope(payload []byte, ctx context.Context) MessageEnvelope {
 	envelope := MessageEnvelope{
-		CorrelationID : fromContext(ctx, correlationId),
-		ContentType : fromContext(ctx, contentType),
-		Payload : payload,
+		CorrelationID: fromContext(ctx, correlationId),
+		ContentType:   fromContext(ctx, contentType),
+		Payload:       payload,
 	}
 
 	return envelope

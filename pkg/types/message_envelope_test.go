@@ -34,16 +34,16 @@ func TestNewMessageEnvelope(t *testing.T) {
 
 	envelope := NewMessageEnvelope([]byte(expectedPayload), ctx)
 
-	assert.Equal(t,expectedCorrelationId, envelope.CorrelationID)
-	assert.Equal(t,expectedContentType, envelope.ContentType)
-	assert.Equal(t,expectedPayload, string(envelope.Payload))
+	assert.Equal(t, expectedCorrelationId, envelope.CorrelationID)
+	assert.Equal(t, expectedContentType, envelope.ContentType)
+	assert.Equal(t, expectedPayload, string(envelope.Payload))
 }
 
 func TestNewMessageEnvelopeEmpty(t *testing.T) {
 
 	envelope := NewMessageEnvelope([]byte{}, context.Background())
 
-	assert.Empty(t,envelope.CorrelationID)
+	assert.Empty(t, envelope.CorrelationID)
 	assert.Empty(t, envelope.ContentType)
-	assert.Empty(t,envelope.Payload)
+	assert.Empty(t, envelope.Payload)
 }
