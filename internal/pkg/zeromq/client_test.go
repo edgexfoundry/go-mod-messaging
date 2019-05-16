@@ -196,7 +196,7 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 	defer zmqClient.Disconnect()
 
 	filterTopic := ""
-	messages := make(chan *types.MessageEnvelope)
+	messages := make(chan types.MessageEnvelope)
 	messageErrors := make(chan error)
 	topics := []types.TopicChannel{{Topic: filterTopic, Messages: messages}}
 
@@ -246,7 +246,7 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 		case msgErr := <-messageErrors:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages:
-			fmt.Printf("In test caller, received messages: %v\n", *msgs)
+			fmt.Printf("In test caller, received messages: %v\n", msgs)
 			payloadReturned = string(msgs.Payload)
 
 			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID) ||
@@ -276,7 +276,7 @@ func TestCustomPublishWithWrongMessageLength(t *testing.T) {
 	defer zmqClient.Disconnect()
 
 	filterTopic := ""
-	messages := make(chan *types.MessageEnvelope)
+	messages := make(chan types.MessageEnvelope)
 	messageErrors := make(chan error)
 	topics := []types.TopicChannel{{Topic: filterTopic, Messages: messages}}
 
@@ -336,7 +336,7 @@ func TestCustomPublishWithWrongMessageLength(t *testing.T) {
 
 func TestPublishWihMultipleSubscribers(t *testing.T) {
 
-	clientPort := 5565
+	clientPort := 5585
 	publishTopic := ""
 
 	client1, err := getZeroMqClient(clientPort)
@@ -356,13 +356,13 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 	client2.Connect()
 	defer client2.Disconnect()
 
-	messages1 := make(chan *types.MessageEnvelope)
+	messages1 := make(chan types.MessageEnvelope)
 	messageErrors1 := make(chan error)
 	topics1 := []types.TopicChannel{
 		{Topic: publishTopic, Messages: messages1},
 	}
 
-	messages2 := make(chan *types.MessageEnvelope)
+	messages2 := make(chan types.MessageEnvelope)
 	messageErrors2 := make(chan error)
 	topics2 := []types.TopicChannel{
 		{Topic: publishTopic, Messages: messages2},
@@ -403,7 +403,7 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgErr := <-messageErrors1:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages1:
-			fmt.Printf("Received messages: %v\n", *msgs)
+			fmt.Printf("Received messages: %v\n", msgs)
 			receivedMsg1 = string(msgs.Payload)
 
 			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID, "CorreleationIDs don't match") ||
@@ -413,7 +413,7 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgErr := <-messageErrors2:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages2:
-			fmt.Printf("Received messages: %v\n", *msgs)
+			fmt.Printf("Received messages: %v\n", msgs)
 			receivedMsg2 = string(msgs.Payload)
 
 			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID, "CorreleationIDs don't match") ||
@@ -466,13 +466,13 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 	coreDataMessage := types.MessageEnvelope{CorrelationID: "123", Payload: []byte("orange juice")}
 	appFuncMessage := types.MessageEnvelope{CorrelationID: "456", Payload: []byte("apple juice")}
 
-	appFuncMessages1 := make(chan *types.MessageEnvelope)
+	appFuncMessages1 := make(chan types.MessageEnvelope)
 	appFuncMessageErrors1 := make(chan error)
 	appFuncTopic1 := []types.TopicChannel{
 		{Topic: coreDataPublishTopic, Messages: appFuncMessages1},
 	}
 
-	appFuncMessages2 := make(chan *types.MessageEnvelope)
+	appFuncMessages2 := make(chan types.MessageEnvelope)
 	appFuncMessageErrors2 := make(chan error)
 	appFuncTopic2 := []types.TopicChannel{
 		{Topic: appFunctionPublishTopic, Messages: appFuncMessages2},
@@ -509,7 +509,7 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 		case msgErr := <-appFuncMessageErrors1:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-appFuncMessages1:
-			fmt.Printf("App Functions 1 Message: %v\n", *msgs)
+			fmt.Printf("App Functions 1 Message: %v\n", msgs)
 
 			if !assert.Equal(t, appFuncMessage.CorrelationID, msgs.CorrelationID) ||
 				!assert.Equal(t, string(appFuncMessage.Payload), string(msgs.Payload)) {
@@ -518,7 +518,7 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 		case msgErr := <-appFuncMessageErrors2:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-appFuncMessages2:
-			fmt.Printf("App Functions 2 Message: %v\n", *msgs)
+			fmt.Printf("App Functions 2 Message: %v\n", msgs)
 
 			if !assert.Equal(t, appFuncMessage.CorrelationID, msgs.CorrelationID) ||
 				!assert.Equal(t, string(appFuncMessage.Payload), string(msgs.Payload)) {
@@ -607,7 +607,7 @@ func getZeroMqClient(zmqPort int) (*zeromqClient, error) {
 
 func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic string, filterTopic string) {
 
-	messages := make(chan *types.MessageEnvelope)
+	messages := make(chan types.MessageEnvelope)
 	messageErrors := make(chan error)
 	topics := []types.TopicChannel{{Topic: filterTopic, Messages: messages}}
 
@@ -642,7 +642,7 @@ func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic str
 		case msgErr := <-messageErrors:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages:
-			fmt.Printf("In test caller, received messages: %v\n", *msgs)
+			fmt.Printf("In test caller, received messages: %v\n", msgs)
 			payloadReturned = string(msgs.Payload)
 
 			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID) ||
@@ -675,9 +675,9 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 	zmqClient.Connect()
 	defer zmqClient.Disconnect()
 
-	messages1 := make(chan *types.MessageEnvelope)
-	messages2 := make(chan *types.MessageEnvelope)
-	messages3 := make(chan *types.MessageEnvelope)
+	messages1 := make(chan types.MessageEnvelope)
+	messages2 := make(chan types.MessageEnvelope)
+	messages3 := make(chan types.MessageEnvelope)
 	messageErrors := make(chan error)
 	topics := []types.TopicChannel{
 		{Topic: publishTopics[0], Messages: messages1},
@@ -721,7 +721,7 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 		case msgErr := <-messageErrors:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-messages1:
-			fmt.Printf("In test caller, received messages1: %v\n", *msgs)
+			fmt.Printf("In test caller, received messages1: %v\n", msgs)
 
 			if msgs.CorrelationID != expectedCorreleationIDs[0] ||
 				string(msgs.Payload) != string(expectedPayloads[0]) ||
@@ -729,7 +729,7 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 				t.Fatal("In test caller, received wrong message1")
 			}
 		case msgs := <-messages2:
-			fmt.Printf("In test caller, received messages2: %v\n", *msgs)
+			fmt.Printf("In test caller, received messages2: %v\n", msgs)
 
 			if msgs.CorrelationID != expectedCorreleationIDs[1] ||
 				string(msgs.Payload) != string(expectedPayloads[1]) ||
@@ -737,7 +737,7 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 				t.Fatal("In test caller, received wrong message2")
 			}
 		case msgs := <-messages3:
-			fmt.Printf("In test caller, received messages3: %v\n", *msgs)
+			fmt.Printf("In test caller, received messages3: %v\n", msgs)
 
 			if msgs.CorrelationID != expectedCorreleationIDs[2] ||
 				string(msgs.Payload) != string(expectedPayloads[2]) ||
@@ -784,8 +784,8 @@ func TestSubscribeMultipleAndEmptyTopic(t *testing.T) {
 	subscribeTopic1 := publishTopic
 	subscribeTopic2 := ""
 
-	messages1 := make(chan *types.MessageEnvelope)
-	messages2 := make(chan *types.MessageEnvelope)
+	messages1 := make(chan types.MessageEnvelope)
+	messages2 := make(chan types.MessageEnvelope)
 	messageErrors1 := make(chan error)
 	messageErrors2 := make(chan error)
 
@@ -860,7 +860,7 @@ func TestBadSubscriberMessageConfig(t *testing.T) {
 
 	testClient.Connect()
 
-	messages := make(chan *types.MessageEnvelope)
+	messages := make(chan types.MessageEnvelope)
 	topics := []types.TopicChannel{{Topic: "", Messages: messages}}
 	messageErrors := make(chan error)
 
@@ -935,7 +935,7 @@ func TestDisconnect(t *testing.T) {
 	}
 
 	msgEnvelop := <-testClient.subscribers[0].topic.Messages
-	assert.Nil(t, msgEnvelop, "topic channel is not closed")
+	assert.Nil(t, msgEnvelop.Payload, "topic channel is not closed")
 }
 
 func allSubscribersDisconnected(client *zeromqClient) bool {

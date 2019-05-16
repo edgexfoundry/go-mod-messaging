@@ -21,7 +21,7 @@ type TopicChannel struct {
 	// Topic for subscriber to filter on if any
 	Topic string
 	// Messages is the returned message channel for the subscriber
-	Messages chan *MessageEnvelope
+	Messages chan MessageEnvelope
 }
 
 // MessageBusConfig defines the messaging information need to connect to the message bus

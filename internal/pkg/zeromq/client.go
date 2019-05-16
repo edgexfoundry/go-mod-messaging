@@ -180,7 +180,7 @@ func (client *zeromqClient) subscribeTopic(topic *types.TopicChannel) (*zeromqSu
 				continue
 			}
 
-			topic.Messages <- &msgEnvelope
+			topic.Messages <- msgEnvelope
 		}
 	}(&subscriber.topic)
 
