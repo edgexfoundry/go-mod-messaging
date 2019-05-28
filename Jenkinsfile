@@ -77,17 +77,17 @@ pipeline {
         stage('Semver Tag') {
             when { expression { edgex.isReleaseStream() } }
             steps {
-                edgeXSemver('tag')
+                sh 'echo v${VERSION}'
+                sh 'git tag -a v${VERSION} -m "v${VERSION}"'
             }
         }
 
-        // stage('Mock Sigul Signing') {
-        //     when { expression { edgex.isReleaseStream() } }
-        //     steps {
-        //         sh 'echo lftools sigul branch v${VERSION}'
-        //         sh 'echo lftools sigul docker v${VERSION}'
-        //     }
-        // }
+        stage('Sigul Sign Tag') {
+            when { expression { edgex.isReleaseStream() } }
+            steps {
+                edgeXInfraLFToolsSign(command: 'git-tag', version: 'v${VERSION}')
+            }
+        }
 
         stage('Semver Bump Patch Version') {
             when { expression { edgex.isReleaseStream() } }
