@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
@@ -38,6 +39,7 @@ const (
 
 type zeromqClient struct {
 	config        types.MessageBusConfig
+	lock          sync.Mutex
 	publisher     *zmq.Socket
 	subscribers   []*zeromqSubscriber
 	messageErrors chan error
@@ -62,21 +64,13 @@ func (client *zeromqClient) Connect() error {
 // Publish sends a message via zeromq with the specified topic
 func (client *zeromqClient) Publish(message types.MessageEnvelope, topic string) error {
 
-	msgQueueURL := client.config.PublishHost.GetHostURL()
 	var err error
 
 	if client.publisher == nil {
-
-		if client.publisher, err = zmq.NewSocket(zmq.PUB); err != nil {
+		err = client.bindToPort(client.config.PublishHost.GetHostURL())
+		if err != nil {
 			return err
 		}
-		if conErr := client.publisher.Bind(msgQueueURL); conErr != nil {
-			// wrapping the error with msgQueueURL info:
-			return fmt.Errorf("error: %v [%s]", conErr, msgQueueURL)
-		}
-
-		// allow some time for socket binding before start publishing
-		time.Sleep(300 * time.Millisecond)
 	}
 
 	marshaledMsg, err := json.Marshal(message)
@@ -233,4 +227,22 @@ func (client *zeromqClient) Disconnect() error {
 		}
 	}
 	return errors.New(errorStr)
+}
+
+func (client *zeromqClient) bindToPort(msgQueueURL string) (err error) {
+	client.lock.Lock()
+	defer client.lock.Unlock()
+	if client.publisher == nil {
+		if client.publisher, err = zmq.NewSocket(zmq.PUB); err != nil {
+			return
+		}
+		if conErr := client.publisher.Bind(msgQueueURL); conErr != nil {
+			// wrapping the error with msgQueueURL info:
+			return fmt.Errorf("error: %v [%s]", conErr, msgQueueURL)
+		}
+
+		// allow some time for socket binding before start publishing
+		time.Sleep(300 * time.Millisecond)
+	}
+	return
 }
