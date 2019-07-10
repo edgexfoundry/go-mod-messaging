@@ -46,6 +46,7 @@ pipeline {
                     }
                     steps {
                         sh 'make test'
+                        edgeXCodecov('go-mod-messaging-codecov-token')
                     }
                 }
                 stage('Test arm64') {
@@ -58,6 +59,7 @@ pipeline {
                     }
                     steps {
                         sh 'make test'
+                        edgeXCodecov('go-mod-messaging-codecov-token')
                     }
                 }
             }
