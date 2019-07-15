@@ -78,7 +78,7 @@ func (client *zeromqClient) Publish(message types.MessageEnvelope, topic string)
 		return err
 	}
 
-	totalLength, err := client.publisher.SendMessage(topic, marshaledMsg)
+	totalLength, err := client.sendMessage(topic, marshaledMsg)
 
 	if err != nil {
 		return err
@@ -245,4 +245,10 @@ func (client *zeromqClient) bindToPort(msgQueueURL string) (err error) {
 		time.Sleep(300 * time.Millisecond)
 	}
 	return
+}
+
+func (client *zeromqClient) sendMessage(topic string, message []byte) (int, error) {
+	client.lock.Lock()
+	defer client.lock.Unlock()
+	return client.publisher.SendMessage(topic, message)
 }
