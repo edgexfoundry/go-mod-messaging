@@ -4,7 +4,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-FROM nexus3.edgexfoundry.org:10004/edgex-golang-base:1.11.9-alpine
+ARG BASE=golang:1.12-alpine
+FROM ${BASE}
 
 LABEL license='SPDX-License-Identifier: Apache-2.0' \
       copyright='Copyright (c) 2019: Intel'
