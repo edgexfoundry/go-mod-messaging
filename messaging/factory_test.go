@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,9 +34,29 @@ var msgConfig = types.MessageBusConfig{
 
 func TestNewMessageClientZeroMq(t *testing.T) {
 
-	msgConfig.Type = "zero"
-
+	msgConfig.Type = ZeroMQ
 	_, err := NewMessageClient(msgConfig)
+
+	if assert.NoError(t, err, "New Message client failed: ", err) == false {
+		t.Fatal()
+	}
+}
+
+func TestNewMessageClientMQTT(t *testing.T) {
+	messageBusConfig := msgConfig
+	messageBusConfig.Type = MQTT
+	messageBusConfig.Optional = map[string]string{
+		"Username":          "TestUser",
+		"Password":          "TestPassword",
+		"ClientId":          "TestClientID",
+		"Topic":             "TestTopic",
+		"Qos":               "1",
+		"KeepAlive":         "3",
+		"Retained":          "true",
+		"ConnectionPayload": "TestConnectionPayload",
+	}
+
+	_, err := NewMessageClient(messageBusConfig)
 
 	if assert.NoError(t, err, "New Message client failed: ", err) == false {
 		t.Fatal()

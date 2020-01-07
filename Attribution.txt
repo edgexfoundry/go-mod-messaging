@@ -1,4 +1,7 @@
 The following open source projects are referenced by go-mod-messaging:
 
+eclipse/paho.mqtt.golang (Eclipse Public License 1.0) https://github.com/eclipse/paho.mqtt.golang
+https://github.com/eclipse/paho.mqtt.golang/blob/master/LICENSE
+
 pebbe/zmq4 (BSD-2) https://github.com/pebbe/zmq4
 https://github.com/pebbe/zmq4/blob/master/LICENSE.txt
