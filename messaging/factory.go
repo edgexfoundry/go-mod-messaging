@@ -20,14 +20,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
-
+	"github.com/edgexfoundry/go-mod-messaging/internal/pkg/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/internal/pkg/zeromq"
+	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
 )
 
 const (
 	// ZeroMQ messaging implementation
 	ZeroMQ = "zero"
+
+	// MQTT messaging implementation
+	MQTT = "mqtt"
 )
 
 // NewMessageClient is a factory function to instantiate different message client depending on
@@ -41,6 +44,8 @@ func NewMessageClient(msgConfig types.MessageBusConfig) (MessageClient, error) {
 	switch lowerMsgType := strings.ToLower(msgConfig.Type); lowerMsgType {
 	case ZeroMQ:
 		return zeromq.NewZeroMqClient(msgConfig)
+	case MQTT:
+		return mqtt.NewMQTTClient(msgConfig)
 	default:
 		return nil, fmt.Errorf("unknown message type '%s' requested", msgConfig.Type)
 	}

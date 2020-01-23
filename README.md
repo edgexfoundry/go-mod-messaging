@@ -1,5 +1,5 @@
 # go-mod-messaging
-Messaging client library for use by Go implementation of EdgeX micro services.  This project contains the abstract Message Bus interface and an implementation for ZeroMQ.
+Messaging client library for use by Go implementation of EdgeX micro services.  This project contains the abstract Message Bus interface and an implementation for ZeroMQ, and MQTT.
 These interface functions connect, publish, subscribe and disconnect to/from the Message Bus.
 
 ### What is this repository for? ###
@@ -40,6 +40,45 @@ Host = 'localhost'
 Port = 5563
 Type = 'zero'
 Topic = 'events'
+```
+
+The MQTT client abstraction allows for the following additional configuration properties:
+
+- Username
+- Password
+- ClientId
+- Topic
+- Qos
+- KeepAlive
+- Retained
+- ConnectionPayload
+
+Which can be provided via TOML:
+
+```toml
+[MessageQueue]
+Protocol = 'tcp'
+Host = 'localhost'
+Port = 1883
+Type = 'mqtt'
+Topic = 'events'
+    [MessageQueue.Optional]
+    ClientId = 'MyClient'
+    Username = "MyUsername"
+    ...
+```
+Or programmatically in the Optional field of the MessageBusConfig struct. For example,
+
+```go
+types.MessageBusConfig{
+				PublishHost: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
+				Optional: map[string]string{
+					"ClientId":          "MyClientID",
+					"Username":          "MyUser",
+					"Password":          "MyPassword",
+					...
+				}}
+
 ```
 
 The following code snippets demonstrate how a service uses this messaging module to create a connection, send messages, and receive messages.
