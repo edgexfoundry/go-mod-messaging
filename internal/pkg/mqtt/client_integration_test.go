@@ -35,6 +35,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/edgexfoundry/go-mod-messaging/messaging/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
 )
 
@@ -67,14 +68,14 @@ func TestIntegrationWithMQTTServer(t *testing.T) {
 			Protocol: urlMQTT.Scheme,
 		},
 		Optional: map[string]string{
-			ClientId:          "integration-test-client",
-			Username:          "",
-			Password:          "",
-			Topic:             "test1",
-			Qos:               "0",
-			KeepAlive:         "5",
-			Retained:          "false",
-			ConnectionPayload: "",
+			mqtt.ClientId:          "integration-test-client",
+			mqtt.Username:          "",
+			mqtt.Password:          "",
+			mqtt.Topic:             "test1",
+			mqtt.Qos:               "0",
+			mqtt.KeepAlive:         "5",
+			mqtt.Retained:          "false",
+			mqtt.ConnectionPayload: "",
 		},
 	}
 

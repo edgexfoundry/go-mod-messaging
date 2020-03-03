@@ -52,6 +52,11 @@ The MQTT client abstraction allows for the following additional configuration pr
 - KeepAlive
 - Retained
 - ConnectionPayload
+- CertFile
+- KeyFile
+- CertPEMBlock
+- KeyPEMBlock
+- SkipCertVerify
 
 Which can be provided via TOML:
 
