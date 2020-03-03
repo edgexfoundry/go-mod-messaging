@@ -28,13 +28,15 @@
 package mqtt
 
 import (
-	"fmt"
 	"net/url"
 	"os"
-	"reflect"
 	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/edgexfoundry/go-mod-messaging/messaging/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
 )
 
@@ -51,15 +53,9 @@ func TestIntegrationWithMQTTServer(t *testing.T) {
 	}
 
 	urlMQTT, err := url.Parse(mqttURL)
-	if err != nil {
-		t.Error("Failed to create URL:" + err.Error())
-		return
-	}
-
+	require.NoError(t, err, "Failed to create URL")
 	port, err := strconv.ParseInt(urlMQTT.Port(), 10, 0)
-	if err != nil {
-		fmt.Errorf("Unable to parse the port:%s ", err.Error())
-	}
+	require.NoError(t, err, "Unable to parse the port")
 	configOptions := types.MessageBusConfig{
 		PublishHost: types.HostInfo{
 			Host:     urlMQTT.Hostname(),
@@ -67,29 +63,15 @@ func TestIntegrationWithMQTTServer(t *testing.T) {
 			Protocol: urlMQTT.Scheme,
 		},
 		Optional: map[string]string{
-			ClientId:          "integration-test-client",
-			Username:          "",
-			Password:          "",
-			Topic:             "test1",
-			Qos:               "0",
-			KeepAlive:         "5",
-			Retained:          "false",
-			ConnectionPayload: "",
+			mqtt.ClientId: "integration-test-client",
 		},
 	}
 
 	client, err := NewMQTTClient(configOptions)
-	if err != nil {
-		t.Error("Failed to create MQTT client: " + err.Error())
-	}
-
+	require.NoError(t, err, "Failed to create MQTT client")
 	err = client.Connect()
-	defer client.Disconnect()
-	if err != nil {
-		t.Error("Failed to connect:" + err.Error())
-		return
-	}
-
+	defer func() { _ = client.Disconnect() }()
+	require.NoError(t, err, "Failed to connect")
 	channel := make(chan types.MessageEnvelope)
 	topics := []types.TopicChannel{{
 		Topic:    "test1",
@@ -97,11 +79,7 @@ func TestIntegrationWithMQTTServer(t *testing.T) {
 	}}
 
 	err = client.Subscribe(topics, make(chan error))
-	if err != nil {
-		t.Error("Failed to create subscription: " + err.Error())
-		return
-	}
-
+	require.NoError(t, err, "Failed to create subscription")
 	expectedMessage := types.MessageEnvelope{
 		Checksum:      "123",
 		CorrelationID: "456",
@@ -110,13 +88,7 @@ func TestIntegrationWithMQTTServer(t *testing.T) {
 	}
 
 	err = client.Publish(expectedMessage, "test1")
-	if err != nil {
-		t.Error("Failed to publish: " + err.Error())
-		return
-	}
-
+	require.NoError(t, err, "Failed to publish message")
 	actualMessage := <-channel
-	if !reflect.DeepEqual(expectedMessage, actualMessage) {
-		t.Errorf("Expected message of: %v , but got: %v", expectedMessage, actualMessage)
-	}
+	assert.Equal(t, expectedMessage, actualMessage)
 }
