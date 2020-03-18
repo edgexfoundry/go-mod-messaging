@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/edgexfoundry/go-mod-messaging/internal/pkg"
 	"github.com/edgexfoundry/go-mod-messaging/internal/pkg/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
 )
@@ -133,11 +134,13 @@ func TestClientOptionsIntegration(t *testing.T) {
 			Retained:       true,
 			AutoReconnect:  true,
 			ConnectTimeout: 97,
-			SkipCertVerify: true,
-			CertFile:       "ProvidedCertFile",
-			KeyFile:        "ProvidedKeyFile",
-			KeyPEMBlock:    "ProvidedKeyPEMBlock",
-			CertPEMBlock:   "ProvidedCertPEMBlock",
+			TlsConfigurationOptions: pkg.TlsConfigurationOptions{
+				SkipCertVerify: true,
+				CertFile:       "ProvidedCertFile",
+				KeyFile:        "ProvidedKeyFile",
+				KeyPEMBlock:    "ProvidedKeyPEMBlock",
+				CertPEMBlock:   "ProvidedCertPEMBlock",
+			},
 		},
 	}
 	optionalConfigurations := NewMQTTOptionalConfigurationBuilder().
