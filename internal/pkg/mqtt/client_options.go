@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/url"
-	"reflect"
 	"strconv"
 	"time"
 
@@ -52,12 +51,7 @@ type MQTTClientOptions struct {
 	Retained       bool
 	AutoReconnect  bool
 	ConnectTimeout int // Seconds
-	// TLS configuration
-	SkipCertVerify bool
-	CertFile       string
-	KeyFile        string
-	KeyPEMBlock    string
-	CertPEMBlock   string
+	pkg.TlsConfigurationOptions
 }
 
 // CreateMQTTClientConfiguration constructs a MQTTClientConfig based on the provided MessageBusConfig.
@@ -77,55 +71,23 @@ func CreateMQTTClientConfiguration(messageBusConfig types.MessageBusConfig) (MQT
 	}
 
 	mqttClientOptions := CreateMQTTClientOptionsWithDefaults()
-	err = load(messageBusConfig.Optional, &mqttClientOptions)
+	err = pkg.Load(messageBusConfig.Optional, &mqttClientOptions)
 	if err != nil {
 		return MQTTClientConfig{}, err
 	}
+
+	tlsConfig := pkg.TlsConfigurationOptions{}
+	err = pkg.Load(messageBusConfig.Optional, &tlsConfig)
+	if err != nil {
+		return MQTTClientConfig{}, err
+	}
+
+	mqttClientOptions.TlsConfigurationOptions = tlsConfig
 
 	return MQTTClientConfig{
 		BrokerURL:         brokerUrl,
 		MQTTClientOptions: mqttClientOptions,
 	}, nil
-}
-
-// load by reflect to check map key and then fetch the value.
-// This function ignores properties that have not been provided from the source. Therefore it is recommended to provide
-// a destination struct with reasonable defaults.
-//
-// NOTE: This logic was borrowed from device-mqtt-go and some additional logic was added to accommodate more types.
-// https://github.com/edgexfoundry/device-mqtt-go/blob/a0d50c6e03a7f7dcb28f133885c803ffad3ec502/internal/driver/config.go#L74-L101
-func load(config map[string]string, des interface{}) error {
-	val := reflect.ValueOf(des).Elem()
-	for i := 0; i < val.NumField(); i++ {
-		typeField := val.Type().Field(i)
-		valueField := val.Field(i)
-
-		val, ok := config[typeField.Name]
-		if !ok {
-			// Ignore the property if the value is not provided
-			continue
-		}
-
-		switch valueField.Kind() {
-		case reflect.Int:
-			intVal, err := strconv.Atoi(val)
-			if err != nil {
-				return err
-			}
-			valueField.SetInt(int64(intVal))
-		case reflect.String:
-			valueField.SetString(val)
-		case reflect.Bool:
-			boolVal, err := strconv.ParseBool(val)
-			if err != nil {
-				return err
-			}
-			valueField.SetBool(boolVal)
-		default:
-			return fmt.Errorf("none supported value type %v ,%v", valueField.Kind(), typeField.Name)
-		}
-	}
-	return nil
 }
 
 // CreateMQTTClientOptionsWithDefaults constructs MQTTClientOptions instance with defaults.
@@ -135,15 +97,12 @@ func CreateMQTTClientOptionsWithDefaults() MQTTClientOptions {
 		Username: "",
 		Password: "",
 		// Client ID is required or else can cause unexpected errors. This was observed with Eclipse's Mosquito MQTT server.
-		ClientId:       randomClientId,
-		Qos:            0,
-		KeepAlive:      0,
-		Retained:       false,
-		ConnectTimeout: 5, // 5 seconds
-		SkipCertVerify: false,
-		CertFile:       "",
-		KeyFile:        "",
-		KeyPEMBlock:    "",
-		CertPEMBlock:   "",
+		ClientId:                randomClientId,
+		Qos:                     0,
+		KeepAlive:               0,
+		Retained:                false,
+		ConnectTimeout:          5, // 5 seconds
+		AutoReconnect:           false,
+		TlsConfigurationOptions: pkg.CreateDefaultTlsConfigurationOptions(),
 	}
 }

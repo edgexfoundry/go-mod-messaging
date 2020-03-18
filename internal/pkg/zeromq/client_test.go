@@ -925,7 +925,7 @@ func TestDisconnect(t *testing.T) {
 		t.Fatal()
 	}
 
-	if !assert.True(t, allSubscribersDisconnected(testClient), "Subscriber not closed") {
+	if !assert.True(t, allSubscribersDisconnected(testClient), "SubscribeStrategy not closed") {
 		t.Fatal()
 	}
 
