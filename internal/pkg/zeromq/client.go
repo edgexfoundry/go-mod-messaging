@@ -142,11 +142,13 @@ func (client *zeromqClient) subscribeTopic(topic *types.TopicChannel) (*zeromqSu
 
 			select {
 			case <-client.quitSubscribe:
+				client.lock.Lock()
 				_ = subscriber.connection.SetLinger(time.Duration(0))
 				err = subscriber.connection.Close()
 				if err != nil {
 					client.messageErrors <- fmt.Errorf("unable to close socket on subscribe quit, %v", err)
 				}
+				client.lock.Unlock()
 				return
 			default:
 			}
