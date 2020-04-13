@@ -63,10 +63,10 @@ var OptionalPropertiesCertLoad = map[string]string{
 	mqtt.KeyFile:   "./key",
 }
 
-var TcpHostInfo = types.HostInfo{Host: "localhost", Protocol: "tcp"}
-var TlsHostInfo = types.HostInfo{Host: "localhost", Protocol: "tls"}
-var TcpsHostInfo = types.HostInfo{Host: "localhost", Protocol: "tcps"}
-var SslHostInfo = types.HostInfo{Host: "localhost", Protocol: "ssl"}
+var TcpHostInfo = types.HostInfo{Host: "localhost", Protocol: "tcp", Port: 1883}
+var TlsHostInfo = types.HostInfo{Host: "localhost", Protocol: "tls", Port: 8883}
+var TcpsHostInfo = types.HostInfo{Host: "localhost", Protocol: "tcps", Port: 8883}
+var SslHostInfo = types.HostInfo{Host: "localhost", Protocol: "ssl", Port: 8883}
 
 // TestMessageBusConfig defines a simple configuration used for testing successful options parsing.
 var TestMessageBusConfig = types.MessageBusConfig{
