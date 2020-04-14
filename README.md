@@ -52,6 +52,11 @@ The MQTT client abstraction allows for the following additional configuration pr
 - KeepAlive
 - Retained
 - ConnectionPayload
+- CertFile
+- KeyFile
+- CertPEMBlock
+- KeyPEMBlock
+- SkipCertVerify
 
 Which can be provided via TOML:
 
@@ -80,6 +85,9 @@ types.MessageBusConfig{
 				}}
 
 ```
+
+**NOTE**  
+ The best way to construct the `Optional` map is to use the provided [mqttOptionalConfigurationBuilder](./messaging/mqtt/configuration.go) struct which gives the additional benefit of ensuring the expected types for each property is correct.
 
 The following code snippets demonstrate how a service uses this messaging module to create a connection, send messages, and receive messages.
 

@@ -15,6 +15,7 @@
 package mqtt
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -22,27 +23,64 @@ import (
 	"testing"
 	"time"
 
-	"github.com/eclipse/paho.mqtt.golang"
+	"github.com/stretchr/testify/require"
 
+	"github.com/edgexfoundry/go-mod-messaging/messaging/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
+
+	pahomqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/stretchr/testify/assert"
 )
+
+var OptionalPropertiesNoTls = map[string]string{
+	mqtt.Username:  "TestUser",
+	mqtt.Password:  "TestPassword",
+	mqtt.ClientId:  "TestClientID",
+	mqtt.Qos:       "1",
+	mqtt.KeepAlive: "3",
+	mqtt.Retained:  "true",
+}
+
+var OptionalPropertiesCertCreate = map[string]string{
+	mqtt.Username:     "TestUser",
+	mqtt.Password:     "TestPassword",
+	mqtt.ClientId:     "TestClientID",
+	mqtt.Qos:          "1",
+	mqtt.KeepAlive:    "3",
+	mqtt.Retained:     "true",
+	mqtt.CertPEMBlock: "CertBytes",
+	mqtt.KeyPEMBlock:  "KeyBytes",
+}
+
+var OptionalPropertiesCertLoad = map[string]string{
+	mqtt.Username:  "TestUser",
+	mqtt.Password:  "TestPassword",
+	mqtt.ClientId:  "TestClientID",
+	mqtt.Qos:       "1",
+	mqtt.KeepAlive: "3",
+	mqtt.Retained:  "true",
+	mqtt.CertFile:  "./cert",
+	mqtt.KeyFile:   "./key",
+}
+
+var TcpHostInfo = types.HostInfo{Host: "localhost", Protocol: "tcp"}
+var TlsHostInfo = types.HostInfo{Host: "localhost", Protocol: "tls"}
+var TcpsHostInfo = types.HostInfo{Host: "localhost", Protocol: "tcps"}
+var SslHostInfo = types.HostInfo{Host: "localhost", Protocol: "ssl"}
 
 // TestMessageBusConfig defines a simple configuration used for testing successful options parsing.
 var TestMessageBusConfig = types.MessageBusConfig{
-	PublishHost: types.HostInfo{Host: "localhost"},
-	Optional: map[string]string{
-		"Schema":            "tcp",
-		"Host":              "example.com",
-		"Port":              "9090",
-		"Username":          "TestUser",
-		"Password":          "TestPassword",
-		"ClientId":          "TestClientID",
-		"Topic":             "TestTopic",
-		"Qos":               "1",
-		"KeepAlive":         "3",
-		"Retained":          "true",
-		"ConnectionPayload": "TestConnectionPayload",
-	},
+	PublishHost: TcpsHostInfo,
+	Optional:    OptionalPropertiesNoTls,
+}
+var TestMessageBusConfigTlsCreate = types.MessageBusConfig{
+	PublishHost: TlsHostInfo,
+	Optional:    OptionalPropertiesCertCreate,
+}
+
+var TestMessageBusConfigTlsLoad = types.MessageBusConfig{
+	PublishHost: TlsHostInfo,
+	Optional:    OptionalPropertiesCertLoad,
 }
 
 // MockToken implements Token and gives control over the information returned to the caller of the various
@@ -97,18 +135,18 @@ func (mt MockToken) Error() error {
 // MockMQTTClient implements the Client interface and allows for control over the returned data when invoking it's
 // methods.
 type MockMQTTClient struct {
-	subscriptions map[string]mqtt.MessageHandler
+	subscriptions map[string]pahomqtt.MessageHandler
 	// MockTokens used to control the returned values for the respective functions.
 	connect   MockToken
 	publish   MockToken
 	subscribe MockToken
 }
 
-func (mc MockMQTTClient) Connect() mqtt.Token {
+func (mc MockMQTTClient) Connect() pahomqtt.Token {
 	return &mc.connect
 }
 
-func (mc MockMQTTClient) Publish(topic string, _ byte, _ bool, message interface{}) mqtt.Token {
+func (mc MockMQTTClient) Publish(topic string, _ byte, _ bool, message interface{}) pahomqtt.Token {
 	handler, ok := mc.subscriptions[topic]
 	if !ok {
 		return &mc.publish
@@ -118,7 +156,7 @@ func (mc MockMQTTClient) Publish(topic string, _ byte, _ bool, message interface
 	return &mc.publish
 }
 
-func (mc MockMQTTClient) Subscribe(topic string, _ byte, handler mqtt.MessageHandler) mqtt.Token {
+func (mc MockMQTTClient) Subscribe(topic string, _ byte, handler pahomqtt.MessageHandler) pahomqtt.Token {
 	mc.subscriptions[topic] = handler
 	return &mc.subscribe
 }
@@ -132,27 +170,27 @@ func (mt MockToken) Wait() bool {
 }
 
 func (MockMQTTClient) IsConnected() bool {
-	panic("function not expected to be invoked")
+	return false
 }
 
 func (MockMQTTClient) IsConnectionOpen() bool {
 	panic("function not expected to be invoked")
 }
 
-func (MockMQTTClient) SubscribeMultiple(map[string]byte, mqtt.MessageHandler) mqtt.Token {
+func (MockMQTTClient) SubscribeMultiple(map[string]byte, pahomqtt.MessageHandler) pahomqtt.Token {
 	panic("function not expected to be invoked")
 }
 
-func (MockMQTTClient) Unsubscribe(...string) mqtt.Token {
+func (MockMQTTClient) Unsubscribe(...string) pahomqtt.Token {
 	panic("function not expected to be invoked")
 }
 
-func (MockMQTTClient) AddRoute(string, mqtt.MessageHandler) {
+func (MockMQTTClient) AddRoute(string, pahomqtt.MessageHandler) {
 	panic("function not expected to be invoked")
 }
 
-func (MockMQTTClient) OptionsReader() mqtt.ClientOptionsReader {
-	return mqtt.NewClient(mqtt.NewClientOptions()).OptionsReader()
+func (MockMQTTClient) OptionsReader() pahomqtt.ClientOptionsReader {
+	return pahomqtt.NewClient(pahomqtt.NewClientOptions()).OptionsReader()
 
 }
 
@@ -192,12 +230,12 @@ func (MockMessage) Ack() {
 
 // mockClientCreator higher-order function which creates a function that constructs a MockMQTTClient
 func mockClientCreator(connect MockToken, publish MockToken, subscribe MockToken) ClientCreator {
-	return func(config types.MessageBusConfig) (mqtt.Client, error) {
+	return func(config types.MessageBusConfig) (pahomqtt.Client, error) {
 		return MockMQTTClient{
 			connect:       connect,
 			publish:       publish,
 			subscribe:     subscribe,
-			subscriptions: make(map[string]mqtt.MessageHandler),
+			subscriptions: make(map[string]pahomqtt.MessageHandler),
 		}, nil
 
 	}
@@ -211,10 +249,236 @@ func TestInvalidClientOptions(t *testing.T) {
 	}}
 
 	_, err := NewMQTTClient(invalidOptions)
-	if err == nil {
-		t.Error("Expected error but did not observe one")
-		return
+	require.Error(t, err)
+}
+
+func TestInvalidTlsOptions(t *testing.T) {
+	options := types.MessageBusConfig{
+		PublishHost: TlsHostInfo,
+		Optional: map[string]string{
+			"CertFile": "./does-not-exist",
+			"KeyFile":  "./does-not-exist",
+		},
 	}
+	_, err := NewMQTTClient(options)
+	require.Error(t, err)
+}
+
+func TestClientCreatorTLS(t *testing.T) {
+	tests := []struct {
+		name            string
+		hostConfig      types.HostInfo
+		optionalConfig  map[string]string
+		certCreator     X509KeyPairCreator
+		certLoader      X509KeyLoader
+		expectError     bool
+		expectTLSConfig bool
+	}{
+		{
+			name:       "Create TLS Config from PEM Block",
+			hostConfig: TlsHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.CertPEMBlock: "CertPEMBlock",
+				mqtt.KeyPEMBlock:  "KeyPEMBlock",
+			},
+			certCreator:     mockCertCreator(nil),
+			certLoader:      mockCertLoader(nil),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Create TCPS Config from PEM Block",
+			hostConfig: TcpsHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.CertPEMBlock: "CertPEMBlock",
+				mqtt.KeyPEMBlock:  "KeyPEMBlock",
+			},
+			certCreator:     mockCertCreator(nil),
+			certLoader:      mockCertLoader(nil),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Create SSL Config from PEM Block",
+			hostConfig: SslHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.CertPEMBlock: "CertPEMBlock",
+				mqtt.KeyPEMBlock:  "KeyPEMBlock",
+			},
+			certCreator:     mockCertCreator(nil),
+			certLoader:      mockCertLoader(nil),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Skip TLS Config from PEM Block for non-supported TLS protocols",
+			hostConfig: TcpHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.CertPEMBlock: "CertPEMBlock",
+				mqtt.KeyPEMBlock:  "KeyPEMBlock",
+			},
+			certCreator:     mockCertCreator(nil),
+			certLoader:      mockCertLoader(nil),
+			expectError:     false,
+			expectTLSConfig: false,
+		},
+		{
+			name:       "Fail Create TLS Config from PEM File",
+			hostConfig: TlsHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.CertPEMBlock: "CertPEMBlock",
+				mqtt.KeyPEMBlock:  "KeyPEMBlock",
+			},
+			certCreator:     mockCertCreator(errors.New("test error")),
+			certLoader:      mockCertLoader(nil),
+			expectError:     true,
+			expectTLSConfig: false,
+		},
+		{
+			name:       "Load TLS Config from Cert File",
+			hostConfig: TlsHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.CertFile: "./cert",
+				mqtt.KeyFile:  "./key",
+			},
+			certCreator:     mockCertCreator(nil),
+			certLoader:      mockCertLoader(nil),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Load TCPS Config from Cert File",
+			hostConfig: TcpsHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.CertFile: "./cert",
+				mqtt.KeyFile:  "./key",
+			},
+			certCreator:     mockCertCreator(nil),
+			certLoader:      mockCertLoader(nil),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Load SSL Config from Cert File",
+			hostConfig: SslHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.CertFile: "./cert",
+				mqtt.KeyFile:  "./key",
+			},
+			certCreator:     mockCertCreator(nil),
+			certLoader:      mockCertLoader(nil),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Skip Load TLS Config from Cert File for un-supported protocols",
+			hostConfig: TcpHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.CertFile: "./cert",
+				mqtt.KeyFile:  "./key",
+			},
+			certCreator:     mockCertCreator(nil),
+			certLoader:      mockCertLoader(nil),
+			expectError:     false,
+			expectTLSConfig: false,
+		},
+		{
+			name:       "Fail Load TLS Config from Cert File",
+			hostConfig: TlsHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.CertFile: "./cert",
+				mqtt.KeyFile:  "./key",
+			},
+			certCreator:     mockCertCreator(nil),
+			certLoader:      mockCertLoader(errors.New("test error")),
+			expectError:     true,
+			expectTLSConfig: false,
+		},
+		{
+			name:       "Fail Load TLS Config For Invalid Options",
+			hostConfig: TlsHostInfo,
+			optionalConfig: map[string]string{
+				mqtt.Qos: "abc",
+			},
+			certCreator:     mockCertCreator(nil),
+			certLoader:      mockCertLoader(errors.New("test error")),
+			expectError:     true,
+			expectTLSConfig: false,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client, err := NewMQTTClientWithCreator(
+				types.MessageBusConfig{
+					PublishHost: test.hostConfig,
+					Optional:    test.optionalConfig,
+				},
+				json.Marshal,
+				json.Unmarshal,
+				ClientCreatorWithCertLoader(test.certCreator, test.certLoader))
+
+			if test.expectError {
+				require.Error(t, err)
+				return // End test for expected error
+			} else {
+				require.NoError(t, err)
+			}
+
+			clientOptions := client.wrappedClient.OptionsReader()
+			tlsConfig := clientOptions.TLSConfig()
+			if test.expectTLSConfig {
+				assert.NotNil(t, tlsConfig, "Failed to configure TLS for underlying client")
+			} else {
+				assert.Nil(t, tlsConfig, "Expected TLS configuration to be not be provided.")
+			}
+		})
+	}
+}
+
+func TestClientCreatorTlsLoader(t *testing.T) {
+	client, err := NewMQTTClientWithCreator(
+		TestMessageBusConfigTlsLoad,
+		json.Marshal,
+		json.Unmarshal,
+		ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(nil)))
+
+	require.NoError(t, err)
+	clientOptions := client.wrappedClient.OptionsReader()
+	tlsConfig := clientOptions.TLSConfig()
+	assert.NotNil(t, tlsConfig, "Failed to configure TLS for underlying client")
+}
+
+func TestClientCreatorTlsLoadError(t *testing.T) {
+	_, err := NewMQTTClientWithCreator(
+		TestMessageBusConfigTlsLoad,
+		json.Marshal,
+		json.Unmarshal,
+		ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(errors.New("test error"))))
+
+	assert.Error(t, err, "Expected error for invalid CertFile and KeyFile file locations")
+}
+
+func TestClientCreatorTlsCreator(t *testing.T) {
+	client, err := NewMQTTClientWithCreator(
+		TestMessageBusConfigTlsCreate,
+		json.Marshal,
+		json.Unmarshal,
+		ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(nil)))
+
+	require.NoError(t, err)
+	clientOptions := client.wrappedClient.OptionsReader()
+	tlsConfig := clientOptions.TLSConfig()
+	assert.NotNil(t, tlsConfig, "Failed to configure TLS for underlying client")
+}
+
+func TestClientCreatorTlsCreatorError(t *testing.T) {
+	_, err := NewMQTTClientWithCreator(
+		TestMessageBusConfigTlsCreate,
+		json.Marshal,
+		json.Unmarshal,
+		ClientCreatorWithCertLoader(mockCertCreator(errors.New("test error")), mockCertLoader(nil)))
+
+	assert.Error(t, err, "Expected error for invalid CertFile and KeyFile file locations")
 }
 
 func TestInvalidClientOptionsWithCreator(t *testing.T) {
@@ -225,10 +489,7 @@ func TestInvalidClientOptionsWithCreator(t *testing.T) {
 	}}
 
 	_, err := NewMQTTClientWithCreator(invalidOptions, json.Marshal, json.Unmarshal, DefaultClientCreator())
-	if err == nil {
-		t.Error("Expected error but did not observe one")
-		return
-	}
+	require.Error(t, err)
 }
 
 func TestClient_Connect(t *testing.T) {
@@ -278,19 +539,18 @@ func TestClient_Connect(t *testing.T) {
 				return
 			}
 
-			if test.expectError && err == nil {
-				t.Error("Expected error but did not observe one")
-				return
+			if test.expectError {
+				require.Error(t, err)
 			}
 
-			if test.expectError && test.errorType != nil {
+			if test.errorType != nil {
+
 				eet := reflect.TypeOf(test.errorType)
 				aet := reflect.TypeOf(err)
-				if !aet.AssignableTo(eet) {
-					t.Errorf("Expected error of type %v, but got an error of type %v", eet, aet)
-				}
+				assert.Condition(t, func() (success bool) {
+					return aet.AssignableTo(eet)
+				}, "Expected error of type %v, but got an error of type %v", eet, aet)
 			}
-
 		})
 	}
 }
@@ -355,22 +615,19 @@ func TestClient_Publish(t *testing.T) {
 				mockClientCreator(MockToken{}, test.publishToken, MockToken{}))
 
 			err := client.Publish(test.message, "test-topic")
-			if !test.expectError && err != nil {
-				t.Errorf("Did not expect error but observed: %s", err.Error())
-				return
+			if test.expectError {
+				require.Error(t, err)
+				return // End test for expected error
+			} else {
+				require.NoError(t, err)
 			}
 
-			if test.expectError && err == nil {
-				t.Error("Expected error but did not observe one")
-				return
-			}
-
-			if test.expectError && test.errorType != nil {
+			if test.errorType != nil {
 				eet := reflect.TypeOf(test.errorType)
 				aet := reflect.TypeOf(err)
-				if !aet.AssignableTo(eet) {
-					t.Errorf("Expected error of type %v, but got an error of type %v", eet, aet)
-				}
+				assert.Condition(t, func() (success bool) {
+					return aet.AssignableTo(eet)
+				}, "Expected error of type %v, but got an error of type %v", eet, aet)
 			}
 		})
 	}
@@ -436,22 +693,19 @@ func TestClient_Subscribe(t *testing.T) {
 			}
 
 			err := client.Subscribe(topicChannels, make(chan error))
-			if !test.expectError && err != nil {
-				t.Errorf("Did not expect error but observed: %s", err.Error())
+			if test.expectError {
+				require.Error(t, err)
 				return
+			} else {
+				require.NoError(t, err)
 			}
 
-			if test.expectError && err == nil {
-				t.Error("Expected error but did not observe one")
-				return
-			}
-
-			if test.expectError && test.errorType != nil {
+			if test.errorType != nil {
 				eet := reflect.TypeOf(test.errorType)
 				aet := reflect.TypeOf(err)
-				if !aet.AssignableTo(eet) {
-					t.Errorf("Expected error of type %v, but got an error of type %v", eet, aet)
-				}
+				assert.Condition(t, func() (success bool) {
+					return aet.AssignableTo(eet)
+				}, "Expected error of type %v, but got an error of type %v", eet, aet)
 			}
 		})
 	}
@@ -460,15 +714,10 @@ func TestClient_Subscribe(t *testing.T) {
 func TestClient_Disconnect(t *testing.T) {
 	client, _ := NewMQTTClient(TestMessageBusConfig)
 	err := client.Disconnect()
-	if err != nil {
-		t.Errorf("Disconnect is not expected to return an errors: %s", err.Error())
-	}
+	require.NoError(t, err, "Disconnect is not expected to return an errors")
 
 	err = client.Disconnect()
-	if err != nil {
-		t.Errorf("Disconnect is not expected to return an error if not connected: %s", err.Error())
-	}
-
+	require.NoError(t, err, "Disconnect is not expected to return an error if not connected")
 }
 
 func TestSubscriptionMessageHandler(t *testing.T) {
@@ -493,30 +742,21 @@ func TestSubscriptionMessageHandler(t *testing.T) {
 	go receiveMessage(wg, topic1Channel, 1)
 	go receiveMessage(wg, topic2Channel, 1)
 	err := client.Subscribe(topicChannels, make(chan error))
-	if err != nil {
-		t.Errorf("unexpected error: %s", err.Error())
-	}
-
+	require.NoError(t, err)
 	err = client.Publish(types.MessageEnvelope{
 		Checksum:      "123",
 		CorrelationID: "456",
 		Payload:       []byte("Simple payload"),
 		ContentType:   "application/json",
 	}, "test1")
-	if err != nil {
-		t.Errorf("unexpected error: %s", err.Error())
-	}
-
+	require.NoError(t, err)
 	err = client.Publish(types.MessageEnvelope{
 		Checksum:      "789",
 		CorrelationID: "000",
 		Payload:       []byte("Another simple payload"),
 		ContentType:   "application/json",
 	}, "test2")
-	if err != nil {
-		t.Errorf("unexpected error: %s", err.Error())
-	}
-
+	require.NoError(t, err)
 	wg.Wait()
 }
 
@@ -548,30 +788,21 @@ func TestSubscriptionMessageHandlerError(t *testing.T) {
 	errorChannel := make(chan error)
 	go receiveError(wg, errorChannel, 1)
 	err := client.Subscribe(topicChannels, errorChannel)
-	if err != nil {
-		t.Errorf("unexpected error: %s", err.Error())
-	}
-
+	require.NoError(t, err)
 	err = client.Publish(types.MessageEnvelope{
 		Checksum:      "123",
 		CorrelationID: "456",
 		Payload:       []byte("Simple payload"),
 		ContentType:   "application/json",
 	}, "test1")
-	if err != nil {
-		t.Errorf("unexpected error: %s", err.Error())
-	}
-
+	require.NoError(t, err)
 	err = client.Publish(types.MessageEnvelope{
 		Checksum:      "789",
 		CorrelationID: "000",
 		Payload:       []byte("Another simple payload"),
 		ContentType:   "application/json",
 	}, "test2")
-	if err != nil {
-		t.Errorf("unexpected error: %s", err.Error())
-	}
-
+	require.NoError(t, err)
 	wg.Wait()
 }
 
@@ -599,4 +830,16 @@ func receiveError(group *sync.WaitGroup, errorChannel <-chan error, expectedMess
 		<-errorChannel
 	}
 	group.Done()
+}
+
+func mockCertCreator(returnError error) X509KeyPairCreator {
+	return func(certPEMBlock []byte, keyPEMBlock []byte) (certificate tls.Certificate, err error) {
+		return tls.Certificate{}, returnError
+	}
+}
+
+func mockCertLoader(returnError error) X509KeyLoader {
+	return func(certFile string, keyFile string) (certificate tls.Certificate, err error) {
+		return tls.Certificate{}, returnError
+	}
 }

@@ -15,9 +15,12 @@
 package mqtt
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/edgexfoundry/go-mod-messaging/messaging/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
 )
 
@@ -36,26 +39,24 @@ func TestCreateMQTTClientConfiguration(t *testing.T) {
 			args{types.MessageBusConfig{
 				PublishHost: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
 				Optional: map[string]string{
-					"Username":          "TestUser",
-					"Password":          "TestPassword",
-					"ClientId":          "TestClientID",
-					"Topic":             "TestTopic",
-					"Qos":               "1",
-					"KeepAlive":         "3",
-					"Retained":          "true",
-					"ConnectionPayload": "TestConnectionPayload",
+					mqtt.Username:       "TestUser",
+					mqtt.Password:       "TestPassword",
+					mqtt.ClientId:       "TestClientID",
+					mqtt.Qos:            "1",
+					mqtt.KeepAlive:      "3",
+					mqtt.Retained:       "true",
+					mqtt.ConnectTimeout: "7",
 				}}},
 			MQTTClientConfig{
 				BrokerURL: "tcp://example.com:9090",
 				MQTTClientOptions: MQTTClientOptions{
-					Username:          "TestUser",
-					Password:          "TestPassword",
-					ClientId:          "TestClientID",
-					Topic:             "TestTopic",
-					Qos:               1,
-					KeepAlive:         3,
-					Retained:          true,
-					ConnectionPayload: "TestConnectionPayload",
+					Username:       "TestUser",
+					Password:       "TestPassword",
+					ClientId:       "TestClientID",
+					Qos:            1,
+					KeepAlive:      3,
+					Retained:       true,
+					ConnectTimeout: 7,
 				},
 			},
 			false,
@@ -65,27 +66,24 @@ func TestCreateMQTTClientConfiguration(t *testing.T) {
 			args{types.MessageBusConfig{
 				PublishHost: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
 				Optional: map[string]string{
-					"BrokerURL":         "http://fail.edu",
-					"Username":          "TestUser",
-					"Password":          "TestPassword",
-					"ClientId":          "TestClientID",
-					"Topic":             "TestTopic",
-					"Qos":               "1",
-					"KeepAlive":         "3",
-					"Retained":          "true",
-					"ConnectionPayload": "TestConnectionPayload",
+					mqtt.Username:       "TestUser",
+					mqtt.Password:       "TestPassword",
+					mqtt.ClientId:       "TestClientID",
+					mqtt.Qos:            "1",
+					mqtt.KeepAlive:      "3",
+					mqtt.Retained:       "true",
+					mqtt.ConnectTimeout: "7",
 				}}},
 			MQTTClientConfig{
 				BrokerURL: "tcp://example.com:9090",
 				MQTTClientOptions: MQTTClientOptions{
-					Username:          "TestUser",
-					Password:          "TestPassword",
-					ClientId:          "TestClientID",
-					Topic:             "TestTopic",
-					Qos:               1,
-					KeepAlive:         3,
-					Retained:          true,
-					ConnectionPayload: "TestConnectionPayload",
+					Username:       "TestUser",
+					Password:       "TestPassword",
+					ClientId:       "TestClientID",
+					Qos:            1,
+					KeepAlive:      3,
+					Retained:       true,
+					ConnectTimeout: 7,
 				}},
 			false,
 		},
@@ -126,27 +124,25 @@ func TestCreateMQTTClientConfiguration(t *testing.T) {
 			args{types.MessageBusConfig{
 				PublishHost: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
 				Optional: map[string]string{
-					"Username":          "TestUser",
-					"Password":          "TestPassword",
-					"ClientId":          "TestClientID",
-					"Topic":             "TestTopic",
-					"Qos":               "1",
-					"KeepAlive":         "3",
-					"Retained":          "true",
-					"ConnectionPayload": "TestConnectionPayload",
+					mqtt.Username:       "TestUser",
+					mqtt.Password:       "TestPassword",
+					mqtt.ClientId:       "TestClientID",
+					mqtt.Qos:            "1",
+					mqtt.KeepAlive:      "3",
+					mqtt.Retained:       "true",
+					mqtt.ConnectTimeout: "7",
 					"Unknown config":    "Something random",
 				}}},
 			MQTTClientConfig{
 				BrokerURL: "tcp://example.com:9090",
 				MQTTClientOptions: MQTTClientOptions{
-					Username:          "TestUser",
-					Password:          "TestPassword",
-					ClientId:          "TestClientID",
-					Topic:             "TestTopic",
-					Qos:               1,
-					KeepAlive:         3,
-					Retained:          true,
-					ConnectionPayload: "TestConnectionPayload",
+					Username:       "TestUser",
+					Password:       "TestPassword",
+					ClientId:       "TestClientID",
+					Qos:            1,
+					KeepAlive:      3,
+					Retained:       true,
+					ConnectTimeout: 7,
 				},
 			},
 			false,
@@ -155,13 +151,14 @@ func TestCreateMQTTClientConfiguration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := CreateMQTTClientConfiguration(tt.args.messageBusConfig)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateMQTTClientConfiguration() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr {
+				require.Error(t, err, "CreateMQTTClientConfiguration() error = %v, wantErr %v", err, tt.wantErr)
+				return // End test for expected errors
+			} else {
+				require.NoError(t, err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CreateMQTTClientConfiguration() got = %v, want %v", got, tt.want)
-			}
+
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

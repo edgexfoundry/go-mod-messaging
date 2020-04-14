@@ -22,19 +22,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/edgexfoundry/go-mod-messaging/internal/pkg"
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
-)
-
-const (
-	// Constants for configuration properties provided via the MessageBusConfig's Optional field.
-	Username          = "Username"
-	Password          = "Password"
-	ClientId          = "ClientId"
-	Topic             = "Topic"
-	Qos               = "Qos"
-	KeepAlive         = "KeepAlive"
-	Retained          = "Retained"
-	ConnectionPayload = "ConnectionPayload"
 )
 
 // MQTTClientConfig contains all the configurations for the MQTT client.
@@ -53,14 +42,22 @@ type ConnectionOptions struct {
 
 // MQTTClientOptions contains the client options which are loaded via reflection
 type MQTTClientOptions struct {
-	Username          string
-	Password          string
-	ClientId          string
-	Topic             string
-	Qos               int
-	KeepAlive         int
-	Retained          bool
-	ConnectionPayload string
+	// Client Identifiers
+	Username string
+	Password string
+	ClientId string
+	// Connection information
+	Qos            int
+	KeepAlive      int // Seconds
+	Retained       bool
+	AutoReconnect  bool
+	ConnectTimeout int // Seconds
+	// TLS configuration
+	SkipCertVerify bool
+	CertFile       string
+	KeyFile        string
+	KeyPEMBlock    string
+	CertPEMBlock   string
 }
 
 // CreateMQTTClientConfiguration constructs a MQTTClientConfig based on the provided MessageBusConfig.
@@ -68,7 +65,7 @@ func CreateMQTTClientConfiguration(messageBusConfig types.MessageBusConfig) (MQT
 	brokerUrl := messageBusConfig.PublishHost.GetHostURL()
 	_, err := url.Parse(brokerUrl)
 	if err != nil {
-		return MQTTClientConfig{}, err
+		return MQTTClientConfig{}, pkg.NewBrokerURLErr(fmt.Sprintf("Failed to parse broker: %v", err))
 	}
 
 	mqttClientOptions := CreateMQTTClientOptionsWithDefaults()
@@ -123,17 +120,22 @@ func load(config map[string]string, des interface{}) error {
 	return nil
 }
 
+// CreateMQTTClientOptionsWithDefaults constructs MQTTClientOptions instance with defaults.
 func CreateMQTTClientOptionsWithDefaults() MQTTClientOptions {
 	randomClientId := strconv.Itoa(rand.New(rand.NewSource(time.Now().UnixNano())).Intn(100000))
 	return MQTTClientOptions{
 		Username: "",
 		Password: "",
 		// Client ID is required or else can cause unexpected errors. This was observed with Eclipse's Mosquito MQTT server.
-		ClientId:          randomClientId,
-		Topic:             "",
-		Qos:               0,
-		KeepAlive:         0,
-		Retained:          false,
-		ConnectionPayload: "",
+		ClientId:       randomClientId,
+		Qos:            0,
+		KeepAlive:      0,
+		Retained:       false,
+		ConnectTimeout: 5, // 5 seconds
+		SkipCertVerify: false,
+		CertFile:       "",
+		KeyFile:        "",
+		KeyPEMBlock:    "",
+		CertPEMBlock:   "",
 	}
 }

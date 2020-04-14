@@ -939,6 +939,9 @@ func TestDisconnect(t *testing.T) {
 }
 
 func allSubscribersDisconnected(client *zeromqClient) bool {
+	client.lock.Lock()
+	defer client.lock.Unlock()
+
 	allDisconnected := true
 	for _, subscriber := range client.subscribers {
 		if subscriber.connection.String() != "Socket(CLOSED)" {
