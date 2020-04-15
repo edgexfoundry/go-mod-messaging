@@ -62,7 +62,15 @@ type MQTTClientOptions struct {
 
 // CreateMQTTClientConfiguration constructs a MQTTClientConfig based on the provided MessageBusConfig.
 func CreateMQTTClientConfiguration(messageBusConfig types.MessageBusConfig) (MQTTClientConfig, error) {
-	brokerUrl := messageBusConfig.PublishHost.GetHostURL()
+	var brokerUrl string
+	if !messageBusConfig.PublishHost.IsHostInfoEmpty() {
+		brokerUrl = messageBusConfig.PublishHost.GetHostURL()
+	} else if !messageBusConfig.SubscribeHost.IsHostInfoEmpty() {
+		brokerUrl = messageBusConfig.SubscribeHost.GetHostURL()
+	} else {
+		return MQTTClientConfig{}, fmt.Errorf("Specified empty broker info.")
+	}
+
 	_, err := url.Parse(brokerUrl)
 	if err != nil {
 		return MQTTClientConfig{}, pkg.NewBrokerURLErr(fmt.Sprintf("Failed to parse broker: %v", err))
