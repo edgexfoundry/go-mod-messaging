@@ -17,8 +17,6 @@ package mqtt
 import (
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
-	"net/url"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/internal/pkg"
@@ -27,16 +25,8 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-var TlsSchemes = []string{"tcps", "ssl", "tls"}
-
 // ClientCreator defines the function signature for creating an MQTT client.
 type ClientCreator func(config types.MessageBusConfig) (mqtt.Client, error)
-
-// X509KeyPairCreator defines the function signature for creating a tls.Certificate based on PEM encoding.
-type X509KeyPairCreator func(certPEMBlock []byte, keyPEMBlock []byte) (tls.Certificate, error)
-
-// X509KeyLoader defines a function signature for loading a tls.Certificate from cert and key files.
-type X509KeyLoader func(certFile string, keyFile string) (tls.Certificate, error)
 
 // MessageMarshaler defines the function signature for marshaling structs into []byte.
 type MessageMarshaler func(v interface{}) ([]byte, error)
@@ -173,7 +163,7 @@ func DefaultClientCreator() ClientCreator {
 
 // ClientCreatorWithCertLoader creates a ClientCreator which leverages the specified cert creator and loader when
 // creating an MQTT client.
-func ClientCreatorWithCertLoader(certCreator X509KeyPairCreator, certLoader X509KeyLoader) ClientCreator {
+func ClientCreatorWithCertLoader(certCreator pkg.X509KeyPairCreator, certLoader pkg.X509KeyLoader) ClientCreator {
 	return func(options types.MessageBusConfig) (mqtt.Client, error) {
 		clientConfiguration, err := CreateMQTTClientConfiguration(options)
 		if err != nil {
@@ -237,8 +227,8 @@ func getTokenError(token mqtt.Token, timeout time.Duration, operation string, de
 // createClientOptions constructs mqtt.Client options from an MQTTClientConfig.
 func createClientOptions(
 	clientConfiguration MQTTClientConfig,
-	certCreator X509KeyPairCreator,
-	certLoader X509KeyLoader) (*mqtt.ClientOptions, error) {
+	certCreator pkg.X509KeyPairCreator,
+	certLoader pkg.X509KeyLoader) (*mqtt.ClientOptions, error) {
 
 	clientOptions := mqtt.NewClientOptions()
 	clientOptions.AddBroker(clientConfiguration.BrokerURL)
@@ -248,7 +238,12 @@ func createClientOptions(
 	clientOptions.SetKeepAlive(time.Duration(clientConfiguration.KeepAlive) * time.Second)
 	clientOptions.SetAutoReconnect(clientConfiguration.AutoReconnect)
 	clientOptions.SetConnectTimeout(time.Duration(clientConfiguration.ConnectTimeout) * time.Second)
-	tlsConfiguration, err := generateTLSForClientClientOptions(clientConfiguration, certCreator, certLoader)
+	tlsConfiguration, err := pkg.GenerateTLSForClientClientOptions(
+		clientConfiguration.BrokerURL,
+		clientConfiguration.TlsConfigurationOptions,
+		certCreator,
+		certLoader)
+
 	if err != nil {
 		return clientOptions, err
 	}
@@ -256,68 +251,4 @@ func createClientOptions(
 	clientOptions.SetTLSConfig(tlsConfiguration)
 
 	return clientOptions, nil
-}
-
-// generateTLSForClientClientOptions creates a tls.Config which can be used when configuring the underlying MQTT client.
-// If TLS is not needed then nil will be returned which can be used to signal no TLS is needed to the MQTT client.
-func generateTLSForClientClientOptions(
-	clientConfiguration MQTTClientConfig,
-	certCreator X509KeyPairCreator,
-	certLoader X509KeyLoader) (*tls.Config, error) {
-
-	// Nothing to do if the CertFile, KeyFile, CertPEMBlock, and KeyPEMBlock properties are not provided.
-	if len(clientConfiguration.CertFile) <= 0 && len(clientConfiguration.KeyFile) <= 0 &&
-		len(clientConfiguration.CertPEMBlock) <= 0 && len(clientConfiguration.KeyPEMBlock) <= 0 {
-		return nil, nil
-	}
-
-	brokerURL, err := url.Parse(clientConfiguration.BrokerURL)
-	if err != nil {
-		return nil, pkg.NewBrokerURLErr(fmt.Sprintf("Failed to parse broker: %v", err))
-	}
-
-	for _, scheme := range TlsSchemes {
-		if brokerURL.Scheme != scheme {
-			continue
-		}
-
-		cert, err := generateCertificate(clientConfiguration, certCreator, certLoader)
-		if err != nil {
-			return nil, err
-		}
-
-		tlsConfig := &tls.Config{
-			ClientCAs:          nil,
-			InsecureSkipVerify: clientConfiguration.SkipCertVerify,
-			Certificates:       []tls.Certificate{cert},
-		}
-
-		return tlsConfig, nil
-	}
-
-	// The scheme being used either does not require TLS or is not supported with this configuration setup.
-	return nil, nil
-}
-
-// generateCertificate creates a x509 certificate by either loading it from an existing cert and key files, or creates
-// a cert and key from the provided PEM bytes.
-func generateCertificate(
-	clientConfiguration MQTTClientConfig,
-	certCreator X509KeyPairCreator,
-	certLoader X509KeyLoader) (tls.Certificate, error) {
-
-	var cert tls.Certificate
-	var err error
-
-	if clientConfiguration.KeyPEMBlock != "" && clientConfiguration.CertPEMBlock != "" {
-		cert, err = certCreator([]byte(clientConfiguration.CertPEMBlock), []byte(clientConfiguration.KeyPEMBlock))
-	} else {
-		cert, err = certLoader(clientConfiguration.CertFile, clientConfiguration.KeyFile)
-	}
-
-	if err != nil {
-		return cert, pkg.NewCertificateErr(fmt.Sprintf("Failed loading x509 data: %v", err))
-	}
-
-	return cert, nil
 }

@@ -25,6 +25,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/edgexfoundry/go-mod-messaging/internal/pkg"
 	"github.com/edgexfoundry/go-mod-messaging/messaging/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
 
@@ -269,8 +270,8 @@ func TestClientCreatorTLS(t *testing.T) {
 		name            string
 		hostConfig      types.HostInfo
 		optionalConfig  map[string]string
-		certCreator     X509KeyPairCreator
-		certLoader      X509KeyLoader
+		certCreator     pkg.X509KeyPairCreator
+		certLoader      pkg.X509KeyLoader
 		expectError     bool
 		expectTLSConfig bool
 	}{
@@ -832,13 +833,13 @@ func receiveError(group *sync.WaitGroup, errorChannel <-chan error, expectedMess
 	group.Done()
 }
 
-func mockCertCreator(returnError error) X509KeyPairCreator {
+func mockCertCreator(returnError error) pkg.X509KeyPairCreator {
 	return func(certPEMBlock []byte, keyPEMBlock []byte) (certificate tls.Certificate, err error) {
 		return tls.Certificate{}, returnError
 	}
 }
 
-func mockCertLoader(returnError error) X509KeyLoader {
+func mockCertLoader(returnError error) pkg.X509KeyLoader {
 	return func(certFile string, keyFile string) (certificate tls.Certificate, err error) {
 		return tls.Certificate{}, returnError
 	}

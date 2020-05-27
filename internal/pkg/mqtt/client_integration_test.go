@@ -1,4 +1,4 @@
-// +build integration
+// +build mqttIntegration
 
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
@@ -17,7 +17,7 @@
 /**
  * This test file contains integration tests for the MQTT Client. These integration tests are disabled by default as
  * they require additional external resources to be executed properly. These tests are enabled by providing the
- * `integration` tag when running the tests. For example 'go test ./... -tags=integration`.
+ * `mqttIntegration` tag when running the tests. For example 'go test ./... -tags=mqttIntegration`.
  *
  * This is a list of the requirements necessary to run the tests in this file:
  * - MQTT server with no authentication required by clients.

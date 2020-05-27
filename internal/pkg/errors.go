@@ -43,3 +43,59 @@ func (bue BrokerURLErr) Error() string {
 func NewBrokerURLErr(description string) BrokerURLErr {
 	return BrokerURLErr{description: description}
 }
+
+type PublishHostURLErr struct {
+	description string
+}
+
+func (p PublishHostURLErr) Error() string {
+	return fmt.Sprintf("Unable to use PublishHost URL: %s", p.description)
+}
+
+func NewPublishHostURLErr(message string) PublishHostURLErr {
+	return PublishHostURLErr{description: message}
+}
+
+type SubscribeHostURLErr struct {
+	description string
+}
+
+func (p SubscribeHostURLErr) Error() string {
+	return fmt.Sprintf("Unable to use SubscribeHost URL: %s", p.description)
+}
+
+func NewSubscribeHostURLErr(message string) SubscribeHostURLErr {
+	return SubscribeHostURLErr{description: message}
+}
+
+type MissingConfigurationErr struct {
+	missingConfiguration string
+	description          string
+}
+
+func (mce MissingConfigurationErr) Error() string {
+	return fmt.Sprintf("Missing configuration '%s' : %s", mce.missingConfiguration, mce.description)
+}
+
+func NewMissingConfigurationErr(missingConfiguration string, message string) MissingConfigurationErr {
+	return MissingConfigurationErr{
+		missingConfiguration: missingConfiguration,
+		description:          message,
+	}
+}
+
+type InvalidTopicErr struct {
+	topic       string
+	description string
+}
+
+func (ite InvalidTopicErr) Error() string {
+	return fmt.Sprintf("Invalid topic '%s': %s", ite.topic, ite.description)
+}
+
+func NewInvalidTopicErr(topic string, description string) InvalidTopicErr {
+	return InvalidTopicErr{
+		topic:       topic,
+		description: description,
+	}
+}
