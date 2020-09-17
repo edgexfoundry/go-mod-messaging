@@ -5,7 +5,7 @@ These interface functions connect, publish, subscribe and disconnect to/from the
 ### What is this repository for? ###
 
 * Create new MessageClient
-* Commit to the Message Bus
+* Connect to the Message Bus
 * Public messages to the Message Bus
 * Subscribe to and receives messages from the Messsage Bus
 * Disconnect from the Message Bus 
