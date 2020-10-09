@@ -24,6 +24,8 @@ import (
 )
 
 func TestNewClientConfiguration(t *testing.T) {
+	expectedPassword := "MyPassword"
+
 	tests := []struct {
 		name    string
 		config  types.MessageBusConfig
@@ -31,8 +33,29 @@ func TestNewClientConfiguration(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "Create Non TLS OptionalClientConfiguration",
+			name:    "Create Non Auth OptionalClientConfiguration",
 			config:  types.MessageBusConfig{},
+			want:    OptionalClientConfiguration{},
+			wantErr: false,
+		},
+		{
+			name: "Create Auth uppercase OptionalClientConfiguration",
+			config: types.MessageBusConfig{
+				Optional: map[string]string{
+					"Password": expectedPassword,
+				},
+			},
+			want:    OptionalClientConfiguration{Password: expectedPassword},
+			wantErr: false,
+		},
+		{
+			name: "Create Auth lowercase OptionalClientConfiguration",
+			config: types.MessageBusConfig{
+				Optional: map[string]string{
+					"password": expectedPassword,
+				},
+			},
+			// Expect the password not not be set since the name/key is lowercase in the map
 			want:    OptionalClientConfiguration{},
 			wantErr: false,
 		},

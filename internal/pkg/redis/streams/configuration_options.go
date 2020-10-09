@@ -22,7 +22,7 @@ import (
 // OptionalClientConfiguration contains additional configuration properties which can be provided via the
 // MessageBus.Optional's field.
 type OptionalClientConfiguration struct {
-	password string
+	Password string
 }
 
 // NewClientConfiguration creates a OptionalClientConfiguration based on the configuration properties provided.

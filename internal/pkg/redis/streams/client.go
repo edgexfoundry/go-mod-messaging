@@ -206,5 +206,5 @@ func createRedisClient(
 		return nil, err
 	}
 
-	return creator(redisServerURL, optionalClientConfiguration.password, tlsConfig)
+	return creator(redisServerURL, optionalClientConfiguration.Password, tlsConfig)
 }
