@@ -26,6 +26,7 @@ import (
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
 	zmq "github.com/pebbe/zmq4"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -479,26 +480,18 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 	}
 
 	err = zmqClientAppFunc1.Subscribe(appFuncTopic1, appFuncMessageErrors1)
-	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message") {
-		t.Fatal()
-	}
+	require.NoError(t, err, "Failed to subscribe to ZMQ message")
 
 	err = zmqClientAppFunc2.Subscribe(appFuncTopic2, appFuncMessageErrors2)
-	if !assert.Nil(t, err, "Failed to subscribe to ZMQ message") {
-		t.Fatal()
-	}
+	require.NoError(t, err, "Failed to subscribe to ZMQ message")
 
 	time.Sleep(time.Second)
 
 	err = zmqClientCoreData.Publish(coreDataMessage, coreDataPublishTopic)
-	if !assert.Nil(t, err, "Failed to publish ZMQ message") {
-		t.Fatal()
-	}
+	require.NoError(t, err, "Failed to publish ZMQ message")
 
 	err = zmqClientAppFunc1.Publish(appFuncMessage, appFunctionPublishTopic)
-	if !assert.Nil(t, err, "Failed to publish ZMQ message") {
-		t.Fatal()
-	}
+	require.NoError(t, err, "Failed to publish ZMQ message")
 
 	testTimer := time.NewTimer(time.Second)
 	defer testTimer.Stop()
