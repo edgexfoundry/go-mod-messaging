@@ -22,7 +22,7 @@ import (
 
 const (
 	checksum      = "payload-checksum"
-	correlationId = "correlation-id"
+	correlationId = "X-Correlation-ID"
 	contentType   = "Content-Type"
 )
 
@@ -41,6 +41,8 @@ type MessageEnvelope struct {
 // NewMessageEnvelope creates a new MessageEnvelope for the specified payload with attributes from the specified context
 func NewMessageEnvelope(payload []byte, ctx context.Context) MessageEnvelope {
 	envelope := MessageEnvelope{
+		// TODO: Remove Checksum for V2.0 release.
+		//       Also consider just passing correlationId & contentType as parameters instead of Context
 		Checksum:      fromContext(ctx, checksum),
 		CorrelationID: fromContext(ctx, correlationId),
 		ContentType:   fromContext(ctx, contentType),
