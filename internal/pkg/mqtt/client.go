@@ -17,91 +17,123 @@ package mqtt
 import (
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/internal/pkg"
 	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+	pahoMqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 // ClientCreator defines the function signature for creating an MQTT client.
-type ClientCreator func(config types.MessageBusConfig) (mqtt.Client, error)
+type ClientCreator func(config types.MessageBusConfig, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error)
 
-// MessageMarshaler defines the function signature for marshaling structs into []byte.
-type MessageMarshaler func(v interface{}) ([]byte, error)
+// MessageMarshaller defines the function signature for marshaling structs into []byte.
+type MessageMarshaller func(v interface{}) ([]byte, error)
 
-// MessageUnmarshaler defines the function signature for unmarshaling []byte into structs.
-type MessageUnmarshaler func(data []byte, v interface{}) error
+// MessageUnmarshaller defines the function signature for unmarshaling []byte into structs.
+type MessageUnmarshaller func(data []byte, v interface{}) error
 
 // Client facilitates communication to an MQTT server and provides functionality needed to send and receive MQTT
 // messages.
 type Client struct {
-	wrappedClient mqtt.Client
-	marshaler     MessageMarshaler
-	unmarshaler   MessageUnmarshaler
+	creator             ClientCreator
+	configuration       types.MessageBusConfig
+	mqttClient          pahoMqtt.Client
+	marshaller          MessageMarshaller
+	unmarshaller        MessageUnmarshaller
+	activeSubscriptions []activeSubscription
+}
+
+type activeSubscription struct {
+	topic   string
+	qos     byte
+	handler pahoMqtt.MessageHandler
+	errors  chan error
 }
 
 // NewMQTTClient constructs a new MQTT client based on the options provided.
-func NewMQTTClient(options types.MessageBusConfig) (Client, error) {
-	mqttClient, err := DefaultClientCreator()(options)
-	if err != nil {
-		return Client{}, err
+func NewMQTTClient(config types.MessageBusConfig) (*Client, error) {
+	client := &Client{
+		creator:       DefaultClientCreator(),
+		configuration: config,
+		marshaller:    json.Marshal,
+		unmarshaller:  json.Unmarshal,
 	}
 
-	return Client{
-		wrappedClient: mqttClient,
-		marshaler:     json.Marshal,
-		unmarshaler:   json.Unmarshal,
-	}, nil
+	return client, nil
 }
 
 // NewMQTTClientWithCreator constructs a new MQTT client based on the options and ClientCreator provided.
 func NewMQTTClientWithCreator(
-	options types.MessageBusConfig,
-	marshaler MessageMarshaler,
-	unmarshaler MessageUnmarshaler,
-	creator ClientCreator) (Client, error) {
+	config types.MessageBusConfig,
+	marshaller MessageMarshaller,
+	unmarshaller MessageUnmarshaller,
+	creator ClientCreator) (*Client, error) {
 
-	wrappedClient, err := creator(options)
-	if err != nil {
-		return Client{}, err
+	client := &Client{
+		creator:       creator,
+		configuration: config,
+		marshaller:    marshaller,
+		unmarshaller:  unmarshaller,
 	}
 
-	return Client{
-		wrappedClient: wrappedClient,
-		marshaler:     marshaler,
-		unmarshaler:   unmarshaler,
-	}, nil
+	return client, nil
 }
 
 // Connect establishes a connection to a MQTT server.
 // This must be called before any other functionality provided by the Client.
-func (mc Client) Connect() error {
+func (mc *Client) Connect() error {
+	if mc.mqttClient == nil {
+		// Move created MQTT Client here since we need to set the onConnectHandler which needs to have access to
+		// the Client's activeSubscriptions. This was not possible from the factory method.
+		mqttClient, err := mc.creator(mc.configuration, mc.onConnectHandler)
+		if err != nil {
+			return err
+		}
+		mc.mqttClient = mqttClient
+	}
+
 	// Avoid reconnecting if already connected.
-	if mc.wrappedClient.IsConnected() {
+	if mc.mqttClient.IsConnected() {
 		return nil
 	}
 
-	optionsReader := mc.wrappedClient.OptionsReader()
+	optionsReader := mc.mqttClient.OptionsReader()
 
 	return getTokenError(
-		mc.wrappedClient.Connect(),
+		mc.mqttClient.Connect(),
 		optionsReader.ConnectTimeout(),
 		ConnectOperation,
 		"Unable to connect")
 }
 
+func (mc *Client) onConnectHandler(_ pahoMqtt.Client) {
+	optionsReader := mc.mqttClient.OptionsReader()
+
+	// activeSubscriptions will be empty on the first connection.
+	// On a re-connect is when the subscriptions must be re-created.
+	for _, subscription := range mc.activeSubscriptions {
+		token := mc.mqttClient.Subscribe(subscription.topic, subscription.qos, subscription.handler)
+		message := fmt.Sprintf("Failed to re-create subscription for topic=%s", subscription.topic)
+		err := getTokenError(token, optionsReader.ConnectTimeout(), SubscribeOperation, message)
+		if err != nil {
+			subscription.errors <- err
+		}
+	}
+}
+
 // Publish sends a message to the connected MQTT server.
-func (mc Client) Publish(message types.MessageEnvelope, topic string) error {
-	marshaledMessage, err := mc.marshaler(message)
+func (mc *Client) Publish(message types.MessageEnvelope, topic string) error {
+	marshaledMessage, err := mc.marshaller(message)
 	if err != nil {
 		return NewOperationErr(PublishOperation, err.Error())
 	}
 
-	optionsReader := mc.wrappedClient.OptionsReader()
+	optionsReader := mc.mqttClient.OptionsReader()
 	return getTokenError(
-		mc.wrappedClient.Publish(
+		mc.mqttClient.Publish(
 			topic,
 			optionsReader.WillQos(),
 			optionsReader.WillRetained(),
@@ -113,41 +145,44 @@ func (mc Client) Publish(message types.MessageEnvelope, topic string) error {
 }
 
 // Subscribe creates a subscription for the specified topics.
-func (mc Client) Subscribe(topics []types.TopicChannel, messageErrors chan error) error {
-	optionsReader := mc.wrappedClient.OptionsReader()
+func (mc *Client) Subscribe(topics []types.TopicChannel, messageErrors chan error) error {
+	optionsReader := mc.mqttClient.OptionsReader()
 
 	for _, topic := range topics {
-		err := getTokenError(
-			mc.wrappedClient.Subscribe(
-				topic.Topic,
-				optionsReader.WillQos(),
-				newMessageHandler(mc.unmarshaler, topic.Messages, messageErrors)),
-			optionsReader.ConnectTimeout(),
-			SubscribeOperation,
-			"Failed to create subscription")
+		handler := newMessageHandler(mc.unmarshaller, topic.Messages, messageErrors)
+		qos := optionsReader.WillQos()
+		token := mc.mqttClient.Subscribe(topic.Topic, qos, handler)
+		err := getTokenError(token, optionsReader.ConnectTimeout(), SubscribeOperation, "Failed to create subscription")
 		if err != nil {
 			return err
 		}
+
+		mc.activeSubscriptions = append(mc.activeSubscriptions, activeSubscription{
+			topic:   topic.Topic,
+			qos:     qos,
+			handler: handler,
+			errors:  messageErrors,
+		})
+
 	}
 
 	return nil
 }
 
 // Disconnect closes the connection to the connected MQTT server.
-func (mc Client) Disconnect() error {
-
+func (mc *Client) Disconnect() error {
 	// Specify a wait time equal to the write timeout so that we allow other any queued processing to complete before
 	// disconnecting.
-	optionsReader := mc.wrappedClient.OptionsReader()
-	mc.wrappedClient.Disconnect(uint(optionsReader.ConnectTimeout() * time.Millisecond))
+	optionsReader := mc.mqttClient.OptionsReader()
+	mc.mqttClient.Disconnect(uint(optionsReader.ConnectTimeout() * time.Millisecond))
 
 	return nil
 }
 
 // DefaultClientCreator returns a default function for creating MQTT clients.
 func DefaultClientCreator() ClientCreator {
-	return func(options types.MessageBusConfig) (mqtt.Client, error) {
-		clientConfiguration, err := CreateMQTTClientConfiguration(options)
+	return func(config types.MessageBusConfig, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error) {
+		clientConfiguration, err := CreateMQTTClientConfiguration(config)
 		if err != nil {
 			return nil, err
 		}
@@ -157,14 +192,15 @@ func DefaultClientCreator() ClientCreator {
 			return nil, err
 		}
 
-		return mqtt.NewClient(clientOptions), nil
+		clientOptions.OnConnect = handler
+		return pahoMqtt.NewClient(clientOptions), nil
 	}
 }
 
 // ClientCreatorWithCertLoader creates a ClientCreator which leverages the specified cert creator and loader when
 // creating an MQTT client.
 func ClientCreatorWithCertLoader(certCreator pkg.X509KeyPairCreator, certLoader pkg.X509KeyLoader) ClientCreator {
-	return func(options types.MessageBusConfig) (mqtt.Client, error) {
+	return func(options types.MessageBusConfig, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error) {
 		clientConfiguration, err := CreateMQTTClientConfiguration(options)
 		if err != nil {
 			return nil, err
@@ -175,18 +211,19 @@ func ClientCreatorWithCertLoader(certCreator pkg.X509KeyPairCreator, certLoader 
 			return nil, err
 		}
 
-		return mqtt.NewClient(clientOptions), nil
+		clientOptions.OnConnect = handler
+		return pahoMqtt.NewClient(clientOptions), nil
 	}
 }
 
 // newMessageHandler creates a function which meets the criteria for a MessageHandler and propagates the received
 // messages to the proper channel.
 func newMessageHandler(
-	unmarshaler MessageUnmarshaler,
+	unmarshaler MessageUnmarshaller,
 	messageChannel chan<- types.MessageEnvelope,
-	errorChannel chan<- error) mqtt.MessageHandler {
+	errorChannel chan<- error) pahoMqtt.MessageHandler {
 
-	return func(client mqtt.Client, message mqtt.Message) {
+	return func(client pahoMqtt.Client, message pahoMqtt.Message) {
 		var messageEnvelope types.MessageEnvelope
 		payload := message.Payload()
 		err := unmarshaler(payload, &messageEnvelope)
@@ -201,12 +238,12 @@ func newMessageHandler(
 // getTokenError determines if a Token is in an errored state and if so returns the proper error message. Otherwise,
 // nil.
 //
-// NOTE the paho.mqtt.golang's recommended way for handling errors do not cover all cases. During manual verification
+// NOTE the paho.pahoMqtt.golang's recommended way for handling errors do not cover all cases. During manual verification
 // with an MQTT server, it was observed that the Token.Error() was sometimes nil even when a token.WaitTimeout(...)
 // returned false(indicating the operation has timed-out). Therefore, there are some additional checks that need to
 // take place to ensure the error message is returned if it is present. One example scenario, if you attempt to connect
 // without providing a ClientID.
-func getTokenError(token mqtt.Token, timeout time.Duration, operation string, defaultTimeoutMessage string) error {
+func getTokenError(token pahoMqtt.Token, timeout time.Duration, operation string, defaultTimeoutMessage string) error {
 	hasTimedOut := !token.WaitTimeout(timeout)
 
 	if hasTimedOut && token.Error() != nil {
@@ -228,9 +265,9 @@ func getTokenError(token mqtt.Token, timeout time.Duration, operation string, de
 func createClientOptions(
 	clientConfiguration MQTTClientConfig,
 	certCreator pkg.X509KeyPairCreator,
-	certLoader pkg.X509KeyLoader) (*mqtt.ClientOptions, error) {
+	certLoader pkg.X509KeyLoader) (*pahoMqtt.ClientOptions, error) {
 
-	clientOptions := mqtt.NewClientOptions()
+	clientOptions := pahoMqtt.NewClientOptions()
 	clientOptions.AddBroker(clientConfiguration.BrokerURL)
 	clientOptions.SetUsername(clientConfiguration.Username)
 	clientOptions.SetPassword(clientConfiguration.Password)
