@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 	zmq "github.com/pebbe/zmq4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

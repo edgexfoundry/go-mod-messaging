@@ -17,7 +17,7 @@
 package messaging
 
 import (
-	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
 // MessageClient is the messaging interface for publisher-subscriber pattern

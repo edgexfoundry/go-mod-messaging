@@ -20,8 +20,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/edgexfoundry/go-mod-messaging/messaging/mqtt"
-	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v2/messaging/mqtt"
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
 func TestCreateMQTTClientConfiguration(t *testing.T) {

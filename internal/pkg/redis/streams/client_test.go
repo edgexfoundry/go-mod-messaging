@@ -32,10 +32,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgexfoundry/go-mod-messaging/internal/pkg"
-	"github.com/edgexfoundry/go-mod-messaging/internal/pkg/redis/streams/mocks"
 	"github.com/edgexfoundry/go-mod-messaging/messaging/redis"
-	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/redis/streams/mocks"
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

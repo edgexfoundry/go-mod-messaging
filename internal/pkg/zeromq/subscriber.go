@@ -17,7 +17,7 @@
 package zeromq
 
 import (
-	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 
 	zmq "github.com/pebbe/zmq4"
 )
