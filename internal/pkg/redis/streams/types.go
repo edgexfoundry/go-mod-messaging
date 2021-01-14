@@ -17,7 +17,7 @@ package streams
 import (
 	"crypto/tls"
 
-	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
 const (

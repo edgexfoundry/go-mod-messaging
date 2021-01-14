@@ -15,8 +15,8 @@
 package streams
 
 import (
-	"github.com/edgexfoundry/go-mod-messaging/internal/pkg"
-	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
 // OptionalClientConfiguration contains additional configuration properties which can be provided via the

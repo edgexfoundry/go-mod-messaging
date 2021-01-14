@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/edgexfoundry/go-mod-messaging/internal/pkg/mqtt"
-	"github.com/edgexfoundry/go-mod-messaging/internal/pkg/redis/streams"
-	"github.com/edgexfoundry/go-mod-messaging/internal/pkg/zeromq"
-	"github.com/edgexfoundry/go-mod-messaging/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/mqtt"
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/redis/streams"
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/zeromq"
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
 const (
