@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -169,6 +170,10 @@ func (mc MockMQTTClient) Disconnect(uint) {
 }
 
 func (mt MockToken) Wait() bool {
+	panic("function not expected to be invoked")
+}
+
+func (mt MockToken) Done() <-chan struct{} {
 	panic("function not expected to be invoked")
 }
 
@@ -435,9 +440,8 @@ func TestClientCreatorTLS(t *testing.T) {
 
 			err := client.Connect()
 
-			// Expecting a timeout error since creating mqtt client now at the beginning of the Connect() function
-			_, ok := err.(TimeoutErr)
-			if ok {
+			// Expecting a connect error since creating mqtt client now at the beginning of the Connect() function
+			if strings.Contains(err.Error(), "connect: connection refused") {
 				err = nil
 			}
 
@@ -466,14 +470,10 @@ func TestClientCreatorTlsLoader(t *testing.T) {
 		json.Unmarshal,
 		ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(nil)))
 
+	// Expect Connect to return an error since no broker available
 	err := client.Connect()
-	// Expecting a timeout error since creating mqtt client now at the beginning of the Connect() function
-	_, ok := err.(TimeoutErr)
-	if ok {
-		err = nil
-	}
+	require.Error(t, err)
 
-	require.NoError(t, err)
 	clientOptions := client.mqttClient.OptionsReader()
 	tlsConfig := clientOptions.TLSConfig()
 	assert.NotNil(t, tlsConfig, "Failed to configure TLS for underlying client")
@@ -503,14 +503,10 @@ func TestClientCreatorTlsCreator(t *testing.T) {
 		json.Unmarshal,
 		ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(nil)))
 
+	// Expect Connect to return an error since no broker available
 	err := client.Connect()
-	// Expecting a timeout error since creating mqtt client now at the beginning of the Connect() function
-	_, ok := err.(TimeoutErr)
-	if ok {
-		err = nil
-	}
+	require.Error(t, err)
 
-	require.NoError(t, err)
 	clientOptions := client.mqttClient.OptionsReader()
 	tlsConfig := clientOptions.TLSConfig()
 	assert.NotNil(t, tlsConfig, "Failed to configure TLS for underlying client")
