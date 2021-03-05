@@ -66,11 +66,10 @@ func (client *zeromqClient) Publish(message types.MessageEnvelope, topic string)
 
 	var err error
 
-	if client.publisher == nil {
-		err = client.bindToPort(client.config.PublishHost.GetHostURL())
-		if err != nil {
-			return err
-		}
+	// Safely binds to port if not already done.
+	err = client.bindToPort(client.config.PublishHost.GetHostURL())
+	if err != nil {
+		return err
 	}
 
 	marshaledMsg, err := json.Marshal(message)
