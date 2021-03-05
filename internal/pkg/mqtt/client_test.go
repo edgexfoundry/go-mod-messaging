@@ -441,7 +441,7 @@ func TestClientCreatorTLS(t *testing.T) {
 			err := client.Connect()
 
 			// Expecting a connect error since creating mqtt client now at the beginning of the Connect() function
-			if strings.Contains(err.Error(), "connect: connection refused") {
+			if err != nil && strings.Contains(err.Error(), "connect: connection refused") {
 				err = nil
 			}
 
