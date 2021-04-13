@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -212,12 +211,7 @@ func TestClient_Publish(t *testing.T) {
 		ContentType:   "application/test",
 	}
 
-	MessageValues := map[string]interface{}{
-		"CorrelationID": ValidMessage.CorrelationID,
-		"Payload":       ValidMessage.Payload,
-		"Checksum":      ValidMessage.Checksum,
-		"ContentType":   ValidMessage.ContentType,
-	}
+	EmptyMessage := types.MessageEnvelope{}
 
 	Topic := "UnitTestTopic"
 
@@ -233,10 +227,10 @@ func TestClient_Publish(t *testing.T) {
 			name: "Send message",
 			redisClientCreator: mockRedisClientCreator([]mockOutline{
 				{
-					methodName: "AddToStream",
+					methodName: "Send",
 					arg: []interface{}{
-						fmt.Sprintf(GoModMessagingNamespaceFormat, "UnitTestTopic"),
-						MessageValues,
+						Topic,
+						ValidMessage,
 					},
 					ret: []interface{}{nil},
 				},
@@ -250,15 +244,10 @@ func TestClient_Publish(t *testing.T) {
 			name: "Send message with missing components",
 			redisClientCreator: mockRedisClientCreator([]mockOutline{
 				{
-					methodName: "AddToStream",
+					methodName: "Send",
 					arg: []interface{}{
-						fmt.Sprintf(GoModMessagingNamespaceFormat, "UnitTestTopic"),
-						map[string]interface{}{
-							"CorrelationID": "",
-							"Payload":       []uint8(nil),
-							"Checksum":      "",
-							"ContentType":   "",
-						},
+						Topic,
+						EmptyMessage,
 					},
 					ret: []interface{}{nil},
 				},
@@ -424,15 +413,15 @@ type SubscriptionRedisClientMock struct {
 	errorsReturned   int
 }
 
-func (r *SubscriptionRedisClientMock) AddToStream(string, map[string]interface{}) error {
+func (r *SubscriptionRedisClientMock) Send(string, types.MessageEnvelope) error {
 	panic("implement me")
 
 }
 
-func (r *SubscriptionRedisClientMock) ReadFromStream(string) ([]types.MessageEnvelope, error) {
+func (r *SubscriptionRedisClientMock) Receive(string) (*types.MessageEnvelope, error) {
 	if r.messagesReturned < r.NumberOfMessages {
-		r.messagesReturned = r.NumberOfMessages
-		return createMessages(r.NumberOfMessages), nil
+		r.messagesReturned++
+		return createMessage(r.messagesReturned), nil
 	}
 
 	if r.errorsReturned < r.NumberOfErrors {
@@ -450,18 +439,13 @@ func (r *SubscriptionRedisClientMock) ReadFromStream(string) ([]types.MessageEnv
 func (r *SubscriptionRedisClientMock) Close() error {
 	panic("implement me")
 }
-func createMessages(numberOfMessages int) []types.MessageEnvelope {
-	messages := make([]types.MessageEnvelope, numberOfMessages)
-	for index := 0; index < numberOfMessages; index++ {
-		messages[index] = types.MessageEnvelope{
-			Checksum:      strconv.FormatInt(int64(index), 10),
-			CorrelationID: "test",
-			Payload:       []byte(fmt.Sprintf("Message #%d", index)),
-			ContentType:   "application/test",
-		}
-	}
 
-	return messages
+func createMessage(messageNumber int) *types.MessageEnvelope {
+	return &types.MessageEnvelope{
+		CorrelationID: "test",
+		Payload:       []byte(fmt.Sprintf("Message #%d", messageNumber)),
+		ContentType:   "application/test",
+	}
 }
 
 func readFromChannel(

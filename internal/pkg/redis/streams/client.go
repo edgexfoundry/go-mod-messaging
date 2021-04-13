@@ -1,5 +1,6 @@
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
+ *  Copyright (c) 2021 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -17,19 +18,10 @@ package streams
 import (
 	"crypto/tls"
 	"fmt"
+	"strings"
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
-)
-
-const (
-	// GoModMessagingNamespace go-mod-messaging(gmm) namespace used for grouping and isolating topics(streams). This is
-	// prepended to topics when either subscribing or publishing to a stream.
-	GoModMessagingNamespace = "gmm"
-
-	// GoModMessagingNamespaceFormat formatted string which allows for consistent construction of entities within Redis
-	// that require a namespace.
-	GoModMessagingNamespaceFormat = GoModMessagingNamespace + ":%s"
 )
 
 // Client MessageClient implementation which provides functionality for sending and receiving messages using
@@ -119,17 +111,12 @@ func (c Client) Publish(message types.MessageEnvelope, topic string) error {
 	}
 
 	if topic == "" {
-		// Empty streams are not allowed for Redis
+		// Empty topics are not allowed for Redis
 		return pkg.NewInvalidTopicErr("", "Unable to publish to the invalid topic")
 	}
-	values := map[string]interface{}{
-		"CorrelationID": message.CorrelationID,
-		"Payload":       message.Payload,
-		"Checksum":      message.Checksum,
-		"ContentType":   message.ContentType,
-	}
 
-	return c.publishClient.AddToStream(fmt.Sprintf(GoModMessagingNamespaceFormat, topic), values)
+	topic = convertToRedisTopicScheme(topic)
+	return c.publishClient.Send(topic, message)
 }
 
 // Subscribe creates background processes which reads messages from the appropriate Redis stream and sends to the
@@ -140,20 +127,18 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 	}
 
 	for _, topic := range topics {
-		stream := topic.Topic
+		topicName := convertToRedisTopicScheme(topic.Topic)
 		messageChannel := topic.Messages
 
 		go func() {
 			for {
-				messages, err := c.subscribeClient.ReadFromStream(fmt.Sprintf(GoModMessagingNamespaceFormat, stream))
+				message, err := c.subscribeClient.Receive(topicName)
 				if err != nil {
 					messageErrors <- err
 					continue
 				}
 
-				for _, message := range messages {
-					messageChannel <- message
-				}
+				messageChannel <- *message
 			}
 		}()
 	}
@@ -207,4 +192,14 @@ func createRedisClient(
 	}
 
 	return creator(redisServerURL, optionalClientConfiguration.Password, tlsConfig)
+}
+
+func convertToRedisTopicScheme(topic string) string {
+	// RedisStreams uses "." for separator and "*" for wild cards.
+	// Since we have standardized on the MQTT style scheme or "/" & "#" we need to
+	// convert it to the RedisStreams scheme.
+	topic = strings.Replace(topic, "/", ".", -1)
+	topic = strings.Replace(topic, "#", "*", -1)
+
+	return topic
 }
