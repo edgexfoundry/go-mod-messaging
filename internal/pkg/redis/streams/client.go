@@ -24,6 +24,13 @@ import (
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
+const (
+	StandardTopicSeparator = "/"
+	RedisTopicSeparator    = "."
+	StandardWildcard       = "#"
+	RedisWildcard          = "*"
+)
+
 // Client MessageClient implementation which provides functionality for sending and receiving messages using
 // RedisStreams.
 type Client struct {
@@ -198,8 +205,8 @@ func convertToRedisTopicScheme(topic string) string {
 	// RedisStreams uses "." for separator and "*" for wild cards.
 	// Since we have standardized on the MQTT style scheme or "/" & "#" we need to
 	// convert it to the RedisStreams scheme.
-	topic = strings.Replace(topic, "/", ".", -1)
-	topic = strings.Replace(topic, "#", "*", -1)
+	topic = strings.Replace(topic, StandardTopicSeparator, RedisTopicSeparator, -1)
+	topic = strings.Replace(topic, StandardWildcard, RedisWildcard, -1)
 
 	return topic
 }

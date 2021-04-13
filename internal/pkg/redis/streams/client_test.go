@@ -211,7 +211,7 @@ func TestClient_Publish(t *testing.T) {
 		ContentType:   "application/test",
 	}
 
-	EmptyMessage := types.MessageEnvelope{}
+	emptyMessage := types.MessageEnvelope{}
 
 	Topic := "UnitTestTopic"
 
@@ -247,7 +247,7 @@ func TestClient_Publish(t *testing.T) {
 					methodName: "Send",
 					arg: []interface{}{
 						Topic,
-						EmptyMessage,
+						emptyMessage,
 					},
 					ret: []interface{}{nil},
 				},
@@ -400,6 +400,7 @@ func mockSubscriptionClientCreator(numberOfMessages int, numberOfErrors int) Red
 		return &SubscriptionRedisClientMock{
 			NumberOfMessages: numberOfMessages,
 			NumberOfErrors:   numberOfErrors,
+			counterMutex:     &sync.Mutex{},
 		}, nil
 	}
 }
@@ -411,6 +412,8 @@ type SubscriptionRedisClientMock struct {
 	// Keep track of the entities returned
 	messagesReturned int
 	errorsReturned   int
+
+	counterMutex *sync.Mutex
 }
 
 func (r *SubscriptionRedisClientMock) Send(string, types.MessageEnvelope) error {
@@ -420,11 +423,15 @@ func (r *SubscriptionRedisClientMock) Send(string, types.MessageEnvelope) error 
 
 func (r *SubscriptionRedisClientMock) Receive(string) (*types.MessageEnvelope, error) {
 	if r.messagesReturned < r.NumberOfMessages {
+		r.counterMutex.Lock()
+		defer r.counterMutex.Unlock()
 		r.messagesReturned++
 		return createMessage(r.messagesReturned), nil
 	}
 
 	if r.errorsReturned < r.NumberOfErrors {
+		r.counterMutex.Lock()
+		defer r.counterMutex.Unlock()
 		r.errorsReturned += 1
 		return nil, errors.New("test error")
 	}
