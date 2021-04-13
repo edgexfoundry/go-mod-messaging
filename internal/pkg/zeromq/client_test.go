@@ -23,10 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 	zmq "github.com/pebbe/zmq4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
 const (
@@ -196,7 +197,7 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 
 	defer zmqClient.Disconnect()
 
-	filterTopic := ""
+	filterTopic := "filter"
 	messages := make(chan types.MessageEnvelope)
 	messageErrors := make(chan error)
 	topics := []types.TopicChannel{{Topic: filterTopic, Messages: messages}}
@@ -246,15 +247,16 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 		select {
 		case msgErr := <-messageErrors:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+
 		case msgs := <-messages:
 			fmt.Printf("In test caller, received messages: %v\n", msgs)
 			payloadReturned = string(msgs.Payload)
 
-			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID) ||
-				!assert.Equal(t, string(expectedPayload), string(msgs.Payload)) {
-				t.Fatal("Received wrong message")
-			}
+			require.Equal(t, expectedCorreleationID, msgs.CorrelationID)
+			require.Equal(t, string(expectedPayload), string(msgs.Payload))
+			require.Equal(t, filterTopic, msgs.ReceivedTopic)
 			done = true
+
 		case <-testTimer.C:
 			fmt.Println("timed-out")
 
@@ -406,21 +408,20 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		case msgs := <-messages1:
 			fmt.Printf("Received messages: %v\n", msgs)
 			receivedMsg1 = string(msgs.Payload)
+			require.Equal(t, expectedCorreleationID, msgs.CorrelationID, "CorreleationIDs don't match")
+			require.Equal(t, string(expectedPayload), string(msgs.Payload), "Payloads don't match")
+			require.Equal(t, publishTopic, msgs.ReceivedTopic)
 
-			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID, "CorreleationIDs don't match") ||
-				!assert.Equal(t, string(expectedPayload), string(msgs.Payload), "Payloads don't match") {
-				t.Fatal("Received wrong message")
-			}
 		case msgErr := <-messageErrors2:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+
 		case msgs := <-messages2:
 			fmt.Printf("Received messages: %v\n", msgs)
 			receivedMsg2 = string(msgs.Payload)
+			require.Equal(t, expectedCorreleationID, msgs.CorrelationID, "CorreleationIDs don't match")
+			require.Equal(t, string(expectedPayload), string(msgs.Payload), "Payloads don't match")
+			require.Equal(t, publishTopic, msgs.ReceivedTopic)
 
-			if !assert.Equal(t, expectedCorreleationID, msgs.CorrelationID, "CorreleationIDs don't match") ||
-				!assert.Equal(t, string(expectedPayload), string(msgs.Payload), "Payloads don't match") {
-				t.Fatal("Received wrong message")
-			}
 		case <-testTimer.C:
 			fmt.Printf("msg1: %s, msg2: %s\n", receivedMsg1, receivedMsg2)
 
@@ -503,20 +504,18 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-appFuncMessages1:
 			fmt.Printf("App Functions 1 Message: %v\n", msgs)
+			require.Equal(t, appFuncMessage.CorrelationID, msgs.CorrelationID)
+			require.Equal(t, string(appFuncMessage.Payload), string(msgs.Payload))
+			require.Equal(t, coreDataPublishTopic, msgs.ReceivedTopic)
 
-			if !assert.Equal(t, appFuncMessage.CorrelationID, msgs.CorrelationID) ||
-				!assert.Equal(t, string(appFuncMessage.Payload), string(msgs.Payload)) {
-				t.Fatal("App Functions 1, received wrong message1")
-			}
 		case msgErr := <-appFuncMessageErrors2:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
 		case msgs := <-appFuncMessages2:
 			fmt.Printf("App Functions 2 Message: %v\n", msgs)
+			require.Equal(t, appFuncMessage.CorrelationID, msgs.CorrelationID)
+			require.Equal(t, string(appFuncMessage.Payload), string(msgs.Payload))
+			require.Equal(t, appFunctionPublishTopic, msgs.ReceivedTopic)
 
-			if !assert.Equal(t, appFuncMessage.CorrelationID, msgs.CorrelationID) ||
-				!assert.Equal(t, string(appFuncMessage.Payload), string(msgs.Payload)) {
-				t.Fatal("App Functions 2, received wrong message1")
-			}
 		case <-testTimer.C:
 			fmt.Println("time's up")
 			done = true
@@ -713,30 +712,25 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 		select {
 		case msgErr := <-messageErrors:
 			t.Fatalf("Failed to receive ZMQ message, %v", msgErr)
+
 		case msgs := <-messages1:
 			fmt.Printf("In test caller, received messages1: %v\n", msgs)
+			require.Equal(t, expectedCorreleationIDs[0], msgs.CorrelationID)
+			require.Equal(t, string(expectedPayloads[0]), string(msgs.Payload))
+			require.Equal(t, publishTopics[0], msgs.ReceivedTopic)
 
-			if msgs.CorrelationID != expectedCorreleationIDs[0] ||
-				string(msgs.Payload) != string(expectedPayloads[0]) ||
-				msgs.ContentType != expectedContentTypes[0] {
-				t.Fatal("In test caller, received wrong message1")
-			}
 		case msgs := <-messages2:
 			fmt.Printf("In test caller, received messages2: %v\n", msgs)
+			require.Equal(t, expectedCorreleationIDs[1], msgs.CorrelationID)
+			require.Equal(t, string(expectedPayloads[1]), string(msgs.Payload))
+			require.Equal(t, publishTopics[1], msgs.ReceivedTopic)
 
-			if msgs.CorrelationID != expectedCorreleationIDs[1] ||
-				string(msgs.Payload) != string(expectedPayloads[1]) ||
-				msgs.ContentType != expectedContentTypes[1] {
-				t.Fatal("In test caller, received wrong message2")
-			}
 		case msgs := <-messages3:
 			fmt.Printf("In test caller, received messages3: %v\n", msgs)
+			require.Equal(t, expectedCorreleationIDs[2], msgs.CorrelationID)
+			require.Equal(t, string(expectedPayloads[2]), string(msgs.Payload))
+			require.Equal(t, publishTopics[2], msgs.ReceivedTopic)
 
-			if msgs.CorrelationID != expectedCorreleationIDs[2] ||
-				string(msgs.Payload) != string(expectedPayloads[2]) ||
-				msgs.ContentType != expectedContentTypes[2] {
-				t.Fatal("In test caller, received wrong message3")
-			}
 		case <-testTimer.C:
 			fmt.Println("time's up")
 			done = true
