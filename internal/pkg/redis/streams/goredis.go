@@ -87,6 +87,8 @@ func (g *goRedisWrapper) Receive(topic string) (*types.MessageEnvelope, error) {
 		return nil, fmt.Errorf("unable to unmarshal payload: %w", err)
 	}
 
+	message.ReceivedTopic = data.Channel
+
 	return message, nil
 }
 

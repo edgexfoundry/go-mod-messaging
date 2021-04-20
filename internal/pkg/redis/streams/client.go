@@ -145,6 +145,8 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 					continue
 				}
 
+				message.ReceivedTopic = convertFromRedisTopicScheme(message.ReceivedTopic)
+
 				messageChannel <- *message
 			}
 		}()
@@ -207,6 +209,16 @@ func convertToRedisTopicScheme(topic string) string {
 	// convert it to the RedisStreams scheme.
 	topic = strings.Replace(topic, StandardTopicSeparator, RedisTopicSeparator, -1)
 	topic = strings.Replace(topic, StandardWildcard, RedisWildcard, -1)
+
+	return topic
+}
+
+func convertFromRedisTopicScheme(topic string) string {
+	// RedisStreams uses "." for separator and "*" for wild cards.
+	// Since we have standardized on the MQTT style scheme or "/" & "#" we need to
+	// convert it from the RedisStreams scheme.
+	topic = strings.Replace(topic, RedisTopicSeparator, StandardTopicSeparator, -1)
+	topic = strings.Replace(topic, RedisWildcard, StandardWildcard, -1)
 
 	return topic
 }

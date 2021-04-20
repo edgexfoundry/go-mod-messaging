@@ -30,6 +30,7 @@ import (
 
 const (
 	singleMessagePayloadIndex = 0
+	multiMessageTopicIndex    = 0
 	multiMessagePayloadIndex  = 1
 )
 
@@ -157,11 +158,14 @@ func (client *zeromqClient) subscribeTopic(topic *types.TopicChannel) (*zeromqSu
 				continue
 			}
 
+			var receivedTopic string
+
 			var payload []byte
 			switch msgLen := len(payloadMsg); msgLen {
 			case 1:
 				payload = []byte(payloadMsg[singleMessagePayloadIndex])
 			case 2:
+				receivedTopic = payloadMsg[multiMessageTopicIndex]
 				payload = []byte(payloadMsg[multiMessagePayloadIndex])
 			default:
 				client.messageErrors <- fmt.Errorf("found more than 2 incoming messages (1 is no topic, 2 is topic and message), but found: %d", msgLen)
@@ -175,6 +179,13 @@ func (client *zeromqClient) subscribeTopic(topic *types.TopicChannel) (*zeromqSu
 				continue
 			}
 
+			if len(receivedTopic) == 0 {
+				// Publish topic was empty, aka published to any topic,
+				// then we have to use the subscribe topic as the received topic
+				receivedTopic = topic.Topic
+			}
+
+			msgEnvelope.ReceivedTopic = receivedTopic
 			topic.Messages <- msgEnvelope
 		}
 	}(&subscriber.topic)

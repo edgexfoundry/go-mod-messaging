@@ -156,7 +156,7 @@ func (mc MockMQTTClient) Publish(topic string, _ byte, _ bool, message interface
 		return &mc.publish
 	}
 
-	go handler(mc, MockMessage{payload: message.([]byte)})
+	go handler(mc, MockMessage{payload: message.([]byte), topic: topic})
 	return &mc.publish
 }
 
@@ -206,6 +206,7 @@ func (MockMQTTClient) OptionsReader() pahoMqtt.ClientOptionsReader {
 // invoked.
 type MockMessage struct {
 	payload []byte
+	topic   string
 }
 
 func (mm MockMessage) Payload() []byte {
@@ -224,8 +225,8 @@ func (MockMessage) Retained() bool {
 	panic("function not expected to be invoked")
 }
 
-func (MockMessage) Topic() string {
-	panic("function not expected to be invoked")
+func (mm MockMessage) Topic() string {
+	return mm.topic
 }
 
 func (MockMessage) MessageID() uint16 {
@@ -816,19 +817,17 @@ func TestSubscriptionMessageHandler(t *testing.T) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
-	go receiveMessage(wg, topic1Channel, 1)
-	go receiveMessage(wg, topic2Channel, 1)
+	go receiveMessage(t, wg, topicChannels[0], 1)
+	go receiveMessage(t, wg, topicChannels[1], 1)
 	err = client.Subscribe(topicChannels, make(chan error))
 	require.NoError(t, err)
 	err = client.Publish(types.MessageEnvelope{
-		Checksum:      "123",
 		CorrelationID: "456",
 		Payload:       []byte("Simple payload"),
 		ContentType:   "application/json",
 	}, "test1")
 	require.NoError(t, err)
 	err = client.Publish(types.MessageEnvelope{
-		Checksum:      "789",
 		CorrelationID: "000",
 		Payload:       []byte("Another simple payload"),
 		ContentType:   "application/json",
@@ -870,14 +869,12 @@ func TestSubscriptionMessageHandlerError(t *testing.T) {
 	err = client.Subscribe(topicChannels, errorChannel)
 	require.NoError(t, err)
 	err = client.Publish(types.MessageEnvelope{
-		Checksum:      "123",
 		CorrelationID: "456",
 		Payload:       []byte("Simple payload"),
 		ContentType:   "application/json",
 	}, "test1")
 	require.NoError(t, err)
 	err = client.Publish(types.MessageEnvelope{
-		Checksum:      "789",
 		CorrelationID: "000",
 		Payload:       []byte("Another simple payload"),
 		ContentType:   "application/json",
@@ -897,9 +894,11 @@ func mockUnmarshalerError([]byte, interface{}) error {
 }
 
 // receiveMessage polls the provided channel until the expected number of messages has been received.
-func receiveMessage(group *sync.WaitGroup, messageChannel <-chan types.MessageEnvelope, expectedMessages int) {
+func receiveMessage(t *testing.T, group *sync.WaitGroup, topicChannel types.TopicChannel, expectedMessages int) {
 	for counter := 0; counter < expectedMessages; counter++ {
-		<-messageChannel
+		message := <-topicChannel.Messages
+		// Unit test is using simple topic, i.e. without wild card
+		assert.Equal(t, topicChannel.Topic, message.ReceivedTopic, "ReceivedTopic not as expected")
 	}
 	group.Done()
 }

@@ -231,6 +231,8 @@ func newMessageHandler(
 			errorChannel <- err
 		}
 
+		messageEnvelope.ReceivedTopic = message.Topic()
+
 		messageChannel <- messageEnvelope
 	}
 }

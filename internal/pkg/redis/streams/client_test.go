@@ -205,7 +205,6 @@ func TestClient_Connect(t *testing.T) {
 
 func TestClient_Publish(t *testing.T) {
 	ValidMessage := types.MessageEnvelope{
-		Checksum:      "123",
 		CorrelationID: "abc",
 		Payload:       []byte("Test payload"),
 		ContentType:   "application/test",
@@ -354,7 +353,7 @@ func TestClient_Subscribe(t *testing.T) {
 			require.NoError(t, err)
 			receivedExpectedMessagesWaitGroup := &sync.WaitGroup{}
 			receivedExpectedMessagesWaitGroup.Add(1)
-			readFromChannel(messageChannel, tt.numberOfMessages, errorMessageChannel, tt.numberOfErrors, receivedExpectedMessagesWaitGroup)
+			readFromChannel(t, Topic, messageChannel, tt.numberOfMessages, errorMessageChannel, tt.numberOfErrors, receivedExpectedMessagesWaitGroup)
 			receivedExpectedMessagesWaitGroup.Wait()
 		})
 	}
@@ -421,12 +420,12 @@ func (r *SubscriptionRedisClientMock) Send(string, types.MessageEnvelope) error 
 
 }
 
-func (r *SubscriptionRedisClientMock) Receive(string) (*types.MessageEnvelope, error) {
+func (r *SubscriptionRedisClientMock) Receive(topic string) (*types.MessageEnvelope, error) {
 	if r.messagesReturned < r.NumberOfMessages {
 		r.counterMutex.Lock()
 		defer r.counterMutex.Unlock()
 		r.messagesReturned++
-		return createMessage(r.messagesReturned), nil
+		return createMessage(topic, r.messagesReturned), nil
 	}
 
 	if r.errorsReturned < r.NumberOfErrors {
@@ -447,8 +446,9 @@ func (r *SubscriptionRedisClientMock) Close() error {
 	panic("implement me")
 }
 
-func createMessage(messageNumber int) *types.MessageEnvelope {
+func createMessage(topic string, messageNumber int) *types.MessageEnvelope {
 	return &types.MessageEnvelope{
+		ReceivedTopic: topic,
 		CorrelationID: "test",
 		Payload:       []byte(fmt.Sprintf("Message #%d", messageNumber)),
 		ContentType:   "application/test",
@@ -456,6 +456,8 @@ func createMessage(messageNumber int) *types.MessageEnvelope {
 }
 
 func readFromChannel(
+	t *testing.T,
+	expectedTopic string,
 	messageChannel <-chan types.MessageEnvelope,
 	expectedNumberOfMessages int,
 	errorsChannel <-chan error,
@@ -464,17 +466,14 @@ func readFromChannel(
 
 	for expectedNumberOfMessages > 0 || expectedNumberOfErrors > 0 {
 		select {
-		case <-messageChannel:
-			{
-				expectedNumberOfMessages -= 1
-				continue
-			}
+		case message := <-messageChannel:
+			assert.Equal(t, expectedTopic, message.ReceivedTopic, "ReceivedTopic not as expected")
+			expectedNumberOfMessages -= 1
+			continue
 
 		case <-errorsChannel:
-			{
-				expectedNumberOfErrors -= 1
-				continue
-			}
+			expectedNumberOfErrors -= 1
+			continue
 		}
 	}
 
