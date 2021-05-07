@@ -12,28 +12,26 @@
  * the License.
  *******************************************************************************/
 
-package streams
+package redis
 
 import (
-	"fmt"
-	"strings"
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
-// DisconnectErr represents errors which occur when attempting to disconnect from a Redis server.
-type DisconnectErr struct {
-	// disconnectErrors contains the descriptive error messages that occur while attempting to disconnect one or more
-	// underlying clients.
-	disconnectErrors []string
+// OptionalClientConfiguration contains additional configuration properties which can be provided via the
+// MessageBus.Optional's field.
+type OptionalClientConfiguration struct {
+	Password string
 }
 
-// Error constructs an appropriate error message based on the error descriptions provided.
-func (d DisconnectErr) Error() string {
-	return fmt.Sprintf("Unable to disconnect client(s): %s", strings.Join(d.disconnectErrors, ","))
-}
-
-// NewDisconnectErr created a new DisconnectErr
-func NewDisconnectErr(disconnectErrors []string) DisconnectErr {
-	return DisconnectErr{
-		disconnectErrors: disconnectErrors,
+// NewClientConfiguration creates a OptionalClientConfiguration based on the configuration properties provided.
+func NewClientConfiguration(config types.MessageBusConfig) (OptionalClientConfiguration, error) {
+	redisConfig := OptionalClientConfiguration{}
+	err := pkg.Load(config.Optional, &redisConfig)
+	if err != nil {
+		return OptionalClientConfiguration{}, err
 	}
+
+	return redisConfig, nil
 }

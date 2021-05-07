@@ -24,7 +24,7 @@
  * - The Redis server URL set as the environment variable REDIS_SERVER_TEST. Otherwise the default
  * 'redis://localhost:6379' will be used
  */
-package streams
+package redis
 
 import (
 	"net/url"

@@ -12,7 +12,7 @@
  * the License.
  *******************************************************************************/
 
-// streams package contains tests for the functionality provided in the client.go file.
+// redis package contains tests for the functionality provided in the client.go file.
 //
 // NOTE: The structure of these tests rely on mocking provided by the Mockery library. Mockery creates mock
 // implementations for a specified interface, in this case RedisClient. The Mockery generated code can be found in the
@@ -20,7 +20,7 @@
 // For example execute the following CLI command:
 // '$ mockery -name=RedisClient -recursive'
 // For more details visit the Mockery Github page https://github.com/vektra/mockery
-package streams
+package redis
 
 import (
 	"crypto/tls"
@@ -32,8 +32,8 @@ import (
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
-	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/redis/streams/mocks"
-	"github.com/edgexfoundry/go-mod-messaging/v2/messaging/redis"
+	redisMocks "github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/redis/mocks"
+	constants "github.com/edgexfoundry/go-mod-messaging/v2/messaging/redis"
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 
 	"github.com/stretchr/testify/assert"
@@ -63,7 +63,7 @@ func TestNewClient(t *testing.T) {
 			messageBusConfig: types.MessageBusConfig{
 				PublishHost: HostInfo,
 				Optional: map[string]string{
-					redis.Password: "Password",
+					constants.Password: "Password",
 				},
 			},
 			wantErr: false,
@@ -378,7 +378,7 @@ type mockOutline struct {
 }
 
 func mockRedisClientCreator(outlines []mockOutline, returnedError error) RedisClientCreator {
-	mockRedisClient := &mocks.RedisClient{}
+	mockRedisClient := &redisMocks.RedisClient{}
 	for _, outline := range outlines {
 		mockRedisClient.On(outline.methodName, outline.arg...).Return(outline.ret...)
 	}

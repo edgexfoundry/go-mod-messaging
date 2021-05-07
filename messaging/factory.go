@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/mqtt"
-	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/redis/streams"
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/redis"
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/zeromq"
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
@@ -33,8 +33,8 @@ const (
 	// MQTT messaging implementation
 	MQTT = "mqtt"
 
-	// RedisStreams messaging implementation
-	RedisStreams = "redisstreams"
+	// Redis Pub/Sub messaging implementation
+	Redis = "redis"
 )
 
 // NewMessageClient is a factory function to instantiate different message client depending on
@@ -50,8 +50,8 @@ func NewMessageClient(msgConfig types.MessageBusConfig) (MessageClient, error) {
 		return zeromq.NewZeroMqClient(msgConfig)
 	case MQTT:
 		return mqtt.NewMQTTClient(msgConfig)
-	case RedisStreams:
-		return streams.NewClient(msgConfig)
+	case Redis:
+		return redis.NewClient(msgConfig)
 	default:
 		return nil, fmt.Errorf("unknown message type '%s' requested", msgConfig.Type)
 	}
