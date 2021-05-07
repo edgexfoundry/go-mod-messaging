@@ -12,7 +12,7 @@
  * the License.
  *******************************************************************************/
 
-package streams
+package redis
 
 import (
 	"testing"

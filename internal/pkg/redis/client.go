@@ -13,7 +13,7 @@
  * the License.
  *******************************************************************************/
 
-package streams
+package redis
 
 import (
 	"crypto/tls"

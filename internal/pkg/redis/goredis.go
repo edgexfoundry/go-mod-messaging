@@ -13,8 +13,8 @@
  * the License.
  *******************************************************************************/
 
-// streams package contains a RedisClient which leverages go-redis to interact with a Redis server.
-package streams
+// redis package contains a RedisClient which leverages go-redis to interact with a Redis server.
+package redis
 
 import (
 	"crypto/tls"
