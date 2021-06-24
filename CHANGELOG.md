@@ -12,6 +12,10 @@
     ```
 ### Bug Fixes 🐛
 - Use Redis Pub/Sub which supports topic scheme with wild cards ([#e3da10d](https://github.com/edgexfoundry/go-mod-messaging/commits/e3da10d))
+    ```
+    BREAKING CHANGE:
+    Redis Pub/Sub is not compatible with the previous Redis Streams implementation.  All clients must be using the new implementation in order to properly send and receive messages.
+    ```
 - Resolve race condition in ZMQ impl when binding to port ([#8f0eb58](https://github.com/edgexfoundry/go-mod-messaging/commits/8f0eb58))
 ### Code Refactoring ♻
 - Rename type for Redis implementation to `redis` ([#3ab17e9](https://github.com/edgexfoundry/go-mod-messaging/commits/3ab17e9))
