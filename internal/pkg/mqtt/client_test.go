@@ -922,3 +922,34 @@ func mockCertLoader(returnError error) pkg.X509KeyLoader {
 		return tls.Certificate{}, returnError
 	}
 }
+
+func TestCreateClientOptions(t *testing.T) {
+	config := MQTTClientConfig{
+		BrokerURL: "",
+		MQTTClientOptions: MQTTClientOptions{
+			ClientId:       "Test",
+			Qos:            2,
+			KeepAlive:      50,
+			Retained:       true,
+			AutoReconnect:  true,
+			ConnectTimeout: 60,
+			TlsConfigurationOptions: pkg.TlsConfigurationOptions{
+				SkipCertVerify: false,
+				CertFile:       "",
+				KeyFile:        "",
+				KeyPEMBlock:    "",
+				CertPEMBlock:   "",
+			},
+		},
+	}
+
+	options, err := createClientOptions(config, nil, nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, config.ClientId, options.ClientID)
+	assert.Equal(t, byte(config.Qos), options.WillQos)
+	assert.Equal(t, config.Retained, options.WillRetained)
+	assert.Equal(t, int64(config.KeepAlive), options.KeepAlive)
+	assert.Equal(t, config.AutoReconnect, options.AutoReconnect)
+	assert.Equal(t, time.Duration(config.ConnectTimeout)*time.Second, options.ConnectTimeout)
+}

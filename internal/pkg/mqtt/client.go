@@ -132,6 +132,7 @@ func (mc *Client) Publish(message types.MessageEnvelope, topic string) error {
 	}
 
 	optionsReader := mc.mqttClient.OptionsReader()
+
 	return getTokenError(
 		mc.mqttClient.Publish(
 			topic,
@@ -151,6 +152,7 @@ func (mc *Client) Subscribe(topics []types.TopicChannel, messageErrors chan erro
 	for _, topic := range topics {
 		handler := newMessageHandler(mc.unmarshaller, topic.Messages, messageErrors)
 		qos := optionsReader.WillQos()
+
 		token := mc.mqttClient.Subscribe(topic.Topic, qos, handler)
 		err := getTokenError(token, optionsReader.ConnectTimeout(), SubscribeOperation, "Failed to create subscription")
 		if err != nil {
@@ -275,6 +277,8 @@ func createClientOptions(
 	clientOptions.SetPassword(clientConfiguration.Password)
 	clientOptions.SetClientID(clientConfiguration.ClientId)
 	clientOptions.SetKeepAlive(time.Duration(clientConfiguration.KeepAlive) * time.Second)
+	clientOptions.WillQos = byte(clientConfiguration.Qos)
+	clientOptions.WillRetained = clientConfiguration.Retained
 	clientOptions.SetAutoReconnect(clientConfiguration.AutoReconnect)
 	clientOptions.SetConnectTimeout(time.Duration(clientConfiguration.ConnectTimeout) * time.Second)
 	tlsConfiguration, err := pkg.GenerateTLSForClientClientOptions(
