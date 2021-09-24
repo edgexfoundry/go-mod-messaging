@@ -151,6 +151,7 @@ func TestClientOptionsIntegration(t *testing.T) {
 		KeepAlive(expectedConfig.KeepAlive).
 		Retained(expectedConfig.Retained).
 		AutoReconnect(expectedConfig.AutoReconnect).
+		CleanSession(expectedConfig.CleanSession).
 		ConnectTimeout(expectedConfig.ConnectTimeout).
 		SkipCertVerify(expectedConfig.SkipCertVerify).
 		CertFile(expectedConfig.CertFile).

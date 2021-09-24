@@ -279,6 +279,7 @@ func createClientOptions(
 	clientOptions.SetKeepAlive(time.Duration(clientConfiguration.KeepAlive) * time.Second)
 	clientOptions.WillQos = byte(clientConfiguration.Qos)
 	clientOptions.WillRetained = clientConfiguration.Retained
+	clientOptions.CleanSession = clientConfiguration.CleanSession
 	clientOptions.SetAutoReconnect(clientConfiguration.AutoReconnect)
 	clientOptions.SetConnectTimeout(time.Duration(clientConfiguration.ConnectTimeout) * time.Second)
 	tlsConfiguration, err := pkg.GenerateTLSForClientClientOptions(

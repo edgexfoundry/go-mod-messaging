@@ -51,11 +51,11 @@ The MQTT client abstraction allows for the following additional configuration pr
 - Username
 - Password
 - ClientId
-- Topic
 - Qos
 - KeepAlive
 - Retained
-- ConnectionPayload
+- AutoReconnect
+- CleanSession
 - CertFile
 - KeyFile
 - CertPEMBlock
