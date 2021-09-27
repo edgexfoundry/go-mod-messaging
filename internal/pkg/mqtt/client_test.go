@@ -35,12 +35,13 @@ import (
 )
 
 var OptionalPropertiesNoTls = map[string]string{
-	mqtt.Username:  "TestUser",
-	mqtt.Password:  "TestPassword",
-	mqtt.ClientId:  "TestClientID",
-	mqtt.Qos:       "1",
-	mqtt.KeepAlive: "3",
-	mqtt.Retained:  "true",
+	mqtt.Username:     "TestUser",
+	mqtt.Password:     "TestPassword",
+	mqtt.ClientId:     "TestClientID",
+	mqtt.Qos:          "1",
+	mqtt.KeepAlive:    "3",
+	mqtt.Retained:     "true",
+	mqtt.CleanSession: "false",
 }
 
 var OptionalPropertiesCertCreate = map[string]string{
@@ -50,6 +51,7 @@ var OptionalPropertiesCertCreate = map[string]string{
 	mqtt.Qos:            "1",
 	mqtt.KeepAlive:      "3",
 	mqtt.Retained:       "true",
+	mqtt.CleanSession:   "false",
 	mqtt.CertPEMBlock:   "CertBytes",
 	mqtt.KeyPEMBlock:    "KeyBytes",
 	mqtt.ConnectTimeout: "1",
@@ -62,6 +64,7 @@ var OptionalPropertiesCertLoad = map[string]string{
 	mqtt.Qos:            "1",
 	mqtt.KeepAlive:      "3",
 	mqtt.Retained:       "true",
+	mqtt.CleanSession:   "false",
 	mqtt.CertFile:       "./cert",
 	mqtt.KeyFile:        "./key",
 	mqtt.ConnectTimeout: "1",
@@ -932,6 +935,7 @@ func TestCreateClientOptions(t *testing.T) {
 			KeepAlive:      50,
 			Retained:       true,
 			AutoReconnect:  true,
+			CleanSession:   false,
 			ConnectTimeout: 60,
 			TlsConfigurationOptions: pkg.TlsConfigurationOptions{
 				SkipCertVerify: false,

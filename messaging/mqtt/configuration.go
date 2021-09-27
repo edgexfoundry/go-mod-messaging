@@ -45,6 +45,12 @@ func (mocb *mqttOptionalConfigurationBuilder) AutoReconnect(autoReconnect bool) 
 	return mocb
 }
 
+// CleanSession sets the CleanSession configuration property and returns the builder struct for further updates.
+func (mocb *mqttOptionalConfigurationBuilder) CleanSession(cleanSession bool) *mqttOptionalConfigurationBuilder {
+	mocb.options[CleanSession] = strconv.FormatBool(cleanSession)
+	return mocb
+}
+
 // CertFile sets the certFile configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) CertFile(certFile string) *mqttOptionalConfigurationBuilder {
 	mocb.options[CertFile] = certFile

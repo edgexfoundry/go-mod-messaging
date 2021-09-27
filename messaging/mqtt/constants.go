@@ -28,6 +28,7 @@ const (
 	KeepAlive      = "KeepAlive"
 	Retained       = "Retained"
 	AutoReconnect  = "AutoReconnect"
+	CleanSession   = "CleanSession"
 	ConnectTimeout = "ConnectTimeout"
 
 	// TLS configuration names

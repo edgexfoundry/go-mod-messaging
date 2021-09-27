@@ -50,7 +50,8 @@ type MQTTClientOptions struct {
 	KeepAlive      int // Seconds
 	Retained       bool
 	AutoReconnect  bool
-	ConnectTimeout int // Seconds
+	CleanSession   bool // MQTT Default is true if never set
+	ConnectTimeout int  // Seconds
 	pkg.TlsConfigurationOptions
 }
 
@@ -103,6 +104,7 @@ func CreateMQTTClientOptionsWithDefaults() MQTTClientOptions {
 		Retained:                false,
 		ConnectTimeout:          5, // 5 seconds
 		AutoReconnect:           false,
+		CleanSession:            true, // This is the MQTT default
 		TlsConfigurationOptions: pkg.CreateDefaultTlsConfigurationOptions(),
 	}
 }
