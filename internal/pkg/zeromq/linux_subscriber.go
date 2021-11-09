@@ -1,5 +1,7 @@
+//go:build linux
+// +build linux
 //
-// Copyright (c) 2019 Intel Corporation
+// Copyright (c) 2021 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,27 +19,33 @@
 package zeromq
 
 import (
-	"testing"
-
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
+
+	zmq "github.com/pebbe/zmq4"
 )
 
-func TestSubscriberInit(t *testing.T) {
-	zeromqSubscriber := zeromqSubscriber{}
-
-	msqURL := "tcp://localhost:5690"
-	aTopic := types.TopicChannel{Topic: "test", Messages: nil}
-	if err := zeromqSubscriber.init(msqURL, &aTopic); err != nil {
-		t.Fatalf("cannot init subscriber with URL %s and topic %v", msqURL, aTopic)
-	}
+type zeromqSubscriber struct {
+	connection *zmq.Socket
+	topic      types.TopicChannel
+	context    *zmq.Context
 }
 
-func TestSubscriberInitNullTopic(t *testing.T) {
-	zeromqSubscriber := zeromqSubscriber{}
+func (subscriber *zeromqSubscriber) init(msgQueueURL string, topic *types.TopicChannel) (err error) {
 
-	msqURL := "tcp://localhost:5690"
+	if subscriber.connection == nil {
+		subscriber.context, err = zmq.NewContext()
 
-	if err := zeromqSubscriber.init(msqURL, nil); err != nil {
-		t.Fatalf("cannot init subscriber with URL %s and null topic", msqURL)
+		if err != nil {
+			return err
+		}
+
+		if subscriber.connection, err = subscriber.context.NewSocket(zmq.SUB); err != nil {
+			return err
+		}
 	}
+	if topic != nil {
+		subscriber.topic = *topic
+	}
+
+	return subscriber.connection.Connect(msgQueueURL)
 }
