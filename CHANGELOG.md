@@ -3,7 +3,17 @@
 ## Messaging Module (in Go)
 [Github repository](https://github.com/edgexfoundry/go-mod-messaging)
 
-## [2.0.0] - 2021-06-30
+## [v2.1.0] - 2021-11-17
+
+### Features ✨
+
+- Enable use of CleanSession MQTT option ([#ed2129b](https://github.com/edgexfoundry/go-mod-messaging/commits/ed2129b))
+
+### Bug Fixes 🐛
+
+- Use Qos and Retained value from configuration for MQTT ([#c395010](https://github.com/edgexfoundry/go-mod-messaging/commits/c395010))
+
+## [v2.0.0] - 2021-06-30
 ### Features ✨
 - Add ReceivedTopic to MessageEnvelope & remove Checksum ([#192d447](https://github.com/edgexfoundry/go-mod-messaging/commits/192d447))
     ```
