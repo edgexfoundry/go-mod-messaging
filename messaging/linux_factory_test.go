@@ -1,5 +1,7 @@
+//go:build linux
+// +build linux
 //
-// Copyright (c) 2019 Intel Corporation
+// Copyright (c) 2021 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,36 +16,26 @@
 // limitations under the License.
 //
 
-package zeromq
+package messaging
 
 import (
+	"testing"
+
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 
-	zmq "github.com/pebbe/zmq4"
+	"github.com/stretchr/testify/require"
 )
 
-type zeromqSubscriber struct {
-	connection *zmq.Socket
-	topic      types.TopicChannel
-	context    *zmq.Context
-}
-
-func (subscriber *zeromqSubscriber) init(msgQueueURL string, topic *types.TopicChannel) (err error) {
-
-	if subscriber.connection == nil {
-		subscriber.context, err = zmq.NewContext()
-
-		if err != nil {
-			return err
-		}
-
-		if subscriber.connection, err = subscriber.context.NewSocket(zmq.SUB); err != nil {
-			return err
-		}
-	}
-	if topic != nil {
-		subscriber.topic = *topic
+func TestNewMessageClientZeroMq_Linux(t *testing.T) {
+	config := types.MessageBusConfig{
+		Type: ZeroMQ,
+		PublishHost: types.HostInfo{
+			Host:     "*",
+			Port:     5570,
+			Protocol: "tcp",
+		},
 	}
 
-	return subscriber.connection.Connect(msgQueueURL)
+	_, err := NewMessageClient(config)
+	require.NoError(t, err)
 }

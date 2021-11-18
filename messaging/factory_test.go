@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Intel Corporation
+// Copyright (c) 2021 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,16 +30,6 @@ var msgConfig = types.MessageBusConfig{
 		Port:     5570,
 		Protocol: "tcp",
 	},
-}
-
-func TestNewMessageClientZeroMq(t *testing.T) {
-
-	msgConfig.Type = ZeroMQ
-	_, err := NewMessageClient(msgConfig)
-
-	if assert.NoError(t, err, "New Message client failed: ", err) == false {
-		t.Fatal()
-	}
 }
 
 func TestNewMessageClientMQTT(t *testing.T) {
