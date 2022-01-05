@@ -79,7 +79,7 @@ func GenerateTLSForClientClientOptions(
 
 		tlsConfig := &tls.Config{
 			ClientCAs:          nil,
-			InsecureSkipVerify: tlsConfigurationOptions.SkipCertVerify,
+			InsecureSkipVerify: tlsConfigurationOptions.SkipCertVerify, // nolint: gosec
 			Certificates:       []tls.Certificate{cert},
 		}
 

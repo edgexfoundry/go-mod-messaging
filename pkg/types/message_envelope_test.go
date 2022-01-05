@@ -29,7 +29,11 @@ func TestNewMessageEnvelope(t *testing.T) {
 	expectedContentType := "application/json"
 	expectedPayload := `{"data" : "myData"}`
 
+	// lint:ignore SA1029 legacy
+	// nolint:staticcheck // See golangci-lint #741
 	ctx := context.WithValue(context.Background(), correlationId, expectedCorrelationId)
+	// lint:ignore SA1029 legacy
+	// nolint:staticcheck // See golangci-lint #741
 	ctx = context.WithValue(ctx, contentType, expectedContentType)
 
 	envelope := NewMessageEnvelope([]byte(expectedPayload), ctx)

@@ -761,6 +761,7 @@ func TestClient_Subscribe(t *testing.T) {
 			if ok {
 				err = nil
 			}
+			require.NoError(t, err)
 
 			err = client.Subscribe(topicChannels, make(chan error))
 			if test.expectError {
@@ -790,6 +791,7 @@ func TestClient_Disconnect(t *testing.T) {
 	if ok {
 		err = nil
 	}
+	assert.Error(t, err)
 
 	err = client.Disconnect()
 	require.NoError(t, err, "Disconnect is not expected to return an errors")
