@@ -60,7 +60,7 @@ func TestMain(m *testing.M) {
 		fmt.Println("Failed to create a new zeromq client")
 		os.Exit(-1)
 	}
-	defer zeroMqClient.Disconnect()
+	defer func() { _ = zeroMqClient.Disconnect() }()
 	os.Exit(m.Run())
 }
 
@@ -105,7 +105,7 @@ func TestConnect(t *testing.T) {
 
 func TestPublish(t *testing.T) {
 
-	zeroMqClient.Connect()
+	_ = zeroMqClient.Connect()
 
 	message := types.MessageEnvelope{
 		CorrelationID: "123", Payload: []byte("test bytes"),
@@ -127,7 +127,7 @@ func TestMultiplePublishBindsOnSamePortError(t *testing.T) {
 		t.Fatal()
 	}
 
-	defer zmqClient1.Disconnect()
+	defer func() { _ = zmqClient1.Disconnect() }()
 
 	zmqClient2, err := getZeroMqClient(zmqClientPort)
 
@@ -135,7 +135,7 @@ func TestMultiplePublishBindsOnSamePortError(t *testing.T) {
 		t.Fatal()
 	}
 
-	defer zmqClient2.Disconnect()
+	defer func() { _ = zmqClient2.Disconnect() }()
 
 	message := types.MessageEnvelope{
 		CorrelationID: "123", Payload: []byte("test bytes"),
@@ -159,7 +159,7 @@ func TestMultiplePublishBindsOnSamePortError(t *testing.T) {
 
 func TestPublishWithTopic(t *testing.T) {
 
-	zeroMqClient.Connect()
+	_ = zeroMqClient.Connect()
 
 	message := types.MessageEnvelope{
 		CorrelationID: "123", Payload: []byte("test bytes"),
@@ -176,7 +176,7 @@ func TestPublishWithTopic(t *testing.T) {
 
 func TestPublishWihEmptyMsg(t *testing.T) {
 
-	zeroMqClient.Connect()
+	_ = zeroMqClient.Connect()
 
 	message := types.MessageEnvelope{}
 
@@ -197,7 +197,7 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 		t.Fatal()
 	}
 
-	defer zmqClient.Disconnect()
+	defer func() { _ = zmqClient.Disconnect() }()
 
 	filterTopic := "filter"
 	messages := make(chan types.MessageEnvelope)
@@ -216,6 +216,7 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 		CorrelationID: expectedCorreleationID, Payload: expectedPayload,
 	}
 	dataBytes, err := json.Marshal(message)
+	require.NoError(t, err)
 
 	// custom publisher
 	customPublisher, err := zmq.NewSocket(zmq.PUB)
@@ -242,7 +243,7 @@ func TestCustomPublishWithNoTopic(t *testing.T) {
 
 	payloadReturned := ""
 	testTimer := time.NewTimer(time.Second)
-	defer testTimer.Stop()
+	defer func() { _ = testTimer.Stop() }()
 
 	done := false
 	for !done {
@@ -278,7 +279,7 @@ func TestCustomPublishWithWrongMessageLength(t *testing.T) {
 		t.Fatal()
 	}
 
-	defer zmqClient.Disconnect()
+	defer func() { _ = zmqClient.Disconnect() }()
 
 	filterTopic := ""
 	messages := make(chan types.MessageEnvelope)
@@ -317,7 +318,7 @@ func TestCustomPublishWithWrongMessageLength(t *testing.T) {
 
 	payloadReturned := ""
 	testTimer := time.NewTimer(time.Second)
-	defer testTimer.Stop()
+	defer func() { _ = testTimer.Stop() }()
 
 	done := false
 	for !done {
@@ -356,10 +357,10 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 		t.Fatal()
 	}
 
-	client1.Connect()
-	defer client1.Disconnect()
-	client2.Connect()
-	defer client2.Disconnect()
+	_ = client1.Connect()
+	defer func() { _ = client1.Disconnect() }()
+	_ = client2.Connect()
+	defer func() { _ = client2.Disconnect() }()
 
 	messages1 := make(chan types.MessageEnvelope)
 	messageErrors1 := make(chan error)
@@ -399,7 +400,7 @@ func TestPublishWihMultipleSubscribers(t *testing.T) {
 	}
 
 	testTimer := time.NewTimer(3 * time.Second)
-	defer testTimer.Stop()
+	defer func() { _ = testTimer.Stop() }()
 	receivedMsg1 := ""
 	receivedMsg2 := ""
 
@@ -458,12 +459,12 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 		t.Fatal()
 	}
 
-	zmqClientCoreData.Connect()
-	defer zmqClientCoreData.Disconnect()
-	zmqClientAppFunc1.Connect()
-	defer zmqClientAppFunc1.Disconnect()
-	zmqClientAppFunc2.Connect()
-	defer zmqClientAppFunc2.Disconnect()
+	_ = zmqClientCoreData.Connect()
+	defer func() { _ = zmqClientCoreData.Disconnect() }()
+	_ = zmqClientAppFunc1.Connect()
+	defer func() { _ = zmqClientAppFunc1.Disconnect() }()
+	_ = zmqClientAppFunc2.Connect()
+	defer func() { _ = zmqClientAppFunc2.Disconnect() }()
 
 	coreDataPublishTopic := "orange"
 	appFunctionPublishTopic := "apple"
@@ -497,7 +498,7 @@ func TestPublishWihMultipleSubscribersWithTopic(t *testing.T) {
 	require.NoError(t, err, "Failed to publish ZMQ message")
 
 	testTimer := time.NewTimer(time.Second)
-	defer testTimer.Stop()
+	defer func() { _ = testTimer.Stop() }()
 
 	done := false
 	for !done {
@@ -539,9 +540,9 @@ func TestSubscribe(t *testing.T) {
 		if !assert.Nil(t, err, "Failed to create a new ZMQ client") {
 			t.Fatal()
 		}
-		defer zmqClient.Disconnect()
+		defer func() { _ = zmqClient.Disconnect() }()
 
-		zmqClient.Connect()
+		_ = zmqClient.Connect()
 		runPublishSubscribe(t, zmqClient, publishTopic, filterTopic)
 	}
 }
@@ -554,8 +555,8 @@ func TestSubscribeZeroLengthTopic(t *testing.T) {
 		t.Fatal()
 	}
 
-	zmqClient.Connect()
-	defer zmqClient.Disconnect()
+	_ = zmqClient.Connect()
+	defer func() { _ = zmqClient.Disconnect() }()
 
 	err = zmqClient.Subscribe(nil, make(chan error))
 
@@ -572,8 +573,8 @@ func TestSubscribeExceedsMaxNumberTopic(t *testing.T) {
 		t.Fatal()
 	}
 
-	zmqClient.Connect()
-	defer zmqClient.Disconnect()
+	_ = zmqClient.Connect()
+	defer func() { _ = zmqClient.Disconnect() }()
 
 	mockTopics := make([]types.TopicChannel, maxZeroMqSubscribeTopics+1)
 	err = zmqClient.Subscribe(mockTopics, make(chan error))
@@ -627,7 +628,7 @@ func runPublishSubscribe(t *testing.T, zmqClient *zeromqClient, publishTopic str
 	}
 
 	testTimer := time.NewTimer(time.Second)
-	defer testTimer.Stop()
+	defer func() { _ = testTimer.Stop() }()
 	payloadReturned := ""
 
 	done := false
@@ -666,8 +667,8 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 
 	publishTopics := []string{"apple", "orange", "banana"}
 
-	zmqClient.Connect()
-	defer zmqClient.Disconnect()
+	_ = zmqClient.Connect()
+	defer func() { _ = zmqClient.Disconnect() }()
 
 	messages1 := make(chan types.MessageEnvelope)
 	messages2 := make(chan types.MessageEnvelope)
@@ -707,7 +708,7 @@ func TestSubscribeMultipleTopics(t *testing.T) {
 	}
 
 	testTimer := time.NewTimer(time.Second)
-	defer testTimer.Stop()
+	defer func() { _ = testTimer.Stop() }()
 
 	done := false
 	for !done {
@@ -750,24 +751,24 @@ func TestSubscribeMultipleAndEmptyTopic(t *testing.T) {
 		t.Fatal()
 	}
 
-	publishClient.Connect()
-	defer publishClient.Disconnect()
+	_ = publishClient.Connect()
+	defer func() { _ = publishClient.Disconnect() }()
 
 	subscribeClient1, err := getZeroMqClient(zmqPort)
 	if !assert.Nil(t, err, "Failed to create subscribeClient1") {
 		t.Fatal()
 	}
 
-	subscribeClient1.Connect()
-	defer subscribeClient1.Disconnect()
+	_ = subscribeClient1.Connect()
+	defer func() { _ = subscribeClient1.Disconnect() }()
 
 	subscribeClient2, err := getZeroMqClient(zmqPort)
 	if !assert.Nil(t, err, "Failed to create subscribeClient2") {
 		t.Fatal()
 	}
 
-	subscribeClient2.Connect()
-	defer subscribeClient2.Disconnect()
+	_ = subscribeClient2.Connect()
+	defer func() { _ = subscribeClient2.Disconnect() }()
 
 	publishTopic := "goldfish"
 	subscribeTopic1 := publishTopic
@@ -810,7 +811,7 @@ func TestSubscribeMultipleAndEmptyTopic(t *testing.T) {
 	}
 
 	testTimer := time.NewTimer(time.Second)
-	defer testTimer.Stop()
+	defer func() { _ = testTimer.Stop() }()
 
 	done := false
 	receivedMsgs := 0
@@ -846,8 +847,9 @@ func TestBadSubscriberMessageConfig(t *testing.T) {
 	}
 
 	testClient, err := NewZeroMqClient(badMsgConfig)
+	require.NoError(t, err)
 
-	testClient.Connect()
+	_ = testClient.Connect()
 
 	messages := make(chan types.MessageEnvelope)
 	topics := []types.TopicChannel{{Topic: "", Messages: messages}}
@@ -868,9 +870,10 @@ func TestBadPublisherMessageConfig(t *testing.T) {
 	}
 
 	testClient, err := NewZeroMqClient(badMsgConfig)
+	require.NoError(t, err)
 
-	testClient.Connect()
-	defer testClient.Disconnect()
+	_ = testClient.Connect()
+	defer func() { _ = testClient.Disconnect() }()
 
 	message := types.MessageEnvelope{
 		CorrelationID: "123", Payload: []byte("test bytes"),
@@ -901,8 +904,9 @@ func TestDisconnect(t *testing.T) {
 	}
 
 	testClient, err := NewZeroMqClient(testMsgConfig)
+	require.NoError(t, err)
 
-	testClient.Connect()
+	_ = testClient.Connect()
 
 	topic := ""
 

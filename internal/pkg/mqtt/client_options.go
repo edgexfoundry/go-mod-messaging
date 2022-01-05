@@ -93,6 +93,8 @@ func CreateMQTTClientConfiguration(messageBusConfig types.MessageBusConfig) (MQT
 
 // CreateMQTTClientOptionsWithDefaults constructs MQTTClientOptions instance with defaults.
 func CreateMQTTClientOptionsWithDefaults() MQTTClientOptions {
+	// Does not need to be cryptographically random client id
+	// nolint: gosec
 	randomClientId := strconv.Itoa(rand.New(rand.NewSource(time.Now().UnixNano())).Intn(100000))
 	return MQTTClientOptions{
 		Username: "",

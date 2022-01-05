@@ -21,7 +21,6 @@ import (
 )
 
 const (
-	checksum      = "payload-checksum"
 	correlationId = "X-Correlation-ID"
 	contentType   = "Content-Type"
 )

@@ -107,8 +107,8 @@ func (client *zeromqClient) Subscribe(topics []types.TopicChannel, messageErrors
 	var errorsSubscribe []error
 	var err error
 
-	for idx, topic := range topics {
-		client.subscribers[idx], err = client.subscribeTopic(&topic)
+	for idx := range topics {
+		client.subscribers[idx], err = client.subscribeTopic(&topics[idx])
 		if err != nil {
 			errorsSubscribe = append(errorsSubscribe, err)
 		}
