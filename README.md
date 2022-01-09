@@ -1,7 +1,7 @@
 # go-mod-messaging
 [![Build Status](https://jenkins.edgexfoundry.org/view/EdgeX%20Foundry%20Project/job/edgexfoundry/job/go-mod-messaging/job/main/badge/icon)](https://jenkins.edgexfoundry.org/view/EdgeX%20Foundry%20Project/job/edgexfoundry/job/go-mod-messaging/job/main/) [![Code Coverage](https://codecov.io/gh/edgexfoundry/go-mod-messaging/branch/main/graph/badge.svg?token=jyOHuKlGPu)](https://codecov.io/gh/edgexfoundry/go-mod-messaging) [![Go Report Card](https://goreportcard.com/badge/github.com/edgexfoundry/go-mod-messaging)](https://goreportcard.com/report/github.com/edgexfoundry/go-mod-messaging) [![GitHub Latest Dev Tag)](https://img.shields.io/github/v/tag/edgexfoundry/go-mod-messaging?include_prereleases&sort=semver&label=latest-dev)](https://github.com/edgexfoundry/go-mod-messaging/tags) ![GitHub Latest Stable Tag)](https://img.shields.io/github/v/tag/edgexfoundry/go-mod-messaging?sort=semver&label=latest-stable) [![GitHub License](https://img.shields.io/github/license/edgexfoundry/go-mod-messaging)](https://choosealicense.com/licenses/apache-2.0/) ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/edgexfoundry/go-mod-messaging) [![GitHub Pull Requests](https://img.shields.io/github/issues-pr-raw/edgexfoundry/go-mod-messaging)](https://github.com/edgexfoundry/go-mod-messaging/pulls) [![GitHub Contributors](https://img.shields.io/github/contributors/edgexfoundry/go-mod-messaging)](https://github.com/edgexfoundry/go-mod-messaging/contributors) [![GitHub Committers](https://img.shields.io/badge/team-committers-green)](https://github.com/orgs/edgexfoundry/teams/go-mod-messaging-committers/members) [![GitHub Commit Activity](https://img.shields.io/github/commit-activity/m/edgexfoundry/go-mod-messaging)](https://github.com/edgexfoundry/go-mod-messaging/commits)
 
-Messaging client library for use by Go implementation of EdgeX micro services.  This project contains the abstract Message Bus interface and an implementation for ZeroMQ, MQTT, and Redis Streams.
+Messaging client library for use by Go implementation of EdgeX micro services.  This project contains the abstract Message Bus interface and an implementation for ZeroMQ, MQTT, and Redis Pub/Sub.
 These interface functions connect, publish, subscribe and disconnect to/from the Message Bus.
 
 ### What is this repository for? ###
@@ -28,21 +28,21 @@ The Message Bus connection information as well as which implementation to use is
 Publisher:
 ```toml
 [MessageQueue]
-Protocol = 'tcp'
-Host = '*'
+Protocol = "tcp"
+Host = "*"
 Port = 5563
-Type = 'zero'
-Topic = 'events'
+Type = "zero"
+Topic = "events"
 ```
 
 Subscriber:
 ```toml
 [MessageQueue]
-Protocol = 'tcp'
-Host = 'localhost'
+Protocol = "tcp"
+Host = "localhost"
 Port = 5563
-Type = 'zero'
-Topic = 'events'
+Type = "zero"
+Topic = "events"
 ```
 
 #### MQTT Configuration
@@ -66,13 +66,13 @@ Which can be provided via TOML:
 
 ```toml
 [MessageQueue]
-Protocol = 'tcp'
-Host = 'localhost'
+Protocol = "tcp"
+Host = "localhost"
 Port = 1883
-Type = 'mqtt'
-Topic = 'events'
+Type = "mqtt"
+Topic = "events"
     [MessageQueue.Optional]
-    ClientId = 'MyClient'
+    ClientId = "MyClient"
     Username = "MyUsername"
     ...
 ```
@@ -94,16 +94,16 @@ types.MessageBusConfig{
  The best way to construct the `Optional` map is to use the provided [mqttOptionalConfigurationBuilder](./messaging/mqtt/configuration.go) struct which gives the additional benefit of ensuring the expected types for each property is correct.
 
 
-#### Redis Streams
+#### Redis Pub/Sub
 
 Requirement: Redis version 5+
 
-The RedisStreams client implementation uses Redis to accept, store, and distribute messages to appropriate consumer.
-This is achieved by treating each topic as a Redis stream. Publishing and subscribing takes place within a Redis stream
-and is abstracted by the RedisStreams client, so you can interact with the RedisStreams implementation of the 
-MessagingClient as you would with other implementations.
+The Redis Pub/Sub client implementation uses Redis to accept, store, and distribute messages to appropriate consumer.
+This is achieved by treating each topic as a Redis Pub/Sub channel. Publishing and subscribing takes place within a 
+Redis Pub/Sub and is abstracted by the Redis Pub/Sub client, so you can interact with the Redis Pub/Sub implementation 
+of the MessagingClient as you would with other implementations.
 
-The RedisStreams client abstraction allows for the following additional configuration properties:
+The Redis Pub/Sub client abstraction allows for the following additional configuration properties:
 
 - Password
 
@@ -111,12 +111,12 @@ Which can be provided via TOML:
 
 ```toml
 [MessageQueue]
-Protocol = 'redis'
-Host = 'localhost'
+Protocol = "redis"
+Host = "localhost"
 Port = 6379
-Type = 'redisstream'
+Type = "redis"
     [MessageQueue.Optional]
-    Password = 'MyPassword'
+    Password = "MyPassword"
 ```
 Or programmatically in the Optional field of the MessageBusConfig struct. For example,
 
