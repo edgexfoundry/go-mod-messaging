@@ -32,7 +32,7 @@ const (
 )
 
 // Client MessageClient implementation which provides functionality for sending and receiving messages using
-// RedisStreams.
+// Redis Pub/Sub.
 type Client struct {
 	// Client used for functionality related to reading messages
 	subscribeClient RedisClient
@@ -111,7 +111,7 @@ func (c Client) Connect() error {
 	return nil
 }
 
-// Publish sends the provided message to appropriate Redis stream.
+// Publish sends the provided message to appropriate Redis Pub/Sub.
 func (c Client) Publish(message types.MessageEnvelope, topic string) error {
 	if c.publishClient == nil {
 		return pkg.NewMissingConfigurationErr("PublishHostInfo", "Unable to create a connection for publishing")
@@ -126,7 +126,7 @@ func (c Client) Publish(message types.MessageEnvelope, topic string) error {
 	return c.publishClient.Send(topic, message)
 }
 
-// Subscribe creates background processes which reads messages from the appropriate Redis stream and sends to the
+// Subscribe creates background processes which reads messages from the appropriate Redis Pub/Sub and sends to the
 // provided channels
 func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error) error {
 	if c.subscribeClient == nil {
@@ -204,9 +204,9 @@ func createRedisClient(
 }
 
 func convertToRedisTopicScheme(topic string) string {
-	// RedisStreams uses "." for separator and "*" for wild cards.
+	// Redis Pub/Sub uses "." for separator and "*" for wild cards.
 	// Since we have standardized on the MQTT style scheme or "/" & "#" we need to
-	// convert it to the RedisStreams scheme.
+	// convert it to the Redis Pub/Sub scheme.
 	topic = strings.Replace(topic, StandardTopicSeparator, RedisTopicSeparator, -1)
 	topic = strings.Replace(topic, StandardWildcard, RedisWildcard, -1)
 
@@ -214,9 +214,9 @@ func convertToRedisTopicScheme(topic string) string {
 }
 
 func convertFromRedisTopicScheme(topic string) string {
-	// RedisStreams uses "." for separator and "*" for wild cards.
+	// Redis Pub/Sub uses "." for separator and "*" for wild cards.
 	// Since we have standardized on the MQTT style scheme or "/" & "#" we need to
-	// convert it from the RedisStreams scheme.
+	// convert it from the Redis Pub/Sub scheme.
 	topic = strings.Replace(topic, RedisTopicSeparator, StandardTopicSeparator, -1)
 	topic = strings.Replace(topic, RedisWildcard, StandardWildcard, -1)
 

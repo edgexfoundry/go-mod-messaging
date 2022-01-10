@@ -34,7 +34,7 @@ const (
 // This is mostly used for testing purposes so that we can easily inject mocks.
 type RedisClientCreator func(redisServerURL string, password string, tlsConfig *tls.Config) (RedisClient, error)
 
-// RedisClient provides functionality needed to read and send messages to/from Redis' RedisStreams functionality.
+// RedisClient provides functionality needed to read and send messages to/from Redis' Redis Pub/Sub functionality.
 //
 // The main reason for this interface is to abstract out the underlying client from Client so that it can be mocked and
 // allow for easy unit testing. Since 'go-redis' does not leverage interfaces and has complicated entities it can become
