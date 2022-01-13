@@ -1,5 +1,6 @@
 //go:build windows
 // +build windows
+
 //
 // Copyright (c) 2021 Intel Corporation
 //
