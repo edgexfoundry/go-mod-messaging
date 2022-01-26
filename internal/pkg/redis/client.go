@@ -133,11 +133,11 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 		return pkg.NewMissingConfigurationErr("SubscribeHostInfo", "Unable to create a connection for subscribing")
 	}
 
-	for _, topic := range topics {
-		topicName := convertToRedisTopicScheme(topic.Topic)
-		messageChannel := topic.Messages
+	for i := range topics {
 
-		go func() {
+		go func(topic types.TopicChannel) {
+			topicName := convertToRedisTopicScheme(topic.Topic)
+			messageChannel := topic.Messages
 			for {
 				message, err := c.subscribeClient.Receive(topicName)
 				if err != nil {
@@ -149,7 +149,7 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 
 				messageChannel <- *message
 			}
-		}()
+		}(topics[i])
 	}
 
 	return nil
