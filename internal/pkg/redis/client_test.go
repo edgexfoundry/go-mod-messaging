@@ -421,19 +421,23 @@ func (r *SubscriptionRedisClientMock) Send(string, types.MessageEnvelope) error 
 }
 
 func (r *SubscriptionRedisClientMock) Receive(topic string) (*types.MessageEnvelope, error) {
+	r.counterMutex.Lock()
+
 	if r.messagesReturned < r.NumberOfMessages {
-		r.counterMutex.Lock()
-		defer r.counterMutex.Unlock()
 		r.messagesReturned++
+
+		defer r.counterMutex.Unlock()
 		return createMessage(topic, r.messagesReturned), nil
 	}
 
 	if r.errorsReturned < r.NumberOfErrors {
-		r.counterMutex.Lock()
+		r.errorsReturned++
+
 		defer r.counterMutex.Unlock()
-		r.errorsReturned += 1
 		return nil, errors.New("test error")
 	}
+
+	r.counterMutex.Unlock()
 
 	for {
 		// Sleep to simulate no more messages which will block the caller.
