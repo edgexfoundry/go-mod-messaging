@@ -7,7 +7,7 @@ tidy:
 	go mod tidy
 
 unittest:
-	$(GO) test ./... -coverprofile=coverage.out ./...
+	$(GO) test -race ./... -coverprofile=coverage.out ./...
 
 lint:
 	@which golangci-lint >/dev/null || echo "WARNING: go linter not installed. To install, run\n  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b \$$(go env GOPATH)/bin v1.42.1"
