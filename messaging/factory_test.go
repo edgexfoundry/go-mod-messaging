@@ -20,14 +20,13 @@ import (
 	"testing"
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
-
 	"github.com/stretchr/testify/assert"
 )
 
 var msgConfig = types.MessageBusConfig{
 	PublishHost: types.HostInfo{
 		Host:     "*",
-		Port:     5570,
+		Port:     5571,
 		Protocol: "tcp",
 	},
 }
@@ -53,7 +52,7 @@ func TestNewMessageClientMQTT(t *testing.T) {
 	}
 }
 
-func TestNewMessageBogusType(t *testing.T) {
+func TestNewMessageClientBogusType(t *testing.T) {
 
 	msgConfig.Type = "bogus"
 
@@ -63,7 +62,7 @@ func TestNewMessageBogusType(t *testing.T) {
 	}
 }
 
-func TestNewMessageEmptyHostAndPortNumber(t *testing.T) {
+func TestNewMessageClientEmptyHostAndPortNumber(t *testing.T) {
 
 	msgConfig.PublishHost.Host = ""
 	msgConfig.PublishHost.Port = 0
@@ -71,5 +70,4 @@ func TestNewMessageEmptyHostAndPortNumber(t *testing.T) {
 	if assert.Error(t, err, "Expected message type error") == false {
 		t.Fatal()
 	}
-
 }

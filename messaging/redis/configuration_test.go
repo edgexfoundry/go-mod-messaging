@@ -3,6 +3,7 @@ package redis
 import (
 	"testing"
 
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +16,7 @@ func TestBuilderMethods(t *testing.T) {
 		{
 			name:           "Password",
 			builder:        NewRedisOptionalConfigurationBuilder().Password("MyPassword"),
-			expectedValues: map[string]string{Password: "MyPassword"},
+			expectedValues: map[string]string{pkg.Password: "MyPassword"},
 		},
 	}
 	for _, test := range tests {

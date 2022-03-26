@@ -15,7 +15,11 @@
 // Package mqtt provides additional functionality to aid in configuring a MQTT client.
 package mqtt
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
+)
 
 // mqttOptionalConfigurationBuilder encapsulates the optional configuration data following the builder pattern. Updating
 // values are done via the exported builder methods and the final map can be obtained by calling the Build method.
@@ -41,86 +45,86 @@ func (mocb *mqttOptionalConfigurationBuilder) Build() map[string]string {
 
 // AutoReconnect sets the autoReconnect configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) AutoReconnect(autoReconnect bool) *mqttOptionalConfigurationBuilder {
-	mocb.options[AutoReconnect] = strconv.FormatBool(autoReconnect)
+	mocb.options[pkg.AutoReconnect] = strconv.FormatBool(autoReconnect)
 	return mocb
 }
 
 // CleanSession sets the CleanSession configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) CleanSession(cleanSession bool) *mqttOptionalConfigurationBuilder {
-	mocb.options[CleanSession] = strconv.FormatBool(cleanSession)
+	mocb.options[pkg.CleanSession] = strconv.FormatBool(cleanSession)
 	return mocb
 }
 
 // CertFile sets the certFile configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) CertFile(certFile string) *mqttOptionalConfigurationBuilder {
-	mocb.options[CertFile] = certFile
+	mocb.options[pkg.CertFile] = certFile
 	return mocb
 }
 
 // CertPEMBlock sets the certPEMBlock configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) CertPEMBlock(certPEMBlock string) *mqttOptionalConfigurationBuilder {
-	mocb.options[CertPEMBlock] = certPEMBlock
+	mocb.options[pkg.CertPEMBlock] = certPEMBlock
 	return mocb
 }
 
 // ClientID sets the clientID configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) ClientID(clientID string) *mqttOptionalConfigurationBuilder {
-	mocb.options[ClientId] = clientID
+	mocb.options[pkg.ClientId] = clientID
 	return mocb
 }
 
 // ConnectTimeout sets the connectionTimeout configuration property in seconds and returns the builder struct for
 // further updates.
 func (mocb *mqttOptionalConfigurationBuilder) ConnectTimeout(connectionTimeout int) *mqttOptionalConfigurationBuilder {
-	mocb.options[ConnectTimeout] = strconv.Itoa(connectionTimeout)
+	mocb.options[pkg.ConnectTimeout] = strconv.Itoa(connectionTimeout)
 	return mocb
 }
 
 // KeepAlive sets the keepAlive duration in seconds configuration property and returns the builder struct for further
 // updates.
 func (mocb *mqttOptionalConfigurationBuilder) KeepAlive(keepAlive int) *mqttOptionalConfigurationBuilder {
-	mocb.options[KeepAlive] = strconv.Itoa(keepAlive)
+	mocb.options[pkg.KeepAlive] = strconv.Itoa(keepAlive)
 	return mocb
 }
 
 // KeyPEMBlock sets the keyPEMBlock configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) KeyPEMBlock(keyPEMBlock string) *mqttOptionalConfigurationBuilder {
-	mocb.options[KeyPEMBlock] = keyPEMBlock
+	mocb.options[pkg.KeyPEMBlock] = keyPEMBlock
 	return mocb
 }
 
 // KeyFile sets the fileLocation configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) KeyFile(fileLocation string) *mqttOptionalConfigurationBuilder {
-	mocb.options[KeyFile] = fileLocation
+	mocb.options[pkg.KeyFile] = fileLocation
 	return mocb
 }
 
 // Password sets the password configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) Password(password string) *mqttOptionalConfigurationBuilder {
-	mocb.options[Password] = password
+	mocb.options[pkg.Password] = password
 	return mocb
 }
 
 // Qos sets the qos configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) Qos(qos int) *mqttOptionalConfigurationBuilder {
-	mocb.options[Qos] = strconv.Itoa(qos)
+	mocb.options[pkg.Qos] = strconv.Itoa(qos)
 	return mocb
 }
 
 // Retained sets the retained configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) Retained(retained bool) *mqttOptionalConfigurationBuilder {
-	mocb.options[Retained] = strconv.FormatBool(retained)
+	mocb.options[pkg.Retained] = strconv.FormatBool(retained)
 	return mocb
 }
 
 // SkipCertVerify sets the skipCertVerify configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) SkipCertVerify(skipCertVerify bool) *mqttOptionalConfigurationBuilder {
-	mocb.options[SkipCertVerify] = strconv.FormatBool(skipCertVerify)
+	mocb.options[pkg.SkipCertVerify] = strconv.FormatBool(skipCertVerify)
 	return mocb
 }
 
 // Username sets the username configuration property and returns the builder struct for further updates.
 func (mocb *mqttOptionalConfigurationBuilder) Username(username string) *mqttOptionalConfigurationBuilder {
-	mocb.options[Username] = username
+	mocb.options[pkg.Username] = username
 	return mocb
 }

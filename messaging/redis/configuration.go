@@ -1,5 +1,7 @@
 package redis
 
+import "github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
+
 type redisOptionalConfigurationBuilder struct {
 	options map[string]string
 }
@@ -19,7 +21,7 @@ func (r *redisOptionalConfigurationBuilder) Build() map[string]string {
 
 // Password adds a password to the optional configuration properties.
 func (r *redisOptionalConfigurationBuilder) Password(password string) *redisOptionalConfigurationBuilder {
-	r.options[Password] = password
+	r.options[pkg.Password] = password
 
 	return r
 }

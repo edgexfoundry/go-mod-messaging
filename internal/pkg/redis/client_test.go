@@ -33,7 +33,6 @@ import (
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
 	redisMocks "github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/redis/mocks"
-	constants "github.com/edgexfoundry/go-mod-messaging/v2/messaging/redis"
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 
 	"github.com/stretchr/testify/assert"
@@ -63,7 +62,7 @@ func TestNewClient(t *testing.T) {
 			messageBusConfig: types.MessageBusConfig{
 				PublishHost: HostInfo,
 				Optional: map[string]string{
-					constants.Password: "Password",
+					pkg.Password: "Password",
 				},
 			},
 			wantErr: false,

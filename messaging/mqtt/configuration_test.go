@@ -35,67 +35,67 @@ func TestBuilderMethods(t *testing.T) {
 		{
 			name:           "AutoReconnect",
 			builder:        NewMQTTOptionalConfigurationBuilder().AutoReconnect(true),
-			expectedValues: map[string]string{AutoReconnect: "true"},
+			expectedValues: map[string]string{pkg.AutoReconnect: "true"},
 		},
 		{
 			name:           "CertFile",
 			builder:        NewMQTTOptionalConfigurationBuilder().CertFile("/path/to/some/cert"),
-			expectedValues: map[string]string{CertFile: "/path/to/some/cert"},
+			expectedValues: map[string]string{pkg.CertFile: "/path/to/some/cert"},
 		},
 		{
 			name:           "CertPEMBlock",
 			builder:        NewMQTTOptionalConfigurationBuilder().CertPEMBlock("/path/to/some/cert"),
-			expectedValues: map[string]string{CertPEMBlock: "/path/to/some/cert"},
+			expectedValues: map[string]string{pkg.CertPEMBlock: "/path/to/some/cert"},
 		},
 		{
 			name:           "ClientID",
 			builder:        NewMQTTOptionalConfigurationBuilder().ClientID("ProvidedClientID"),
-			expectedValues: map[string]string{ClientId: "ProvidedClientID"},
+			expectedValues: map[string]string{pkg.ClientId: "ProvidedClientID"},
 		},
 		{
 			name:           "ConnectTimeout",
 			builder:        NewMQTTOptionalConfigurationBuilder().ConnectTimeout(99),
-			expectedValues: map[string]string{ConnectTimeout: "99"},
+			expectedValues: map[string]string{pkg.ConnectTimeout: "99"},
 		},
 		{
 			name:           "KeepAlive",
 			builder:        NewMQTTOptionalConfigurationBuilder().KeepAlive(99),
-			expectedValues: map[string]string{KeepAlive: "99"},
+			expectedValues: map[string]string{pkg.KeepAlive: "99"},
 		},
 		{
 			name:           "KeyPEMBlock",
 			builder:        NewMQTTOptionalConfigurationBuilder().KeyPEMBlock("ProvidedKeyPEMBlock"),
-			expectedValues: map[string]string{KeyPEMBlock: "ProvidedKeyPEMBlock"},
+			expectedValues: map[string]string{pkg.KeyPEMBlock: "ProvidedKeyPEMBlock"},
 		},
 		{
 			name:           "KeyFile",
 			builder:        NewMQTTOptionalConfigurationBuilder().KeyFile("ProvidedKeyFile"),
-			expectedValues: map[string]string{KeyFile: "ProvidedKeyFile"},
+			expectedValues: map[string]string{pkg.KeyFile: "ProvidedKeyFile"},
 		},
 		{
 			name:           "Password",
 			builder:        NewMQTTOptionalConfigurationBuilder().Password("ProvidedPassword"),
-			expectedValues: map[string]string{Password: "ProvidedPassword"},
+			expectedValues: map[string]string{pkg.Password: "ProvidedPassword"},
 		},
 		{
 			name:           "Qos",
 			builder:        NewMQTTOptionalConfigurationBuilder().Qos(1),
-			expectedValues: map[string]string{Qos: "1"},
+			expectedValues: map[string]string{pkg.Qos: "1"},
 		},
 		{
 			name:           "Retained",
 			builder:        NewMQTTOptionalConfigurationBuilder().Retained(true),
-			expectedValues: map[string]string{Retained: "true"},
+			expectedValues: map[string]string{pkg.Retained: "true"},
 		},
 		{
 			name:           "SkipCertVerify",
 			builder:        NewMQTTOptionalConfigurationBuilder().SkipCertVerify(true),
-			expectedValues: map[string]string{SkipCertVerify: "true"},
+			expectedValues: map[string]string{pkg.SkipCertVerify: "true"},
 		},
 		{
 			name:           "Username",
 			builder:        NewMQTTOptionalConfigurationBuilder().Username("ProvidedUsername"),
-			expectedValues: map[string]string{Username: "ProvidedUsername"},
+			expectedValues: map[string]string{pkg.Username: "ProvidedUsername"},
 		},
 		{
 			name: "Multiple Properties of Different Types",
@@ -103,7 +103,7 @@ func TestBuilderMethods(t *testing.T) {
 				Username("ProvidedUsername").
 				SkipCertVerify(true).
 				KeepAlive(99),
-			expectedValues: map[string]string{Username: "ProvidedUsername", SkipCertVerify: "true", KeepAlive: "99"},
+			expectedValues: map[string]string{pkg.Username: "ProvidedUsername", pkg.SkipCertVerify: "true", pkg.KeepAlive: "99"},
 		},
 	}
 	for _, test := range tests {
