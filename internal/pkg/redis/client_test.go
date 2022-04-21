@@ -24,6 +24,8 @@ package redis
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"reflect"
@@ -101,6 +103,9 @@ func TestNewClientWithCreator(t *testing.T) {
 		creator          RedisClientCreator
 		pairCreator      pkg.X509KeyPairCreator
 		keyLoader        pkg.X509KeyLoader
+		caCertCreator    pkg.X509CaCertCreator
+		caCertLoader     pkg.X509CaCertLoader
+		pemDecoder       pkg.PEMDecoder
 		wantErr          bool
 	}{
 		{
@@ -135,7 +140,6 @@ func TestNewClientWithCreator(t *testing.T) {
 			keyLoader:        mockCertLoader(nil),
 			wantErr:          true,
 		},
-
 		{
 			name:             "Client with optional configuration",
 			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{"Password": "TestPassword"}},
@@ -156,6 +160,27 @@ func TestNewClientWithCreator(t *testing.T) {
 			pairCreator: mockCertCreator(nil),
 			keyLoader:   mockCertLoader(nil),
 			wantErr:     false,
+		},
+		{
+			name: "Client with valid TLS configuration (cacert file)",
+			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+				"CaFile": "caCertFile",
+			}},
+			creator:       mockRedisClientCreator(nil, nil),
+			caCertCreator: mockCaCertCreator(nil),
+			caCertLoader:  mockCaCertLoader(nil),
+			pemDecoder:    mockPemDecoder(&pem.Block{}),
+			wantErr:       false,
+		},
+		{
+			name: "Client with valid TLS configuration (cacert PEM block)",
+			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+				"CaPEMBlock": "caCertPEMBlock",
+			}},
+			creator:       mockRedisClientCreator(nil, nil),
+			caCertCreator: mockCaCertCreator(nil),
+			pemDecoder:    mockPemDecoder(&pem.Block{}),
+			wantErr:       false,
 		},
 		{
 			name: "Client with invalid TLS configuration",
@@ -180,10 +205,40 @@ func TestNewClientWithCreator(t *testing.T) {
 			keyLoader:   mockCertLoader(errors.New("test error")),
 			wantErr:     true,
 		},
+		{
+			name: "Client TLS creation error - cacert file not found",
+			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+				"CaFile": "caCertFile",
+			}},
+			creator:      mockRedisClientCreator(nil, nil),
+			caCertLoader: mockCaCertLoader(errors.New("test error")),
+			wantErr:      true,
+		},
+		{
+			name: "Client TLS creation error - cacert file without PEM block",
+			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+				"CaFile": "caCertFile",
+			}},
+			creator:      mockRedisClientCreator(nil, nil),
+			caCertLoader: mockCaCertLoader(nil),
+			pemDecoder:   mockPemDecoder(nil),
+			wantErr:      true,
+		},
+		{
+			name: "Client TLS creation error - invalid cacert",
+			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+				"CaPEMBlock": "caCertPEMBlock",
+			}},
+			creator:       mockRedisClientCreator(nil, nil),
+			caCertCreator: mockCaCertCreator(errors.New("test error")),
+			pemDecoder:    mockPemDecoder(&pem.Block{}),
+			wantErr:       true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewClientWithCreator(tt.messageBusConfig, tt.creator, tt.pairCreator, tt.keyLoader)
+			_, err := NewClientWithCreator(tt.messageBusConfig, tt.creator, tt.pairCreator, tt.keyLoader,
+				tt.caCertCreator, tt.caCertLoader, tt.pemDecoder)
 			if tt.wantErr {
 				require.Error(t, err)
 			}
@@ -276,7 +331,8 @@ func TestClient_Publish(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := NewClientWithCreator(types.MessageBusConfig{
 				PublishHost: HostInfo,
-			}, tt.redisClientCreator, mockCertCreator(nil), mockCertLoader(nil))
+			}, tt.redisClientCreator, mockCertCreator(nil), mockCertLoader(nil),
+				mockCaCertCreator(nil), mockCaCertLoader(nil), mockPemDecoder(&pem.Block{}))
 
 			require.NoError(t, err)
 			err = c.Publish(tt.message, tt.topic)
@@ -341,6 +397,8 @@ func TestClient_Subscribe(t *testing.T) {
 				mockSubscriptionClientCreator(tt.numberOfMessages, tt.numberOfErrors),
 				mockCertCreator(nil),
 				mockCertLoader(nil),
+				mockCaCertCreator(nil), mockCaCertLoader(nil),
+				mockPemDecoder(&pem.Block{}),
 			)
 			require.NoError(t, err)
 
@@ -372,6 +430,24 @@ func mockCertCreator(returnError error) pkg.X509KeyPairCreator {
 func mockCertLoader(returnError error) pkg.X509KeyLoader {
 	return func(certFile string, keyFile string) (certificate tls.Certificate, err error) {
 		return tls.Certificate{}, returnError
+	}
+}
+
+func mockCaCertCreator(returnError error) pkg.X509CaCertCreator {
+	return func(caCertPEMBlock []byte) (*x509.Certificate, error) {
+		return &x509.Certificate{}, returnError
+	}
+}
+
+func mockCaCertLoader(returnError error) pkg.X509CaCertLoader {
+	return func(caCertFile string) ([]byte, error) {
+		return []byte{}, returnError
+	}
+}
+
+func mockPemDecoder(pemBlock *pem.Block) pkg.PEMDecoder {
+	return func(data []byte) (*pem.Block, []byte) {
+		return pemBlock, nil
 	}
 }
 
@@ -576,7 +652,9 @@ func TestClient_Disconnect(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClientWithCreator(tt.messageBusConfig, tt.redisClientCreator, mockCertCreator(nil), mockCertLoader(nil))
+			c, err := NewClientWithCreator(tt.messageBusConfig, tt.redisClientCreator, mockCertCreator(nil),
+				mockCertLoader(nil), mockCaCertCreator(nil), mockCaCertLoader(nil),
+				mockPemDecoder(&pem.Block{}))
 			require.NoError(t, err)
 			err = c.Disconnect()
 			if tt.wantErr {

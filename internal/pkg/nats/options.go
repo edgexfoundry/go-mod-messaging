@@ -20,8 +20,11 @@ package nats
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
@@ -116,7 +119,8 @@ func (cc ClientConfig) ConnectOpt() ([]nats.Option, error) {
 		opts = append(opts, nats.UserInfo(cc.Username, cc.Password))
 	}
 
-	if tlsConfiguration, err := pkg.GenerateTLSForClientClientOptions(cc.BrokerURL, cc.TlsConfigurationOptions, tls.X509KeyPair, tls.LoadX509KeyPair); err == nil {
+	if tlsConfiguration, err := pkg.GenerateTLSForClientClientOptions(cc.BrokerURL, cc.TlsConfigurationOptions,
+		tls.X509KeyPair, tls.LoadX509KeyPair, x509.ParseCertificate, os.ReadFile, pem.Decode); err == nil {
 		if tlsConfiguration != nil {
 			opts = append(opts, nats.Secure(tlsConfiguration))
 		}

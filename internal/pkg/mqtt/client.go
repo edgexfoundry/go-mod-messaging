@@ -16,8 +16,11 @@ package mqtt
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
@@ -189,7 +192,8 @@ func DefaultClientCreator() ClientCreator {
 			return nil, err
 		}
 
-		clientOptions, err := createClientOptions(clientConfiguration, tls.X509KeyPair, tls.LoadX509KeyPair)
+		clientOptions, err := createClientOptions(clientConfiguration, tls.X509KeyPair, tls.LoadX509KeyPair,
+			x509.ParseCertificate, os.ReadFile, pem.Decode)
 		if err != nil {
 			return nil, err
 		}
@@ -201,14 +205,16 @@ func DefaultClientCreator() ClientCreator {
 
 // ClientCreatorWithCertLoader creates a ClientCreator which leverages the specified cert creator and loader when
 // creating an MQTT client.
-func ClientCreatorWithCertLoader(certCreator pkg.X509KeyPairCreator, certLoader pkg.X509KeyLoader) ClientCreator {
+func ClientCreatorWithCertLoader(certCreator pkg.X509KeyPairCreator, certLoader pkg.X509KeyLoader,
+	caCertCreator pkg.X509CaCertCreator, caCertLoader pkg.X509CaCertLoader, pemDecoder pkg.PEMDecoder) ClientCreator {
 	return func(options types.MessageBusConfig, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error) {
 		clientConfiguration, err := CreateMQTTClientConfiguration(options)
 		if err != nil {
 			return nil, err
 		}
 
-		clientOptions, err := createClientOptions(clientConfiguration, certCreator, certLoader)
+		clientOptions, err := createClientOptions(clientConfiguration, certCreator, certLoader, caCertCreator,
+			caCertLoader, pemDecoder)
 		if err != nil {
 			return nil, err
 		}
@@ -270,7 +276,10 @@ func getTokenError(token pahoMqtt.Token, timeout time.Duration, operation string
 func createClientOptions(
 	clientConfiguration MQTTClientConfig,
 	certCreator pkg.X509KeyPairCreator,
-	certLoader pkg.X509KeyLoader) (*pahoMqtt.ClientOptions, error) {
+	certLoader pkg.X509KeyLoader,
+	caCertCreator pkg.X509CaCertCreator,
+	caCertLoader pkg.X509CaCertLoader,
+	pemDecoder pkg.PEMDecoder) (*pahoMqtt.ClientOptions, error) {
 
 	clientOptions := pahoMqtt.NewClientOptions()
 	clientOptions.AddBroker(clientConfiguration.BrokerURL)
@@ -287,7 +296,10 @@ func createClientOptions(
 		clientConfiguration.BrokerURL,
 		clientConfiguration.TlsConfigurationOptions,
 		certCreator,
-		certLoader)
+		certLoader,
+		caCertCreator,
+		caCertLoader,
+		pemDecoder)
 
 	if err != nil {
 		return clientOptions, err

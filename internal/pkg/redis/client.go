@@ -17,7 +17,10 @@ package redis
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -50,7 +53,8 @@ type Client struct {
 
 // NewClient creates a new Client based on the provided configuration.
 func NewClient(messageBusConfig types.MessageBusConfig) (Client, error) {
-	return NewClientWithCreator(messageBusConfig, NewGoRedisClientWrapper, tls.X509KeyPair, tls.LoadX509KeyPair)
+	return NewClientWithCreator(messageBusConfig, NewGoRedisClientWrapper, tls.X509KeyPair, tls.LoadX509KeyPair,
+		x509.ParseCertificate, os.ReadFile, pem.Decode)
 }
 
 // NewClientWithCreator creates a new Client based on the provided configuration while allowing more control on the
@@ -59,7 +63,10 @@ func NewClientWithCreator(
 	messageBusConfig types.MessageBusConfig,
 	creator RedisClientCreator,
 	pairCreator pkg.X509KeyPairCreator,
-	keyLoader pkg.X509KeyLoader) (Client, error) {
+	keyLoader pkg.X509KeyLoader,
+	caCertCreator pkg.X509CaCertCreator,
+	caCertLoader pkg.X509CaCertLoader,
+	pemDecoder pkg.PEMDecoder) (Client, error) {
 
 	// Parse Optional configuration properties
 	optionalClientConfiguration, err := NewClientConfiguration(messageBusConfig)
@@ -84,7 +91,10 @@ func NewClientWithCreator(
 			tlsConfigurationOptions,
 			creator,
 			pairCreator,
-			keyLoader)
+			keyLoader,
+			caCertCreator,
+			caCertLoader,
+			pemDecoder)
 
 		if err != nil {
 			return Client{}, err
@@ -99,7 +109,10 @@ func NewClientWithCreator(
 			tlsConfigurationOptions,
 			creator,
 			pairCreator,
-			keyLoader)
+			keyLoader,
+			caCertCreator,
+			caCertLoader,
+			pemDecoder)
 
 		if err != nil {
 			return Client{}, err
@@ -237,13 +250,19 @@ func createRedisClient(
 	tlsConfigurationOptions pkg.TlsConfigurationOptions,
 	creator RedisClientCreator,
 	pairCreator pkg.X509KeyPairCreator,
-	keyLoader pkg.X509KeyLoader) (RedisClient, error) {
+	keyLoader pkg.X509KeyLoader,
+	caCertCreator pkg.X509CaCertCreator,
+	caCertLoader pkg.X509CaCertLoader,
+	pemDecoder pkg.PEMDecoder) (RedisClient, error) {
 
 	tlsConfig, err := pkg.GenerateTLSForClientClientOptions(
 		redisServerURL,
 		tlsConfigurationOptions,
 		pairCreator,
-		keyLoader)
+		keyLoader,
+		caCertCreator,
+		caCertLoader,
+		pemDecoder)
 
 	if err != nil {
 		return nil, err

@@ -16,8 +16,10 @@ const (
 	SkipCertVerify = "SkipCertVerify"
 	CertFile       = "CertFile"
 	KeyFile        = "KeyFile"
+	CaFile         = "CaFile"
 	KeyPEMBlock    = "KeyPEMBlock"
 	CertPEMBlock   = "CertPEMBlock"
+	CaPEMBlock     = "CaPEMBlock"
 
 	// MQTT Specifics
 	Qos          = "Qos"
