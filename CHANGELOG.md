@@ -3,6 +3,39 @@
 ## Messaging Module (in Go)
 [Github repository](https://github.com/edgexfoundry/go-mod-messaging)
 
+## [v2.2.0] - 2022-05-11
+
+### Features ✨
+
+- Disable use of ZMQ on native windows via conditional builds ([#474eb1f](https://github.com/edgexfoundry/go-mod-messaging/commits/474eb1f))
+
+  ```
+  BREAKING CHANGE:
+  This disables use of ZMQ when running windows native
+  builds.
+  ```
+
+### Test
+
+- enable go's race detector ([#9e77d98](https://github.com/edgexfoundry/go-mod-messaging/commits/9e77d98))
+- Add mock for MessageClient interface ([#c9ac0b8](https://github.com/edgexfoundry/go-mod-messaging/commits/c9ac0b8))
+
+### Bug Fixes 🐛
+
+- Disallow subscribing to same exact topic multiple times ([#c1db79e](https://github.com/edgexfoundry/go-mod-messaging/commits/c1db79e))
+- pass a copy of topic to redis subscriber ([#fbf749f](https://github.com/edgexfoundry/go-mod-messaging/commits/fbf749f))
+- fix race condition in redis client tests ([#7d21ea0](https://github.com/edgexfoundry/go-mod-messaging/commits/7d21ea0))
+- redis subscriber with multiple topics ([#6ddff74](https://github.com/edgexfoundry/go-mod-messaging/commits/6ddff74))
+
+### Documentation 📖
+
+- Update README and GoDoc ([#ee5679d](https://github.com/edgexfoundry/go-mod-messaging/commits/ee5679d))
+
+### Build 👷
+
+- Add build flag to build w/o messging capability ([#397650c](https://github.com/edgexfoundry/go-mod-messaging/commits/397650c))
+- **security:** Enable gosec and default linter set ([#0ec7e55](https://github.com/edgexfoundry/go-mod-messaging/commits/0ec7e55))
+
 ## [v2.1.0] - 2021-11-17
 
 ### Features ✨
