@@ -298,7 +298,6 @@ func TestClient_Publish(t *testing.T) {
 }
 
 func TestClient_Subscribe(t *testing.T) {
-	Topic := "UnitTestTopic"
 	tests := []struct {
 		name             string
 		numberOfMessages int
@@ -332,29 +331,35 @@ func TestClient_Subscribe(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NewClientWithCreator(types.MessageBusConfig{
-				SubscribeHost: HostInfo,
-			},
+			// Since SubscriptionRedisClientMock doesn't have counters per topic,
+			// the numberOfMessages and numberOfErrors will not change depending
+			// on the number of topics. That's because the total messages mocked
+			// by the Receive method is client specific.
+			c, err := NewClientWithCreator(
+				types.MessageBusConfig{
+					SubscribeHost: HostInfo,
+				},
 				mockSubscriptionClientCreator(tt.numberOfMessages, tt.numberOfErrors),
 				mockCertCreator(nil),
-				mockCertLoader(nil))
-
+				mockCertLoader(nil),
+			)
 			require.NoError(t, err)
-			messageChannel := make(chan types.MessageEnvelope)
+
 			topics := []types.TopicChannel{
 				{
-					Topic:    Topic,
-					Messages: messageChannel,
+					Topic:    "UnitTestTopic",
+					Messages: make(chan types.MessageEnvelope),
+				},
+				{
+					Topic:    "UnitTestTopic2",
+					Messages: make(chan types.MessageEnvelope),
 				},
 			}
 
 			errorMessageChannel := make(chan error)
 			err = c.Subscribe(topics, errorMessageChannel)
 			require.NoError(t, err)
-			receivedExpectedMessagesWaitGroup := &sync.WaitGroup{}
-			receivedExpectedMessagesWaitGroup.Add(1)
-			readFromChannel(t, Topic, messageChannel, tt.numberOfMessages, errorMessageChannel, tt.numberOfErrors, receivedExpectedMessagesWaitGroup)
-			receivedExpectedMessagesWaitGroup.Wait()
+			readFromChannel(t, topics, tt.numberOfMessages, errorMessageChannel, tt.numberOfErrors)
 		})
 	}
 }
@@ -421,19 +426,23 @@ func (r *SubscriptionRedisClientMock) Send(string, types.MessageEnvelope) error 
 }
 
 func (r *SubscriptionRedisClientMock) Receive(topic string) (*types.MessageEnvelope, error) {
+	r.counterMutex.Lock()
+
 	if r.messagesReturned < r.NumberOfMessages {
-		r.counterMutex.Lock()
-		defer r.counterMutex.Unlock()
 		r.messagesReturned++
+
+		defer r.counterMutex.Unlock()
 		return createMessage(topic, r.messagesReturned), nil
 	}
 
 	if r.errorsReturned < r.NumberOfErrors {
-		r.counterMutex.Lock()
+		r.errorsReturned++
+
 		defer r.counterMutex.Unlock()
-		r.errorsReturned += 1
 		return nil, errors.New("test error")
 	}
+
+	r.counterMutex.Unlock()
 
 	for {
 		// Sleep to simulate no more messages which will block the caller.
@@ -457,27 +466,39 @@ func createMessage(topic string, messageNumber int) *types.MessageEnvelope {
 
 func readFromChannel(
 	t *testing.T,
-	expectedTopic string,
-	messageChannel <-chan types.MessageEnvelope,
+	topics []types.TopicChannel,
 	expectedNumberOfMessages int,
 	errorsChannel <-chan error,
 	expectedNumberOfErrors int,
-	group *sync.WaitGroup) {
+) {
+
+	if len(topics) != 2 {
+		panic("Length of input topics should be 2")
+	}
 
 	for expectedNumberOfMessages > 0 || expectedNumberOfErrors > 0 {
 		select {
-		case message := <-messageChannel:
-			assert.Equal(t, expectedTopic, message.ReceivedTopic, "ReceivedTopic not as expected")
+		case message := <-topics[0].Messages:
+			assert.Equal(t, topics[0].Topic, message.ReceivedTopic, "ReceivedTopic not as expected")
+			expectedNumberOfMessages -= 1
+			continue
+
+		case message := <-topics[1].Messages:
+			assert.Equal(t, topics[1].Topic, message.ReceivedTopic, "ReceivedTopic not as expected")
 			expectedNumberOfMessages -= 1
 			continue
 
 		case <-errorsChannel:
 			expectedNumberOfErrors -= 1
 			continue
+
+		case <-time.After(10 * time.Second):
+			t.Fatal("Timed out waiting for messages")
 		}
 	}
 
-	group.Done()
+	require.Zero(t, expectedNumberOfMessages, "Too many messages")
+	require.Zero(t, expectedNumberOfErrors, "Too many errors")
 }
 
 func TestClient_Disconnect(t *testing.T) {
