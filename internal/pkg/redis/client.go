@@ -39,7 +39,7 @@ type Client struct {
 	subscribeClient RedisClient
 
 	// Used to avoid multiple subscriptions to the same topic
-	existingTopics map[string]bool
+	existingTopics map[string]struct{}
 	mapMutex       *sync.Mutex
 
 	// Client used for functionality related to sending messages
@@ -106,7 +106,7 @@ func NewClientWithCreator(
 
 	return Client{
 		subscribeClient: subscribeClient,
-		existingTopics:  make(map[string]bool),
+		existingTopics:  make(map[string]struct{}),
 		mapMutex:        new(sync.Mutex),
 		publishClient:   publishClient,
 	}, nil
@@ -203,7 +203,7 @@ func (c Client) validateTopics(topics []types.TopicChannel) error {
 			return fmt.Errorf("subscription for '%s' topic already exists, must be unique", topic.Topic)
 		}
 
-		c.existingTopics[topic.Topic] = true
+		c.existingTopics[topic.Topic] = struct{}{}
 	}
 
 	return nil
