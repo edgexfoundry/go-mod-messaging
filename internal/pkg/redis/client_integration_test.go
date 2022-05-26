@@ -1,3 +1,4 @@
+//go:build redisIntegration
 // +build redisIntegration
 
 /********************************************************************************
