@@ -3,6 +3,12 @@
 ## Messaging Module (in Go)
 [Github repository](https://github.com/edgexfoundry/go-mod-messaging)
 
+## [v2.1.1] - 2022-06-08
+### Bug Fixes 🐛
+
+- Disallow subscribing to same exact Redis topic multiple times ([#cfec212](https://github.com/edgexfoundry/go-mod-messaging/commits/cfec212))
+- Pass a copy of topic to Redis subscriber to avoid concurrency issue ([#1b16008](https://github.com/edgexfoundry/go-mod-messaging/commits/1b16008))
+
 ## [v2.1.0] - 2021-11-17
 
 ### Features ✨
