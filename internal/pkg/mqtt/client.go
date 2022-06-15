@@ -231,6 +231,7 @@ func newMessageHandler(
 		err := unmarshaler(payload, &messageEnvelope)
 		if err != nil {
 			errorChannel <- err
+			return
 		}
 
 		messageEnvelope.ReceivedTopic = message.Topic()
