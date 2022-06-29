@@ -18,8 +18,10 @@ package redis
 import (
 	"crypto/tls"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
@@ -145,6 +147,7 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 		return err
 	}
 
+	var previousErr error
 	for i := range topics {
 
 		go func(topic types.TopicChannel) {
@@ -153,10 +156,19 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 			for {
 				message, err := c.subscribeClient.Receive(topicName)
 				if err != nil {
+					// This handles case when getting same repeated error due to Redis connectivity issue
+					// Avoids starving of other threads/processes and recipient spamming the log file.
+					if previousErr != nil && reflect.DeepEqual(err, previousErr) {
+						time.Sleep(1 * time.Millisecond) // Sleep allows other threads to get time
+						continue
+					}
 					messageErrors <- err
+
+					previousErr = err
 					continue
 				}
 
+				previousErr = nil
 				message.ReceivedTopic = convertFromRedisTopicScheme(message.ReceivedTopic)
 
 				messageChannel <- *message
