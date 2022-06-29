@@ -132,7 +132,13 @@ func (c Client) Publish(message types.MessageEnvelope, topic string) error {
 	}
 
 	topic = convertToRedisTopicScheme(topic)
-	return c.publishClient.Send(topic, message)
+	var err error
+	if err = c.publishClient.Send(topic, message); err != nil && strings.Contains(err.Error(), "EOF") {
+		// Redis may have been restarted and the first attempt will fail with EOF, so need to try again
+		err = c.publishClient.Send(topic, message)
+	}
+
+	return err
 }
 
 // Subscribe creates background processes which reads messages from the appropriate Redis Pub/Sub and sends to the
