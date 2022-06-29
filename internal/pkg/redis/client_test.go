@@ -439,7 +439,7 @@ func (r *SubscriptionRedisClientMock) Receive(topic string) (*types.MessageEnvel
 		r.errorsReturned++
 
 		defer r.counterMutex.Unlock()
-		return nil, errors.New("test error")
+		return nil, fmt.Errorf("test error %d", r.errorsReturned) // Adding count to make error unique, so it isn't ignored as duplicate.
 	}
 
 	r.counterMutex.Unlock()
