@@ -147,13 +147,15 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 		return err
 	}
 
-	var previousErr error
 	for i := range topics {
 
 		go func(topic types.TopicChannel) {
 			topicName := convertToRedisTopicScheme(topic.Topic)
 			messageChannel := topic.Messages
+			var previousErr error
+
 			for {
+
 				message, err := c.subscribeClient.Receive(topicName)
 				if err != nil {
 					// This handles case when getting same repeated error due to Redis connectivity issue
