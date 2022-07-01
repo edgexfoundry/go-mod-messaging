@@ -18,8 +18,10 @@ package redis
 import (
 	"crypto/tls"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
@@ -130,7 +132,13 @@ func (c Client) Publish(message types.MessageEnvelope, topic string) error {
 	}
 
 	topic = convertToRedisTopicScheme(topic)
-	return c.publishClient.Send(topic, message)
+	var err error
+	if err = c.publishClient.Send(topic, message); err != nil && strings.Contains(err.Error(), "EOF") {
+		// Redis may have been restarted and the first attempt will fail with EOF, so need to try again
+		err = c.publishClient.Send(topic, message)
+	}
+
+	return err
 }
 
 // Subscribe creates background processes which reads messages from the appropriate Redis Pub/Sub and sends to the
@@ -150,13 +158,25 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 		go func(topic types.TopicChannel) {
 			topicName := convertToRedisTopicScheme(topic.Topic)
 			messageChannel := topic.Messages
+			var previousErr error
+
 			for {
+
 				message, err := c.subscribeClient.Receive(topicName)
 				if err != nil {
+					// This handles case when getting same repeated error due to Redis connectivity issue
+					// Avoids starving of other threads/processes and recipient spamming the log file.
+					if previousErr != nil && reflect.DeepEqual(err, previousErr) {
+						time.Sleep(1 * time.Millisecond) // Sleep allows other threads to get time
+						continue
+					}
 					messageErrors <- err
+
+					previousErr = err
 					continue
 				}
 
+				previousErr = nil
 				message.ReceivedTopic = convertFromRedisTopicScheme(message.ReceivedTopic)
 
 				messageChannel <- *message
