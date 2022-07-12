@@ -1,5 +1,4 @@
-//go:build windows
-// +build windows
+//go:build windows || no_zmq
 
 //
 // Copyright (c) 2021 Intel Corporation
@@ -29,7 +28,7 @@ import (
 )
 
 func TestNewMessageClientZeroMq_Windows(t *testing.T) {
-	expected := "zmq is no longer supported on windows native deployments"
+	expected := "zmq is no longer supported on windows native deployments or binary built without it"
 	config := types.MessageBusConfig{
 		Type: ZeroMQ,
 		PublishHost: types.HostInfo{

@@ -1,8 +1,7 @@
-//go:build windows
-// +build windows
+//go:build windows || no_zmq
 
 //
-// Copyright (c) 2021 Intel Corporation
+// Copyright (c) 2022 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +24,7 @@ import (
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
-var notSupportedErrorMessage = errors.New("zmq is no longer supported on windows native deployments")
+var notSupportedErrorMessage = errors.New("zmq is no longer supported on windows native deployments or binary built without it")
 
 type zeromqClient struct {
 }
