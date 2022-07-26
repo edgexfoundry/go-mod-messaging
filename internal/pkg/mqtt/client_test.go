@@ -27,7 +27,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
-	"github.com/edgexfoundry/go-mod-messaging/v2/messaging/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 
 	pahoMqtt "github.com/eclipse/paho.mqtt.golang"
@@ -35,39 +34,39 @@ import (
 )
 
 var OptionalPropertiesNoTls = map[string]string{
-	mqtt.Username:     "TestUser",
-	mqtt.Password:     "TestPassword",
-	mqtt.ClientId:     "TestClientID",
-	mqtt.Qos:          "1",
-	mqtt.KeepAlive:    "3",
-	mqtt.Retained:     "true",
-	mqtt.CleanSession: "false",
+	pkg.Username:     "TestUser",
+	pkg.Password:     "TestPassword",
+	pkg.ClientId:     "TestClientID",
+	pkg.Qos:          "1",
+	pkg.KeepAlive:    "3",
+	pkg.Retained:     "true",
+	pkg.CleanSession: "false",
 }
 
 var OptionalPropertiesCertCreate = map[string]string{
-	mqtt.Username:       "TestUser",
-	mqtt.Password:       "TestPassword",
-	mqtt.ClientId:       "TestClientID",
-	mqtt.Qos:            "1",
-	mqtt.KeepAlive:      "3",
-	mqtt.Retained:       "true",
-	mqtt.CleanSession:   "false",
-	mqtt.CertPEMBlock:   "CertBytes",
-	mqtt.KeyPEMBlock:    "KeyBytes",
-	mqtt.ConnectTimeout: "1",
+	pkg.Username:       "TestUser",
+	pkg.Password:       "TestPassword",
+	pkg.ClientId:       "TestClientID",
+	pkg.Qos:            "1",
+	pkg.KeepAlive:      "3",
+	pkg.Retained:       "true",
+	pkg.CleanSession:   "false",
+	pkg.CertPEMBlock:   "CertBytes",
+	pkg.KeyPEMBlock:    "KeyBytes",
+	pkg.ConnectTimeout: "1",
 }
 
 var OptionalPropertiesCertLoad = map[string]string{
-	mqtt.Username:       "TestUser",
-	mqtt.Password:       "TestPassword",
-	mqtt.ClientId:       "TestClientID",
-	mqtt.Qos:            "1",
-	mqtt.KeepAlive:      "3",
-	mqtt.Retained:       "true",
-	mqtt.CleanSession:   "false",
-	mqtt.CertFile:       "./cert",
-	mqtt.KeyFile:        "./key",
-	mqtt.ConnectTimeout: "1",
+	pkg.Username:       "TestUser",
+	pkg.Password:       "TestPassword",
+	pkg.ClientId:       "TestClientID",
+	pkg.Qos:            "1",
+	pkg.KeepAlive:      "3",
+	pkg.Retained:       "true",
+	pkg.CleanSession:   "false",
+	pkg.CertFile:       "./cert",
+	pkg.KeyFile:        "./key",
+	pkg.ConnectTimeout: "1",
 }
 
 var TcpHostInfo = types.HostInfo{Host: "localhost", Protocol: "tcp", Port: 1883}
@@ -292,9 +291,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Create TLS Config from PEM Block",
 			hostConfig: TlsHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.CertPEMBlock:   "CertPEMBlock",
-				mqtt.KeyPEMBlock:    "KeyPEMBlock",
-				mqtt.ConnectTimeout: "1",
+				pkg.CertPEMBlock:   "CertPEMBlock",
+				pkg.KeyPEMBlock:    "KeyPEMBlock",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(nil),
@@ -305,9 +304,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Create TCPS Config from PEM Block",
 			hostConfig: TcpsHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.CertPEMBlock:   "CertPEMBlock",
-				mqtt.KeyPEMBlock:    "KeyPEMBlock",
-				mqtt.ConnectTimeout: "1",
+				pkg.CertPEMBlock:   "CertPEMBlock",
+				pkg.KeyPEMBlock:    "KeyPEMBlock",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(nil),
@@ -318,9 +317,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Create SSL Config from PEM Block",
 			hostConfig: SslHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.CertPEMBlock:   "CertPEMBlock",
-				mqtt.KeyPEMBlock:    "KeyPEMBlock",
-				mqtt.ConnectTimeout: "1",
+				pkg.CertPEMBlock:   "CertPEMBlock",
+				pkg.KeyPEMBlock:    "KeyPEMBlock",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(nil),
@@ -331,9 +330,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Skip TLS Config from PEM Block for non-supported TLS protocols",
 			hostConfig: TcpHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.CertPEMBlock:   "CertPEMBlock",
-				mqtt.KeyPEMBlock:    "KeyPEMBlock",
-				mqtt.ConnectTimeout: "1",
+				pkg.CertPEMBlock:   "CertPEMBlock",
+				pkg.KeyPEMBlock:    "KeyPEMBlock",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(nil),
@@ -344,9 +343,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Fail Create TLS Config from PEM File",
 			hostConfig: TlsHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.CertPEMBlock:   "CertPEMBlock",
-				mqtt.KeyPEMBlock:    "KeyPEMBlock",
-				mqtt.ConnectTimeout: "1",
+				pkg.CertPEMBlock:   "CertPEMBlock",
+				pkg.KeyPEMBlock:    "KeyPEMBlock",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(errors.New("test error")),
 			certLoader:      mockCertLoader(nil),
@@ -357,9 +356,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Load TLS Config from Cert File",
 			hostConfig: TlsHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.CertFile:       "./cert",
-				mqtt.KeyFile:        "./key",
-				mqtt.ConnectTimeout: "1",
+				pkg.CertFile:       "./cert",
+				pkg.KeyFile:        "./key",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(nil),
@@ -370,9 +369,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Load TCPS Config from Cert File",
 			hostConfig: TcpsHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.CertFile:       "./cert",
-				mqtt.KeyFile:        "./key",
-				mqtt.ConnectTimeout: "1",
+				pkg.CertFile:       "./cert",
+				pkg.KeyFile:        "./key",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(nil),
@@ -383,9 +382,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Load SSL Config from Cert File",
 			hostConfig: SslHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.CertFile:       "./cert",
-				mqtt.KeyFile:        "./key",
-				mqtt.ConnectTimeout: "1",
+				pkg.CertFile:       "./cert",
+				pkg.KeyFile:        "./key",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(nil),
@@ -396,9 +395,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Skip Load TLS Config from Cert File for un-supported protocols",
 			hostConfig: TcpHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.CertFile:       "./cert",
-				mqtt.KeyFile:        "./key",
-				mqtt.ConnectTimeout: "1",
+				pkg.CertFile:       "./cert",
+				pkg.KeyFile:        "./key",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(nil),
@@ -409,9 +408,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Fail Load TLS Config from Cert File",
 			hostConfig: TlsHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.CertFile:       "./cert",
-				mqtt.KeyFile:        "./key",
-				mqtt.ConnectTimeout: "1",
+				pkg.CertFile:       "./cert",
+				pkg.KeyFile:        "./key",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(errors.New("test error")),
@@ -422,8 +421,8 @@ func TestClientCreatorTLS(t *testing.T) {
 			name:       "Fail Load TLS Config For Invalid Options",
 			hostConfig: TlsHostInfo,
 			optionalConfig: map[string]string{
-				mqtt.Qos:            "abc",
-				mqtt.ConnectTimeout: "1",
+				pkg.Qos:            "abc",
+				pkg.ConnectTimeout: "1",
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(errors.New("test error")),

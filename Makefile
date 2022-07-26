@@ -6,8 +6,10 @@ GO=CGO_ENABLED=1 GO111MODULE=on go
 tidy:
 	go mod tidy
 
+TAGS=include_nats_messaging
+
 unittest:
-	$(GO) test -race ./... -coverprofile=coverage.out ./...
+	$(GO) test -tags=$(TAGS) -race ./... -coverprofile=coverage.out ./...
 
 test-no-zmq:
 	$(GO) test -tags no-zmq -race ./... -coverprofile=coverage.out ./...
@@ -20,6 +22,11 @@ test: unittest test-no-zmq lint
 	$(GO) vet ./...
 	gofmt -l $$(find . -type f -name '*.go'| grep -v "/vendor/")
 	[ "`gofmt -l $$(find . -type f -name '*.go'| grep -v "/vendor/")`" = "" ]
+
+BENCHCNT := 5 # number of times to run each benchmark with `make bench`
+
+bench:
+	go test -tags=$(TAGS) -bench=. -count $(BENCHCNT) -run=^# ./...
 
 vendor:
 	go mod vendor
