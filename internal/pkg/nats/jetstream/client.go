@@ -35,7 +35,13 @@ const (
 )
 
 func newConnection(cc natsMessaging.ClientConfig) (interfaces.Connection, error) {
-	conn, err := nats.Connect(cc.BrokerURL, cc.ConnectOpt()...)
+	co, err := cc.ConnectOpt()
+
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := nats.Connect(cc.BrokerURL, co...)
 
 	if err != nil {
 		return nil, err
