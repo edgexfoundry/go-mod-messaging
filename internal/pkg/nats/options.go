@@ -19,6 +19,7 @@
 package nats
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/url"
 	"time"
@@ -95,7 +96,7 @@ func CreateClientConfiguration(messageBusConfig types.MessageBusConfig) (ClientC
 	}, nil
 }
 
-func (cc ClientConfig) ConnectOpt() []nats.Option {
+func (cc ClientConfig) ConnectOpt() ([]nats.Option, error) {
 	connectTimeout := time.Second * 30
 
 	if cc.ConnectTimeout != 0 {
@@ -115,9 +116,15 @@ func (cc ClientConfig) ConnectOpt() []nats.Option {
 		opts = append(opts, nats.UserInfo(cc.Username, cc.Password))
 	}
 
-	//TODO: tls config
+	if tlsConfiguration, err := pkg.GenerateTLSForClientClientOptions(cc.BrokerURL, cc.TlsConfigurationOptions, tls.X509KeyPair, tls.LoadX509KeyPair); err == nil {
+		if tlsConfiguration != nil {
+			opts = append(opts, nats.Secure(tlsConfiguration))
+		}
+	} else {
+		return nil, err
+	}
 
-	return opts
+	return opts, nil
 }
 
 // CreateClientOptionsWithDefaults constructs ClientOptions instance with defaults.

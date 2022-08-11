@@ -22,7 +22,7 @@ import (
 	"strconv"
 )
 
-var TlsSchemes = []string{"tcps", "ssl", "tls", "redis"}
+var TlsSchemes = []string{"tcps", "ssl", "tls", "redis", "nats"}
 
 // X509KeyPairCreator defines the function signature for creating a tls.Certificate based on PEM encoding.
 type X509KeyPairCreator func(certPEMBlock []byte, keyPEMBlock []byte) (tls.Certificate, error)
@@ -48,8 +48,8 @@ func CreateDefaultTlsConfigurationOptions() TlsConfigurationOptions {
 	}
 }
 
-// generateTLSForClientClientOptions creates a tls.Config which can be used when configuring the underlying MQTT client.
-// If TLS is not needed then nil will be returned which can be used to signal no TLS is needed to the MQTT client.
+// GenerateTLSForClientClientOptions creates a tls.Config which can be used when configuring the underlying client.
+// If TLS is not needed then nil will be returned which can be used to signal no TLS is needed to the client.
 func GenerateTLSForClientClientOptions(
 	brokerURL string,
 	tlsConfigurationOptions TlsConfigurationOptions,

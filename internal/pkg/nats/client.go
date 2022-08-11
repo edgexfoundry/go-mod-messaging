@@ -28,7 +28,13 @@ import (
 )
 
 func newConnection(cc ClientConfig) (interfaces.Connection, error) {
-	nc, err := nats.Connect(cc.BrokerURL, cc.ConnectOpt()...)
+	co, err := cc.ConnectOpt()
+
+	if err != nil {
+		return nil, err
+	}
+
+	nc, err := nats.Connect(cc.BrokerURL, co...)
 
 	if err != nil {
 		return nil, err

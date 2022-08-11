@@ -33,6 +33,11 @@ All option are set via `MessageBusConfig.Optional` and keys are case sensitive .
 | RetryOnFailedConnect | Retry on connection failure - expects a string representation of a boolean **(default: true)** |
 | Username             | NATS username                                                                                  |
 | Password             | Password for authenticating NATS user                                                          |
+| CertFile             | TLS certificate file path                                                                      | 
+| KeyFile              | TLS private key file path                                                                      | 
+| CertPEMBlock         | TLS certificate as string                                                                      | 
+| KeyPEMBlock          | TLS private key as string                                                                      | 
+| SkipCertVerify       | Skip client-side certificate verification (not recommended for production use).                |
 
 
 ### Subscribe
