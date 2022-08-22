@@ -306,6 +306,23 @@ LhIhYpJ8UsCVt5snWo2N+M+6ANh5tpWdQnEK6zILh4tRbuzaiHgb
 					KeyPEMBlock:    "not PEM",
 				},
 			}}, 0, assert.Error},
+		{"NKEYS error", ClientConfig{
+			BrokerURL: "nats://broker",
+			ClientOptions: ClientOptions{
+				NKeySeedFile: "/fake/file/path.seed",
+			}}, 0, assert.Error},
+		// the NKeyOptionFromSeed option will validate the seed file on initialization
+		{"NKEYS", ClientConfig{
+			BrokerURL: "nats://broker",
+			ClientOptions: ClientOptions{
+				NKeySeedFile: "testdata/nkey.seed",
+			}}, 3, assert.NoError},
+		// the UserCredentials option does not validate the file passed on initialization
+		{"Credentials", ClientConfig{
+			BrokerURL: "nats://broker",
+			ClientOptions: ClientOptions{
+				CredentialsFile: "/fake/file/credentials",
+			}}, 3, assert.NoError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
