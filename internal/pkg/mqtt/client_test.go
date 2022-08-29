@@ -16,7 +16,9 @@ package mqtt
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"reflect"
 	"strings"
@@ -66,6 +68,30 @@ var OptionalPropertiesCertLoad = map[string]string{
 	pkg.CleanSession:   "false",
 	pkg.CertFile:       "./cert",
 	pkg.KeyFile:        "./key",
+	pkg.ConnectTimeout: "1",
+}
+
+var OptionalPropertiesCaCertCreate = map[string]string{
+	pkg.Username:       "TestUser",
+	pkg.Password:       "TestPassword",
+	pkg.ClientId:       "TestClientID",
+	pkg.Qos:            "1",
+	pkg.KeepAlive:      "3",
+	pkg.Retained:       "true",
+	pkg.CleanSession:   "false",
+	pkg.CaPEMBlock:     "CertBytes",
+	pkg.ConnectTimeout: "1",
+}
+
+var OptionalPropertiesCaCertLoad = map[string]string{
+	pkg.Username:       "TestUser",
+	pkg.Password:       "TestPassword",
+	pkg.ClientId:       "TestClientID",
+	pkg.Qos:            "1",
+	pkg.KeepAlive:      "3",
+	pkg.Retained:       "true",
+	pkg.CleanSession:   "false",
+	pkg.CaFile:         "./cacert",
 	pkg.ConnectTimeout: "1",
 }
 
@@ -267,14 +293,23 @@ func TestInvalidClientOptions(t *testing.T) {
 func TestInvalidTlsOptions(t *testing.T) {
 	options := types.MessageBusConfig{
 		PublishHost: TlsHostInfo,
-		Optional: map[string]string{
-			"CertFile": "./does-not-exist",
-			"KeyFile":  "./does-not-exist",
-		},
 	}
-	client, _ := NewMQTTClient(options)
-	err := client.Connect()
-	require.Error(t, err)
+	tests := []struct {
+		name           string
+		optionalConfig map[string]string
+	}{
+		{name: "Client cert", optionalConfig: map[string]string{
+			"CertFile": "./does-not-exist", "KeyFile": "./does-not-exist"}},
+		{name: "CA cert", optionalConfig: map[string]string{"CaFile": "./does-not-exist"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			options.Optional = test.optionalConfig
+			client, _ := NewMQTTClient(options)
+			err := client.Connect()
+			require.Error(t, err)
+		})
+	}
 }
 
 func TestClientCreatorTLS(t *testing.T) {
@@ -284,11 +319,14 @@ func TestClientCreatorTLS(t *testing.T) {
 		optionalConfig  map[string]string
 		certCreator     pkg.X509KeyPairCreator
 		certLoader      pkg.X509KeyLoader
+		caCertCreator   pkg.X509CaCertCreator
+		caCertLoader    pkg.X509CaCertLoader
+		pemDecoder      pkg.PEMDecoder
 		expectError     bool
 		expectTLSConfig bool
 	}{
 		{
-			name:       "Create TLS Config from PEM Block",
+			name:       "Create TLS Config from PEM Block (clientcert)",
 			hostConfig: TlsHostInfo,
 			optionalConfig: map[string]string{
 				pkg.CertPEMBlock:   "CertPEMBlock",
@@ -301,7 +339,19 @@ func TestClientCreatorTLS(t *testing.T) {
 			expectTLSConfig: true,
 		},
 		{
-			name:       "Create TCPS Config from PEM Block",
+			name:       "Create TLS Config from PEM Block (cacert)",
+			hostConfig: TlsHostInfo,
+			optionalConfig: map[string]string{
+				pkg.CaPEMBlock:     "CaPEMBlock",
+				pkg.ConnectTimeout: "1",
+			},
+			caCertCreator:   mockCaCertCreator(nil),
+			pemDecoder:      mockPemDecoder(&pem.Block{}),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Create TCPS Config from PEM Block (clientcert)",
 			hostConfig: TcpsHostInfo,
 			optionalConfig: map[string]string{
 				pkg.CertPEMBlock:   "CertPEMBlock",
@@ -314,7 +364,19 @@ func TestClientCreatorTLS(t *testing.T) {
 			expectTLSConfig: true,
 		},
 		{
-			name:       "Create SSL Config from PEM Block",
+			name:       "Create TCPS Config from PEM Block (cacert)",
+			hostConfig: TcpsHostInfo,
+			optionalConfig: map[string]string{
+				pkg.CaPEMBlock:     "CaPEMBlock",
+				pkg.ConnectTimeout: "1",
+			},
+			caCertCreator:   mockCaCertCreator(nil),
+			pemDecoder:      mockPemDecoder(&pem.Block{}),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Create SSL Config from PEM Block (clientcert)",
 			hostConfig: SslHostInfo,
 			optionalConfig: map[string]string{
 				pkg.CertPEMBlock:   "CertPEMBlock",
@@ -323,6 +385,18 @@ func TestClientCreatorTLS(t *testing.T) {
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(nil),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Create SSL Config from PEM Block (cacert)",
+			hostConfig: SslHostInfo,
+			optionalConfig: map[string]string{
+				pkg.CaPEMBlock:     "CaPEMBlock",
+				pkg.ConnectTimeout: "1",
+			},
+			caCertCreator:   mockCaCertCreator(nil),
+			pemDecoder:      mockPemDecoder(&pem.Block{}),
 			expectError:     false,
 			expectTLSConfig: true,
 		},
@@ -340,7 +414,7 @@ func TestClientCreatorTLS(t *testing.T) {
 			expectTLSConfig: false,
 		},
 		{
-			name:       "Fail Create TLS Config from PEM File",
+			name:       "Fail Create TLS Config from PEM File (clientcert)",
 			hostConfig: TlsHostInfo,
 			optionalConfig: map[string]string{
 				pkg.CertPEMBlock:   "CertPEMBlock",
@@ -353,7 +427,19 @@ func TestClientCreatorTLS(t *testing.T) {
 			expectTLSConfig: false,
 		},
 		{
-			name:       "Load TLS Config from Cert File",
+			name:       "Fail Create TLS Config from PEM File (cacert)",
+			hostConfig: TlsHostInfo,
+			optionalConfig: map[string]string{
+				pkg.CaFile:         "./does-not-exist",
+				pkg.ConnectTimeout: "1",
+			},
+			caCertLoader:    mockCaCertLoader(errors.New("test error")),
+			pemDecoder:      mockPemDecoder(&pem.Block{}),
+			expectError:     true,
+			expectTLSConfig: false,
+		},
+		{
+			name:       "Load TLS Config from Cert File (clientcert)",
 			hostConfig: TlsHostInfo,
 			optionalConfig: map[string]string{
 				pkg.CertFile:       "./cert",
@@ -366,7 +452,20 @@ func TestClientCreatorTLS(t *testing.T) {
 			expectTLSConfig: true,
 		},
 		{
-			name:       "Load TCPS Config from Cert File",
+			name:       "Load TLS Config from Cert File (cacert)",
+			hostConfig: TlsHostInfo,
+			optionalConfig: map[string]string{
+				pkg.CaFile:         "./cacert",
+				pkg.ConnectTimeout: "1",
+			},
+			caCertCreator:   mockCaCertCreator(nil),
+			caCertLoader:    mockCaCertLoader(nil),
+			pemDecoder:      mockPemDecoder(&pem.Block{}),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Load TCPS Config from Cert File (clientcert)",
 			hostConfig: TcpsHostInfo,
 			optionalConfig: map[string]string{
 				pkg.CertFile:       "./cert",
@@ -379,7 +478,20 @@ func TestClientCreatorTLS(t *testing.T) {
 			expectTLSConfig: true,
 		},
 		{
-			name:       "Load SSL Config from Cert File",
+			name:       "Load TCPS Config from Cert File (cacert)",
+			hostConfig: TcpsHostInfo,
+			optionalConfig: map[string]string{
+				pkg.CaFile:         "./cacert",
+				pkg.ConnectTimeout: "1",
+			},
+			caCertCreator:   mockCaCertCreator(nil),
+			caCertLoader:    mockCaCertLoader(nil),
+			pemDecoder:      mockPemDecoder(&pem.Block{}),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Load SSL Config from Cert File (clientcert)",
 			hostConfig: SslHostInfo,
 			optionalConfig: map[string]string{
 				pkg.CertFile:       "./cert",
@@ -388,6 +500,19 @@ func TestClientCreatorTLS(t *testing.T) {
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(nil),
+			expectError:     false,
+			expectTLSConfig: true,
+		},
+		{
+			name:       "Load SSL Config from Cert File (cacert)",
+			hostConfig: SslHostInfo,
+			optionalConfig: map[string]string{
+				pkg.CaFile:         "./cacert",
+				pkg.ConnectTimeout: "1",
+			},
+			caCertCreator:   mockCaCertCreator(nil),
+			caCertLoader:    mockCaCertLoader(nil),
+			pemDecoder:      mockPemDecoder(&pem.Block{}),
 			expectError:     false,
 			expectTLSConfig: true,
 		},
@@ -405,7 +530,7 @@ func TestClientCreatorTLS(t *testing.T) {
 			expectTLSConfig: false,
 		},
 		{
-			name:       "Fail Load TLS Config from Cert File",
+			name:       "Fail Load TLS Config from Cert File (clientcert)",
 			hostConfig: TlsHostInfo,
 			optionalConfig: map[string]string{
 				pkg.CertFile:       "./cert",
@@ -414,6 +539,17 @@ func TestClientCreatorTLS(t *testing.T) {
 			},
 			certCreator:     mockCertCreator(nil),
 			certLoader:      mockCertLoader(errors.New("test error")),
+			expectError:     true,
+			expectTLSConfig: false,
+		},
+		{
+			name:       "Fail Load TLS Config from Cert File (cacert)",
+			hostConfig: TlsHostInfo,
+			optionalConfig: map[string]string{
+				pkg.CaFile:         "./cacert",
+				pkg.ConnectTimeout: "1",
+			},
+			caCertLoader:    mockCaCertLoader(errors.New("test error")),
 			expectError:     true,
 			expectTLSConfig: false,
 		},
@@ -429,6 +565,18 @@ func TestClientCreatorTLS(t *testing.T) {
 			expectError:     true,
 			expectTLSConfig: false,
 		},
+		{
+			name:       "Fail Load TLS Config For Empty PEM Block (cacert)",
+			hostConfig: TlsHostInfo,
+			optionalConfig: map[string]string{
+				pkg.CaFile:         "./cacert",
+				pkg.ConnectTimeout: "1",
+			},
+			caCertLoader:    mockCaCertLoader(nil),
+			pemDecoder:      mockPemDecoder(nil),
+			expectError:     true,
+			expectTLSConfig: false,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -439,7 +587,8 @@ func TestClientCreatorTLS(t *testing.T) {
 				},
 				json.Marshal,
 				json.Unmarshal,
-				ClientCreatorWithCertLoader(test.certCreator, test.certLoader))
+				ClientCreatorWithCertLoader(test.certCreator, test.certLoader, test.caCertCreator, test.caCertLoader,
+					test.pemDecoder))
 
 			err := client.Connect()
 
@@ -467,69 +616,121 @@ func TestClientCreatorTLS(t *testing.T) {
 }
 
 func TestClientCreatorTlsLoader(t *testing.T) {
-	client, _ := NewMQTTClientWithCreator(
-		TestMessageBusConfigTlsLoad,
-		json.Marshal,
-		json.Unmarshal,
-		ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(nil)))
+	tests := []struct {
+		name           string
+		optionalConfig map[string]string
+	}{
+		{name: "Client cert", optionalConfig: OptionalPropertiesCertLoad},
+		{name: "CA cert", optionalConfig: OptionalPropertiesCaCertLoad},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			TestMessageBusConfigTlsLoad.Optional = test.optionalConfig
+			client, _ := NewMQTTClientWithCreator(
+				TestMessageBusConfigTlsLoad,
+				json.Marshal,
+				json.Unmarshal,
+				ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(nil),
+					mockCaCertCreator(nil), mockCaCertLoader(nil), mockPemDecoder(&pem.Block{})))
 
-	// Expect Connect to return an error since no broker available
-	err := client.Connect()
-	require.Error(t, err)
+			// Expect Connect to return an error since no broker available
+			err := client.Connect()
+			require.Error(t, err)
 
-	clientOptions := client.mqttClient.OptionsReader()
-	tlsConfig := clientOptions.TLSConfig()
-	assert.NotNil(t, tlsConfig, "Failed to configure TLS for underlying client")
+			clientOptions := client.mqttClient.OptionsReader()
+			tlsConfig := clientOptions.TLSConfig()
+			assert.NotNil(t, tlsConfig, "Failed to configure TLS for underlying client")
+		})
+	}
 }
 
 func TestClientCreatorTlsLoadError(t *testing.T) {
-	client, _ := NewMQTTClientWithCreator(
-		TestMessageBusConfigTlsLoad,
-		json.Marshal,
-		json.Unmarshal,
-		ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(errors.New("test error"))))
-
-	err := client.Connect()
-	// Expecting a timeout error since creating mqtt client now at the beginning of the Connect() function
-	_, ok := err.(TimeoutErr)
-	if ok {
-		err = nil
+	tests := []struct {
+		name           string
+		optionalConfig map[string]string
+	}{
+		{name: "Client cert", optionalConfig: OptionalPropertiesCertLoad},
+		{name: "CA cert", optionalConfig: OptionalPropertiesCaCertLoad},
 	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			TestMessageBusConfigTlsLoad.Optional = test.optionalConfig
+			client, _ := NewMQTTClientWithCreator(
+				TestMessageBusConfigTlsLoad,
+				json.Marshal,
+				json.Unmarshal,
+				ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(errors.New("test error")),
+					mockCaCertCreator(nil), mockCaCertLoader(errors.New("test error")), mockPemDecoder(&pem.Block{})))
 
-	assert.Error(t, err, "Expected error for invalid CertFile and KeyFile file locations")
+			err := client.Connect()
+			// Expecting a timeout error since creating mqtt client now at the beginning of the Connect() function
+			_, ok := err.(TimeoutErr)
+			if ok {
+				err = nil
+			}
+
+			assert.Error(t, err, "Expected error for invalid CertFile and KeyFile file locations")
+		})
+	}
 }
 
 func TestClientCreatorTlsCreator(t *testing.T) {
-	client, _ := NewMQTTClientWithCreator(
-		TestMessageBusConfigTlsCreate,
-		json.Marshal,
-		json.Unmarshal,
-		ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(nil)))
+	tests := []struct {
+		name           string
+		optionalConfig map[string]string
+	}{
+		{name: "Client cert", optionalConfig: OptionalPropertiesCertCreate},
+		{name: "CA cert", optionalConfig: OptionalPropertiesCaCertCreate},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			TestMessageBusConfigTlsCreate.Optional = test.optionalConfig
+			client, _ := NewMQTTClientWithCreator(
+				TestMessageBusConfigTlsCreate,
+				json.Marshal,
+				json.Unmarshal,
+				ClientCreatorWithCertLoader(mockCertCreator(nil), mockCertLoader(nil),
+					mockCaCertCreator(nil), mockCaCertLoader(nil), mockPemDecoder(&pem.Block{})))
 
-	// Expect Connect to return an error since no broker available
-	err := client.Connect()
-	require.Error(t, err)
+			// Expect Connect to return an error since no broker available
+			err := client.Connect()
+			require.Error(t, err)
 
-	clientOptions := client.mqttClient.OptionsReader()
-	tlsConfig := clientOptions.TLSConfig()
-	assert.NotNil(t, tlsConfig, "Failed to configure TLS for underlying client")
+			clientOptions := client.mqttClient.OptionsReader()
+			tlsConfig := clientOptions.TLSConfig()
+			assert.NotNil(t, tlsConfig, "Failed to configure TLS for underlying client")
+		})
+	}
 }
 
 func TestClientCreatorTlsCreatorError(t *testing.T) {
-	client, _ := NewMQTTClientWithCreator(
-		TestMessageBusConfigTlsCreate,
-		json.Marshal,
-		json.Unmarshal,
-		ClientCreatorWithCertLoader(mockCertCreator(errors.New("test error")), mockCertLoader(nil)))
-
-	err := client.Connect()
-	// Expecting a timeout error since creating mqtt client now at the beginning of the Connect() function
-	_, ok := err.(TimeoutErr)
-	if ok {
-		err = nil
+	tests := []struct {
+		name           string
+		optionalConfig map[string]string
+	}{
+		{name: "Client cert", optionalConfig: OptionalPropertiesCertCreate},
+		{name: "CA cert", optionalConfig: OptionalPropertiesCaCertCreate},
 	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			TestMessageBusConfigTlsCreate.Optional = test.optionalConfig
+			client, _ := NewMQTTClientWithCreator(
+				TestMessageBusConfigTlsCreate,
+				json.Marshal,
+				json.Unmarshal,
+				ClientCreatorWithCertLoader(mockCertCreator(errors.New("test error")), mockCertLoader(nil),
+					mockCaCertCreator(errors.New("test error")), mockCaCertLoader(nil), mockPemDecoder(&pem.Block{})))
 
-	assert.Error(t, err, "Expected error for invalid CertFile and KeyFile file locations")
+			err := client.Connect()
+			// Expecting a timeout error since creating mqtt client now at the beginning of the Connect() function
+			_, ok := err.(TimeoutErr)
+			if ok {
+				err = nil
+			}
+
+			assert.Error(t, err, "Expected error for invalid CertFile and KeyFile file locations")
+		})
+	}
 }
 
 func TestInvalidClientOptionsWithCreator(t *testing.T) {
@@ -927,6 +1128,24 @@ func mockCertLoader(returnError error) pkg.X509KeyLoader {
 	}
 }
 
+func mockCaCertCreator(returnError error) pkg.X509CaCertCreator {
+	return func(caCertPEMBlock []byte) (*x509.Certificate, error) {
+		return &x509.Certificate{}, returnError
+	}
+}
+
+func mockCaCertLoader(returnError error) pkg.X509CaCertLoader {
+	return func(caCertFile string) ([]byte, error) {
+		return []byte{}, returnError
+	}
+}
+
+func mockPemDecoder(pemBlock *pem.Block) pkg.PEMDecoder {
+	return func(data []byte) (*pem.Block, []byte) {
+		return pemBlock, nil
+	}
+}
+
 func TestCreateClientOptions(t *testing.T) {
 	config := MQTTClientConfig{
 		BrokerURL: "",
@@ -948,7 +1167,7 @@ func TestCreateClientOptions(t *testing.T) {
 		},
 	}
 
-	options, err := createClientOptions(config, nil, nil)
+	options, err := createClientOptions(config, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, config.ClientId, options.ClientID)
