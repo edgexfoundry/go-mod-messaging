@@ -34,6 +34,7 @@ const (
 
 	// NATS JetStream specifics
 	Durable                 = "Durable"
+	Subject                 = "Subject"
 	AutoProvision           = "AutoProvision"
 	Deliver                 = "Deliver"
 	DefaultPubRetryAttempts = "DefaultPubRetryAttempts"

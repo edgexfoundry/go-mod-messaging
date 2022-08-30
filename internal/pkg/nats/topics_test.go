@@ -57,8 +57,8 @@ func Test_topicToSubject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := topicToSubject(tt.topic)
-			assert.Equalf(t, tt.want, got, "topicToSubject(%v)", tt.topic)
+			got := TopicToSubject(tt.topic)
+			assert.Equalf(t, tt.want, got, "TopicToSubject(%v)", tt.topic)
 		})
 	}
 }

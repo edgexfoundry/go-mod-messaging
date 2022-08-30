@@ -40,17 +40,13 @@ func (j connection) QueueSubscribe(s string, q string, handler nats.MsgHandler) 
 	stream := subjectToStreamName(s)
 
 	if j.cfg.Durable != "" {
-		// use the original topic name + ".durable" for durable consumer name
 		opts = append(opts, nats.Durable(j.cfg.Durable))
+	} else if j.cfg.Subject != "" {
+		// use the original topic name for stream name
+		opts = append(opts, nats.BindStream(subjectToStreamName(natsMessaging.TopicToSubject(j.cfg.Subject))))
 	} else {
 		// use the original topic name for stream name
 		opts = append(opts, nats.BindStream(stream))
-	}
-
-	err := j.ensureStream(stream, s)
-
-	if err != nil {
-		return nil, err
 	}
 
 	return j.js.QueueSubscribe(s, q, handler, opts...)
@@ -66,8 +62,4 @@ func (j connection) PublishMsg(msg *nats.Msg) (err error) {
 // Drain will remove all subscription interest and attempt to wait until all messages have finished processing to close and return.
 func (j connection) Drain() error {
 	return j.conn.Drain()
-}
-
-func (j *connection) autoProvision() bool {
-	return j.cfg.AutoProvision
 }

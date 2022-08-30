@@ -34,7 +34,7 @@ type jsonMarshaller struct{}
 func (jm *jsonMarshaller) Marshal(v types.MessageEnvelope, publishTopic string) (*nats.Msg, error) {
 	var err error
 
-	subject := topicToSubject(publishTopic)
+	subject := TopicToSubject(publishTopic)
 
 	out := nats.NewMsg(subject)
 	out.Data, err = json.Marshal(v)
@@ -68,7 +68,7 @@ const (
 type natsMarshaller struct{}
 
 func (nm *natsMarshaller) Marshal(v types.MessageEnvelope, publishTopic string) (*nats.Msg, error) {
-	subject := topicToSubject(publishTopic)
+	subject := TopicToSubject(publishTopic)
 
 	out := nats.NewMsg(subject)
 	out.Data = v.Payload
