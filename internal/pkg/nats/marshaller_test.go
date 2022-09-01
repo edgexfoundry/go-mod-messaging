@@ -1,5 +1,6 @@
 //
 // Copyright (c) 2022 One Track Consulting
+// Copyright (c) 2022 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,12 +24,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/nats/interfaces"
-	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/nats/interfaces"
+	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
 var marshallerCases = map[string]interfaces.MarshallerUnmarshaller{
@@ -36,29 +38,26 @@ var marshallerCases = map[string]interfaces.MarshallerUnmarshaller{
 	"nats": &natsMarshaller{},
 }
 
-func TestMarshallers(t *testing.T) {
-	for name, sut := range marshallerCases {
-		t.Run(name, func(t *testing.T) {
-			pubTopic := uuid.NewString()
+func TestJSONMarshaller(t *testing.T) {
+	sut := &jsonMarshaller{}
+	pubTopic := uuid.NewString()
 
-			orig := sampleMessage(100)
-			expected := orig
+	orig := sampleMessage(100)
+	expected := orig
 
-			expected.ReceivedTopic = pubTopic // this is set from NATS message
+	expected.ReceivedTopic = pubTopic // this is set from NATS message
 
-			marshaled, err := sut.Marshal(orig, pubTopic)
+	marshaled, err := sut.Marshal(orig, pubTopic)
 
-			assert.NoError(t, err)
+	assert.NoError(t, err)
 
-			unmarshaled := types.MessageEnvelope{}
+	unmarshaled := types.MessageEnvelope{}
 
-			err = sut.Unmarshal(marshaled, &unmarshaled)
+	err = sut.Unmarshal(marshaled, &unmarshaled)
 
-			assert.NoError(t, err)
+	assert.NoError(t, err)
 
-			assert.Equal(t, expected, unmarshaled)
-		})
-	}
+	assert.Equal(t, expected, unmarshaled)
 }
 
 func TestJSONMarshaller_Unmarshal_Invalid_JSON(t *testing.T) {
@@ -71,6 +70,45 @@ func TestJSONMarshaller_Unmarshal_Invalid_JSON(t *testing.T) {
 	err := sut.Unmarshal(msg, &types.MessageEnvelope{})
 
 	require.Error(t, err)
+}
+
+func TestNATSMarshaller(t *testing.T) {
+	sut := &natsMarshaller{}
+	pubTopic := uuid.NewString()
+
+	validWithNoQueryParams := sampleMessage(100)
+	validWithNoQueryParams.ReceivedTopic = pubTopic
+	validWithQueryParams := validWithNoQueryParams
+	validWithQueryParams.QueryParams = map[string]string{"foo": "bar"}
+
+	tests := []struct {
+		name             string
+		envelope         types.MessageEnvelope
+		emptyQueryParams bool
+	}{
+		{"valid", validWithQueryParams, false},
+		{"valid - no query parameters", validWithNoQueryParams, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			marshaled, err := sut.Marshal(tt.envelope, pubTopic)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, marshaled.Header.Get(correlationIDHeader))
+			assert.NotEmpty(t, marshaled.Header.Get(requestIDHeader))
+			assert.Equal(t, types.ApiVersion, marshaled.Header.Get(apiVersionHeader))
+			assert.Equal(t, "0", marshaled.Header.Get(errorCodeHeader))
+			if tt.emptyQueryParams {
+				assert.Empty(t, marshaled.Header.Get(queryParamsHeader))
+			} else {
+				assert.NotEmpty(t, marshaled.Header.Get(queryParamsHeader))
+			}
+
+			unmarshaled := types.MessageEnvelope{}
+			err = sut.Unmarshal(marshaled, &unmarshaled)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.envelope, unmarshaled)
+		})
+	}
 }
 
 func BenchmarkMarshallers(b *testing.B) {
@@ -89,6 +127,7 @@ func BenchmarkMarshallers(b *testing.B) {
 		}
 	}
 }
+
 func sampleMessage(plSize int) types.MessageEnvelope {
 	pl := make([]byte, plSize)
 
@@ -97,7 +136,10 @@ func sampleMessage(plSize int) types.MessageEnvelope {
 	return types.MessageEnvelope{
 		ReceivedTopic: uuid.NewString(),
 		CorrelationID: uuid.NewString(),
+		ApiVersion:    types.ApiVersion,
+		RequestID:     uuid.NewString(),
+		ErrorCode:     0,
 		Payload:       pl,
-		ContentType:   uuid.NewString(),
+		QueryParams:   make(map[string]string),
 	}
 }

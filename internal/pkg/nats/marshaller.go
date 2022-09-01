@@ -1,5 +1,6 @@
 //
 // Copyright (c) 2022 One Track Consulting
+// Copyright (c) 2022 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,9 +21,12 @@ package nats
 
 import (
 	"encoding/json"
+	"strconv"
+	"strings"
+
+	"github.com/nats-io/nats.go"
 
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
-	"github.com/nats-io/nats.go"
 )
 
 type jsonMarshaller struct{}
@@ -52,8 +56,14 @@ func (jm *jsonMarshaller) Unmarshal(msg *nats.Msg, target *types.MessageEnvelope
 	return nil
 }
 
-const contentTypeHeader = "Content-Type"
-const correlationIDHeader = "X-Correlation-ID"
+const (
+	contentTypeHeader   = "Content-Type"
+	correlationIDHeader = "X-Correlation-ID"
+	requestIDHeader     = "RequestId"
+	apiVersionHeader    = "ApiVersion"
+	errorCodeHeader     = "ErrorCode"
+	queryParamsHeader   = "QueryParams"
+)
 
 type natsMarshaller struct{}
 
@@ -64,6 +74,15 @@ func (nm *natsMarshaller) Marshal(v types.MessageEnvelope, publishTopic string) 
 	out.Data = v.Payload
 	out.Header.Set(correlationIDHeader, v.CorrelationID)
 	out.Header.Set(contentTypeHeader, v.ContentType)
+	out.Header.Set(requestIDHeader, v.RequestID)
+	out.Header.Set(apiVersionHeader, v.ApiVersion)
+	out.Header.Set(errorCodeHeader, strconv.Itoa(v.ErrorCode))
+	if len(v.QueryParams) > 0 {
+		for key, value := range v.QueryParams {
+			query := key + ":" + value
+			out.Header.Add(queryParamsHeader, query)
+		}
+	}
 
 	return out, nil
 }
@@ -76,6 +95,26 @@ func (nm *natsMarshaller) Unmarshal(msg *nats.Msg, target *types.MessageEnvelope
 	target.Payload = msg.Data
 	target.CorrelationID = msg.Header.Get(correlationIDHeader)
 	target.ContentType = msg.Header.Get(contentTypeHeader)
+	target.RequestID = msg.Header.Get(requestIDHeader)
+	target.ApiVersion = msg.Header.Get(apiVersionHeader)
+
+	errorCode := msg.Header.Get(errorCodeHeader)
+	if errorCode != "" {
+		ec, err := strconv.Atoi(errorCode)
+		if err != nil {
+			return err
+		}
+		target.ErrorCode = ec
+	}
+
+	target.QueryParams = make(map[string]string)
+	query := msg.Header.Values(queryParamsHeader)
+	if len(query) > 0 {
+		for _, q := range query {
+			kv := strings.Split(q, ":")
+			target.QueryParams[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+		}
+	}
 
 	return nil
 }
