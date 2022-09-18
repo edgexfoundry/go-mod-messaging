@@ -67,14 +67,16 @@ func autoProvision(cc natsMessaging.ClientConfig, js nats.JetStreamContext) erro
 
 	autoProvisionSubject := natsMessaging.TopicToSubject(cc.Subject)
 
-	if streamName == "" {
+	if strings.TrimSpace(streamName) == "" {
 		// fall back to formatted subject if no durable specified
 		streamName = subjectToStreamName(autoProvisionSubject)
 	}
 
+	// only need to check for existence here
 	_, err := js.StreamInfo(streamName)
 
 	if err != nil {
+		// only interested if an error encountered on stream provisioning
 		_, err = js.AddStream(&nats.StreamConfig{
 			Name:        streamName,
 			Description: "",

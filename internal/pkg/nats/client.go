@@ -98,7 +98,7 @@ func (c *Client) Connect() error {
 
 	c.connection = conn
 
-	return err
+	return nil
 }
 
 // Publish publishes EdgeX messages to NATS

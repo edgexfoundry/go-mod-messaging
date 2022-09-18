@@ -19,6 +19,8 @@
 package jetstream
 
 import (
+	"strings"
+
 	natsMessaging "github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/nats"
 	"github.com/nats-io/nats.go"
 )
@@ -36,17 +38,12 @@ type connection struct {
 // Subscribe subscribes to a JetStream subject
 func (j connection) QueueSubscribe(s string, q string, handler nats.MsgHandler) (*nats.Subscription, error) {
 	opts := j.subOpts
-
-	stream := subjectToStreamName(s)
-
-	if j.cfg.Durable != "" {
+	if strings.TrimSpace(j.cfg.Durable) != "" {
+		// use the configured durable name to bind subscription to stream
 		opts = append(opts, nats.Durable(j.cfg.Durable))
-	} else if j.cfg.Subject != "" {
-		// use the original topic name for stream name
+	} else if strings.TrimSpace(j.cfg.Subject) != "" {
+		// use the configured subject to bind subscription to stream
 		opts = append(opts, nats.BindStream(subjectToStreamName(natsMessaging.TopicToSubject(j.cfg.Subject))))
-	} else {
-		// use the original topic name for stream name
-		opts = append(opts, nats.BindStream(stream))
 	}
 
 	return j.js.QueueSubscribe(s, q, handler, opts...)
