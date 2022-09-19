@@ -6,7 +6,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.4.1
 	github.com/go-redis/redis/v7 v7.3.0
 	github.com/google/uuid v1.3.0
-	github.com/nats-io/nats.go v1.16.0
+	github.com/nats-io/nats.go v1.17.0
 	github.com/pebbe/zmq4 v1.2.7
 	github.com/stretchr/testify v1.8.0
 )
