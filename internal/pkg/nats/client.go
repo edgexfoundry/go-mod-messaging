@@ -127,7 +127,7 @@ func (c *Client) Subscribe(topics []types.TopicChannel, messageErrors chan error
 	}
 
 	for _, tc := range topics {
-		s := topicToSubject(tc.Topic)
+		s := TopicToSubject(tc.Topic)
 
 		_, err := c.connection.QueueSubscribe(s, c.config.QueueGroup, func(msg *nats.Msg) {
 			env := types.MessageEnvelope{}

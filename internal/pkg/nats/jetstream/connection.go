@@ -19,6 +19,8 @@
 package jetstream
 
 import (
+	"strings"
+
 	natsMessaging "github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/nats"
 	"github.com/nats-io/nats.go"
 )
@@ -36,21 +38,12 @@ type connection struct {
 // Subscribe subscribes to a JetStream subject
 func (j connection) QueueSubscribe(s string, q string, handler nats.MsgHandler) (*nats.Subscription, error) {
 	opts := j.subOpts
-
-	stream := subjectToStreamName(s)
-
-	if j.cfg.Durable != "" {
-		// use the original topic name + ".durable" for durable consumer name
+	if strings.TrimSpace(j.cfg.Durable) != "" {
+		// use the configured durable name to bind subscription to stream
 		opts = append(opts, nats.Durable(j.cfg.Durable))
-	} else {
-		// use the original topic name for stream name
-		opts = append(opts, nats.BindStream(stream))
-	}
-
-	err := j.ensureStream(stream, s)
-
-	if err != nil {
-		return nil, err
+	} else if strings.TrimSpace(j.cfg.Subject) != "" {
+		// use the configured subject to bind subscription to stream
+		opts = append(opts, nats.BindStream(subjectToStreamName(natsMessaging.TopicToSubject(j.cfg.Subject))))
 	}
 
 	return j.js.QueueSubscribe(s, q, handler, opts...)
@@ -66,8 +59,4 @@ func (j connection) PublishMsg(msg *nats.Msg) (err error) {
 // Drain will remove all subscription interest and attempt to wait until all messages have finished processing to close and return.
 func (j connection) Drain() error {
 	return j.conn.Drain()
-}
-
-func (j *connection) autoProvision() bool {
-	return j.cfg.AutoProvision
 }

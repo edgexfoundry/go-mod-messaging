@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	localnats "github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/nats"
-	"github.com/nats-io/nats.go"
 )
 
 const (
@@ -34,18 +33,4 @@ var streamReplacer = strings.NewReplacer(localnats.Separator, streamSeparator, l
 
 func subjectToStreamName(subject string) string {
 	return strings.TrimSuffix(streamReplacer.Replace(subject), streamSeparator)
-}
-
-func (j *connection) ensureStream(stream string, subject string) error {
-	_, err := j.js.StreamInfo(stream)
-
-	if err != nil && j.autoProvision() {
-		_, err = j.js.AddStream(&nats.StreamConfig{
-			Name:        stream,
-			Description: "",
-			Subjects:    []string{subject},
-		})
-	}
-
-	return err
 }

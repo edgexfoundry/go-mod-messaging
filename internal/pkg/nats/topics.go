@@ -33,8 +33,8 @@ const (
 
 var subjectReplacer = strings.NewReplacer(StandardSeparator, Separator, StandardSingleLevelWildcard, SingleLevelWildcard, StandardMultiLevelWildcard, MultiLevelWildcard)
 
-// topicToSubject formats an EdgeX topic into a NATS subject
-func topicToSubject(topic string) string {
+// TopicToSubject formats an EdgeX topic into a NATS subject
+func TopicToSubject(topic string) string {
 	return subjectReplacer.Replace(topic)
 }
 

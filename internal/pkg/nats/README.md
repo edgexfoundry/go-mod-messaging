@@ -22,29 +22,30 @@ All option are set via `MessageBusConfig.Optional` and keys are case sensitive .
 | Option        | Description                                                          |
 |---------------|----------------------------------------------------------------------|
 | Format        | format to use for envelope transport.  Options are 'nats' or 'json'. |
-| AutoProvision | automatically provision NATS streams. (**JetStream only**)           |
 
 ### Connect
 
-| Option               | Description                                                                                    |
-|----------------------|------------------------------------------------------------------------------------------------|
-| ClientId             | The id to use to identify the client.  Maps to the `Name` option in nats.go                    |
-| ConnectTimeout       | Timeout for NATS connection - an integer representing seconds **(default: 1s)**                |
-| RetryOnFailedConnect | Retry on connection failure - expects a string representation of a boolean **(default: true)** |
-| Username             | NATS username                                                                                  |
-| Password             | Password for authenticating NATS user                                                          |
-| CertFile             | TLS certificate file path                                                                      | 
-| KeyFile              | TLS private key file path                                                                      | 
-| CertPEMBlock         | TLS certificate as string                                                                      | 
-| KeyPEMBlock          | TLS private key as string                                                                      | 
-| SkipCertVerify       | Skip client-side certificate verification (not recommended for production use).                |
+| Option               | Description                                                                                                                                                                                                                                    |
+|----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ClientId             | The id to use to identify the client.  Maps to the `Name` option in nats.go                                                                                                                                                                    |
+| ConnectTimeout       | Timeout for NATS connection - an integer representing seconds **(default: 1s)**                                                                                                                                                                |
+| RetryOnFailedConnect | Retry on connection failure - expects a string representation of a boolean **(default: true)**                                                                                                                                                 |
+| Username             | NATS username                                                                                                                                                                                                                                  |
+| Password             | Password for authenticating NATS user                                                                                                                                                                                                          |
+| CertFile             | TLS certificate file path                                                                                                                                                                                                                      | 
+| KeyFile              | TLS private key file path                                                                                                                                                                                                                      | 
+| CertPEMBlock         | TLS certificate as string                                                                                                                                                                                                                      | 
+| KeyPEMBlock          | TLS private key as string                                                                                                                                                                                                                      | 
+| SkipCertVerify       | Skip client-side certificate verification (not recommended for production use).                                                                                                                                                                |
+| AutoProvision        | automatically provision NATS streams. (**JetStream only**)                                                                                                                                                                                     |
+| Durable              | Specifies a durable consumer should be used with the given name.  Note that if a durable consumer with the specified name does not exist it will be considered ephemeral and deleted by the client on drain / unsubscribe (**JetStream only**) |
+| Subject              | Specifies the subject to use for subscriptions and stream autoprovisioning (Required, **JetStream only**, durable will be favored on subscription.)                                                                                            |
 
 
 ### Subscribe
 | Option     | Description                                                                                                                                                                                                                                                                       |
 |------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Deliver    | Specifies delivery mode for subscriptions - options are "new", "all", "last" or "lastpersubject".  See the [NATS documentation](https://docs.nats.io/nats-concepts/jetstream/consumers#deliverpolicy-optstartseq-optstarttime) for more detail (**JetStream only, default: new**) |
-| Durable    | Specifies a durable consumer should be used with the given name.  Note that if a durable consumer with the specified name does not exist it will be considered ephemeral and deleted by the client on drain / unsubscribe (**JetStream only**)                                    |
 | QueueGroup | Specifies a queue group to distribute messages from a stream to a pool of worker services.                                                                                                                                                                                        |
 
 ### Publish

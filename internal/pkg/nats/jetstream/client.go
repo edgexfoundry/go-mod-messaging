@@ -53,7 +53,38 @@ func newConnection(cc natsMessaging.ClientConfig) (interfaces.Connection, error)
 		return nil, err
 	}
 
+	if cc.AutoProvision {
+		if apErr := autoProvision(cc, js); apErr != nil {
+			return nil, apErr
+		}
+	}
+
 	return &connection{cc, conn, js, subOpt(cc), pubOpt(cc)}, nil
+}
+
+func autoProvision(cc natsMessaging.ClientConfig, js nats.JetStreamContext) error {
+	streamName := cc.Durable
+
+	autoProvisionSubject := natsMessaging.TopicToSubject(cc.Subject)
+
+	if strings.TrimSpace(streamName) == "" {
+		// fall back to formatted subject if no durable specified
+		streamName = subjectToStreamName(autoProvisionSubject)
+	}
+
+	// only need to check for existence here
+	_, err := js.StreamInfo(streamName)
+
+	if err != nil {
+		// only interested if an error encountered on stream provisioning
+		_, err = js.AddStream(&nats.StreamConfig{
+			Name:        streamName,
+			Description: "",
+			Subjects:    []string{autoProvisionSubject},
+		})
+	}
+
+	return err
 }
 
 // NewClient creates a new client using NATS JetStream.

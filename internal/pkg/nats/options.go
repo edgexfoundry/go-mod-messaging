@@ -55,6 +55,7 @@ type ClientOptions struct {
 	Format               string
 	RetryOnFailedConnect bool
 	Durable              string
+	Subject              string
 	AutoProvision        bool
 	ConnectTimeout       int // Seconds
 	pkg.TlsConfigurationOptions
@@ -139,6 +140,7 @@ func CreateClientOptionsWithDefaults() ClientOptions {
 		ConnectTimeout:          5, // 5 seconds
 		RetryOnFailedConnect:    false,
 		Durable:                 "",
+		Subject:                 "",
 		AutoProvision:           false, // AutoProvision JetStream streams - should maybe be true?
 		TlsConfigurationOptions: pkg.CreateDefaultTlsConfigurationOptions(),
 		DefaultPubRetryAttempts: nats.DefaultPubRetryAttempts,
