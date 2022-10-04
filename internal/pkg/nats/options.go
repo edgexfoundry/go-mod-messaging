@@ -62,6 +62,8 @@ type ClientOptions struct {
 	QueueGroup              string
 	Deliver                 string
 	DefaultPubRetryAttempts int
+	NKeySeedFile            string
+	CredentialsFile         string
 }
 
 // CreateClientConfiguration constructs a ClientConfig based on the provided MessageBusConfig.
@@ -129,6 +131,18 @@ func (cc ClientConfig) ConnectOpt() ([]nats.Option, error) {
 		return nil, err
 	}
 
+	if cc.NKeySeedFile != "" {
+		nkOpt, err := nats.NkeyOptionFromSeed(cc.NKeySeedFile)
+
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, nkOpt)
+	}
+
+	if cc.CredentialsFile != "" {
+		opts = append(opts, nats.UserCredentials(cc.CredentialsFile))
+	}
 	return opts, nil
 }
 
@@ -145,5 +159,7 @@ func CreateClientOptionsWithDefaults() ClientOptions {
 		TlsConfigurationOptions: pkg.CreateDefaultTlsConfigurationOptions(),
 		DefaultPubRetryAttempts: nats.DefaultPubRetryAttempts,
 		Format:                  "nats",
+		NKeySeedFile:            "",
+		CredentialsFile:         "",
 	}
 }
