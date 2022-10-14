@@ -59,7 +59,7 @@ func NewClientWithConnectionFactory(cfg types.MessageBusConfig, connectionFactor
 		return nil, fmt.Errorf("connectionFactory is required")
 	}
 
-	var m interfaces.MarshallerUnmarshaller = &natsMarshaller{} // default
+	var m interfaces.MarshallerUnmarshaller
 
 	cc, err := CreateClientConfiguration(cfg)
 
@@ -69,9 +69,9 @@ func NewClientWithConnectionFactory(cfg types.MessageBusConfig, connectionFactor
 
 	switch strings.ToLower(cc.Format) {
 	case "json":
-		m = &jsonMarshaller{}
+		m = &jsonMarshaller{opts: cc}
 	default:
-		m = &natsMarshaller{}
+		m = &natsMarshaller{opts: cc}
 	}
 
 	return &Client{
@@ -152,6 +152,21 @@ func (c *Client) Subscribe(topics []types.TopicChannel, messageErrors chan error
 				messageErrors <- err
 			} else {
 				tc.Messages <- env
+			}
+
+			// core nats messages without reply do not need to be ack'd
+			if msg.Reply != "" {
+				var ackErr error
+				if c.config.ExactlyOnce {
+					// AckSync carries a performance penalty
+					// but is needed for subscribe side of ExactlyOnce
+					ackErr = msg.AckSync()
+				} else {
+					ackErr = msg.Ack()
+				}
+				if ackErr != nil {
+					messageErrors <- ackErr
+				}
 			}
 		})
 

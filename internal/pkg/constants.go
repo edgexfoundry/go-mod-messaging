@@ -31,6 +31,7 @@ const (
 	RetryOnFailedConnect = "RetryOnFailedConnect"
 	Format               = "Format"
 	QueueGroup           = "QueueGroup"
+	ExactlyOnce          = "ExactlyOnce"
 
 	// NATS JetStream specifics
 	Durable                 = "Durable"

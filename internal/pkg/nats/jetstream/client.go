@@ -93,7 +93,7 @@ func NewClient(cfg types.MessageBusConfig) (*natsMessaging.Client, error) {
 }
 
 func subOpt(cc natsMessaging.ClientConfig) []nats.SubOpt {
-	return []nats.SubOpt{nats.AckNone(), parseDeliver(cc.Deliver)()}
+	return []nats.SubOpt{nats.AckExplicit(), parseDeliver(cc.Deliver)()}
 }
 
 func pubOpt(cc natsMessaging.ClientConfig) []nats.PubOpt {
