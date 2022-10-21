@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	QueryRequestTopic         = "QueryRequestTopic"
+	QueryRequestTopicPrefix   = "QueryRequestTopicPrefix"
 	QueryResponseTopic        = "QueryResponseTopic"
 	CommandRequestTopicPrefix = "CommandRequestTopicPrefix"
 	CommandResponseTopic      = "CommandResponseTopic"
@@ -96,7 +96,7 @@ func (c *CommandClient) AllDeviceCoreCommands(ctx context.Context, offset int, l
 
 	queryParams := map[string]string{common.Offset: strconv.Itoa(offset), common.Limit: strconv.Itoa(limit)}
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, queryParams)
-	requestTopic := strings.Join([]string{c.topics[QueryRequestTopic], common.All}, "/")
+	requestTopic := strings.Join([]string{c.topics[QueryRequestTopicPrefix], common.All}, "/")
 	err := c.messageBus.Publish(requestEnvelope, requestTopic)
 	if err != nil {
 		return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
@@ -135,7 +135,7 @@ func (c *CommandClient) DeviceCoreCommandsByDeviceName(ctx context.Context, devi
 	}
 
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, nil)
-	requestTopic := strings.Join([]string{c.topics[QueryRequestTopic], deviceName}, "/")
+	requestTopic := strings.Join([]string{c.topics[QueryRequestTopicPrefix], deviceName}, "/")
 	err := c.messageBus.Publish(requestEnvelope, requestTopic)
 	if err != nil {
 		return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
