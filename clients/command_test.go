@@ -63,8 +63,8 @@ func (m mockMessageClient) Disconnect() error {
 func TestCommandClient_AllDeviceCoreCommands(t *testing.T) {
 	mockMessageBus := mockMessageClient{signal: make(chan struct{})}
 	topics := map[string]string{
-		QueryRequestTopic:  testQueryRequestTopic,
-		QueryResponseTopic: testQueryResponseTopic,
+		QueryRequestTopicPrefix: testQueryRequestTopic,
+		QueryResponseTopic:      testQueryResponseTopic,
 	}
 
 	client, err := NewCommandClient(mockMessageBus, topics, 10*time.Second)
@@ -100,8 +100,8 @@ func TestCommandClient_AllDeviceCoreCommands(t *testing.T) {
 func TestCommandClient_DeviceCoreCommandsByDeviceName(t *testing.T) {
 	mockMessageBus := mockMessageClient{signal: make(chan struct{})}
 	topics := map[string]string{
-		QueryRequestTopic:  testQueryRequestTopic,
-		QueryResponseTopic: testQueryResponseTopic,
+		QueryRequestTopicPrefix: testQueryRequestTopic,
+		QueryResponseTopic:      testQueryResponseTopic,
 	}
 
 	client, err := NewCommandClient(mockMessageBus, topics, 10*time.Second)
