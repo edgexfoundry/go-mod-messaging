@@ -3,6 +3,30 @@
 ## Messaging Module (in Go)
 [Github repository](https://github.com/edgexfoundry/go-mod-messaging)
 
+## Change Logs for EdgeX Dependencies
+
+- [go-mod-core-contracts](https://github.com/edgexfoundry/go-mod-core-contracts/blob/main/CHANGELOG.md)
+
+## [v2.3.0] - 2022-11-09
+
+### Features ✨
+
+- Implement Messaging-based CommandClient ([#bcd50ac](https://github.com/edgexfoundry/go-mod-messaging/commits/bcd50ac))
+- Add new fields and factory functions for MessageEnvelope ([#a4f6801](https://github.com/edgexfoundry/go-mod-messaging/commits/a4f6801))
+- Allow user to bring their own CA in the client ([#aa046c2](https://github.com/edgexfoundry/go-mod-messaging/commits/aa046c2))
+- Add NATS Implementation ([#9dc6314](https://github.com/edgexfoundry/go-mod-messaging/commits/9dc6314))
+- Add no_zmq build flag ([#51b75ef](https://github.com/edgexfoundry/go-mod-messaging/commits/51b75ef))
+
+### Bug Fixes 🐛
+
+- Add retry of publish if error is EOF ([#54dc8da](https://github.com/edgexfoundry/go-mod-messaging/commits/54dc8da))
+- Don't send invalid message as normal message from MQTT ([#7364efb](https://github.com/edgexfoundry/go-mod-messaging/commits/7364efb))
+- Handle repeated error better to not spam logs ([#8658677](https://github.com/edgexfoundry/go-mod-messaging/commits/8658677))
+
+### Build 👷
+
+- Upgrade to Go 1.18 ([#55f9df1](https://github.com/edgexfoundry/go-mod-messaging/commits/55f9df1))
+
 ## [v2.2.0] - 2022-05-11
 
 ### Features ✨
