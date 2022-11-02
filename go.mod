@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.4.1
-	github.com/edgexfoundry/go-mod-core-contracts/v2 v2.3.0-dev.19
+	github.com/edgexfoundry/go-mod-core-contracts/v2 v2.3.0
 	github.com/go-redis/redis/v7 v7.3.0
 	github.com/google/uuid v1.3.0
 	github.com/nats-io/nats-server/v2 v2.9.3
