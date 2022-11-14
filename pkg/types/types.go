@@ -27,11 +27,11 @@ type TopicChannel struct {
 // MessageBusConfig defines the messaging information need to connect to the message bus
 // in a publish-subscribe pattern
 type MessageBusConfig struct {
-	// PublishHost contains the connection information for a publishing on 0mq
+	// PublishHost contains the connection information for a publishing on MessageBus
 	PublishHost HostInfo
-	// SubscribeHost contains the connection information for a subscribing on 0mq
+	// SubscribeHost contains the connection information for a subscribing on MessageBus
 	SubscribeHost HostInfo
-	// Type indicates the message queue platform being used. eg. "zero" for 0mq
+	// Type indicates the message queue platform being used. eg. "redis" for Redis Pub/Sub
 	Type string
 	// Optional contains all other properties of message bus that is specific to
 	// certain concrete implementation like MQTT's QoS, for example

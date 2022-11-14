@@ -21,28 +21,16 @@ These interface functions connect, publish, subscribe and disconnect to/from the
 
 ### How to Use ###
 
-This library is used by Go programs for interacting with the Message Bus (i.e. zeroMQ).  If you are using zeroMQ as your message bus be sure to first [install the zeroMQ library](https://github.com/edgexfoundry/edgex-go#zeromq).
+This library is used by Go programs for interacting with the Message Bus (i.e. redis).
 
 The Message Bus connection information as well as which implementation to use is stored in the service's toml configuration as:
 
-Publisher:
 ```toml
 [MessageQueue]
-Protocol = "tcp"
-Host = "*"
-Port = 5563
-Type = "zero"
-Topic = "events"
-```
-
-Subscriber:
-```toml
-[MessageQueue]
-Protocol = "tcp"
+Protocol = "redis"
 Host = "localhost"
-Port = 5563
-Type = "zero"
-Topic = "events"
+Port = 6379
+Type = "redis"
 ```
 
 #### MQTT Configuration

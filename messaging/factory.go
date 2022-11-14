@@ -27,14 +27,10 @@ import (
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/nats"
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/nats/jetstream"
 	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/redis"
-	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/zeromq"
 	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
 )
 
 const (
-	// ZeroMQ messaging implementation
-	ZeroMQ = "zero"
-
 	// MQTT messaging implementation
 	MQTT = "mqtt"
 
@@ -57,8 +53,6 @@ func NewMessageClient(msgConfig types.MessageBusConfig) (MessageClient, error) {
 	}
 
 	switch lowerMsgType := strings.ToLower(msgConfig.Type); lowerMsgType {
-	case ZeroMQ:
-		return zeromq.NewZeroMqClient(msgConfig)
 	case MQTT:
 		return mqtt.NewMQTTClient(msgConfig)
 	case Redis:
