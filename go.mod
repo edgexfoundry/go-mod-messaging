@@ -9,7 +9,6 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/nats-io/nats-server/v2 v2.9.3
 	github.com/nats-io/nats.go v1.18.0
-	github.com/pebbe/zmq4 v1.2.7
 	github.com/stretchr/testify v1.8.0
 )
 

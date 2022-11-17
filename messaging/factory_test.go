@@ -25,9 +25,9 @@ import (
 
 var msgConfig = types.MessageBusConfig{
 	PublishHost: types.HostInfo{
-		Host:     "*",
-		Port:     5571,
-		Protocol: "tcp",
+		Host:     "localhost",
+		Port:     6379,
+		Protocol: "redis",
 	},
 }
 
@@ -54,7 +54,7 @@ func TestNewMessageClientMQTT(t *testing.T) {
 
 func TestNewMessageClientBogusType(t *testing.T) {
 
-	msgConfig.Type = "bogus"
+	msgConfig.Type = "zero"
 
 	_, err := NewMessageClient(msgConfig)
 	if assert.Error(t, err, "Expected message type error") == false {
