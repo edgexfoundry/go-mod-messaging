@@ -161,7 +161,7 @@ func TestClientOptionsIntegration(t *testing.T) {
 		Build()
 
 	messageBusConfig := types.MessageBusConfig{
-		PublishHost: types.HostInfo{
+		Broker: types.HostInfo{
 			Host:     host,
 			Port:     port,
 			Protocol: protocol,

@@ -24,7 +24,7 @@ import (
 )
 
 var msgConfig = types.MessageBusConfig{
-	PublishHost: types.HostInfo{
+	Broker: types.HostInfo{
 		Host:     "localhost",
 		Port:     6379,
 		Protocol: "redis",
@@ -64,8 +64,8 @@ func TestNewMessageClientBogusType(t *testing.T) {
 
 func TestNewMessageClientEmptyHostAndPortNumber(t *testing.T) {
 
-	msgConfig.PublishHost.Host = ""
-	msgConfig.PublishHost.Port = 0
+	msgConfig.Broker.Host = ""
+	msgConfig.Broker.Port = 0
 	_, err := NewMessageClient(msgConfig)
 	if assert.Error(t, err, "Expected message type error") == false {
 		t.Fatal()

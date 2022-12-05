@@ -34,10 +34,10 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/edgexfoundry/go-mod-messaging/v3/messaging/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 )
 
@@ -58,13 +58,13 @@ func TestIntegrationWithMQTTServer(t *testing.T) {
 	port, err := strconv.ParseInt(urlMQTT.Port(), 10, 0)
 	require.NoError(t, err, "Unable to parse the port")
 	configOptions := types.MessageBusConfig{
-		PublishHost: types.HostInfo{
+		Broker: types.HostInfo{
 			Host:     urlMQTT.Hostname(),
 			Port:     int(port),
 			Protocol: urlMQTT.Scheme,
 		},
 		Optional: map[string]string{
-			mqtt.ClientId: "integration-test-client",
+			pkg.ClientId: "integration-test-client",
 		},
 	}
 
@@ -82,7 +82,6 @@ func TestIntegrationWithMQTTServer(t *testing.T) {
 	err = client.Subscribe(topics, make(chan error))
 	require.NoError(t, err, "Failed to create subscription")
 	expectedMessage := types.MessageEnvelope{
-		Checksum:      "123",
 		CorrelationID: "456",
 		Payload:       []byte("Testing the MQTT client"),
 		ContentType:   "application/text",

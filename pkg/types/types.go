@@ -27,13 +27,11 @@ type TopicChannel struct {
 // MessageBusConfig defines the messaging information need to connect to the message bus
 // in a publish-subscribe pattern
 type MessageBusConfig struct {
-	// PublishHost contains the connection information for a publishing on MessageBus
-	PublishHost HostInfo
-	// SubscribeHost contains the connection information for a subscribing on MessageBus
-	SubscribeHost HostInfo
+	// Broker contains the connection information for publishing and subscribing to the broker for the EdgeX MessageBus
+	Broker HostInfo
 	// Type indicates the message queue platform being used. eg. "redis" for Redis Pub/Sub
 	Type string
-	// Optional contains all other properties of message bus that is specific to
-	// certain concrete implementation like MQTT's QoS, for example
+	// Optional contains all other properties of message bus that are specific to
+	// certain concrete implementations like MQTT's QoS, for example.
 	Optional map[string]string
 }

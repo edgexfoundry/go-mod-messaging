@@ -40,15 +40,11 @@ const (
 // Client MessageClient implementation which provides functionality for sending and receiving messages using
 // Redis Pub/Sub.
 type Client struct {
-	// Client used for functionality related to reading messages
-	subscribeClient RedisClient
+	redisClient RedisClient
 
 	// Used to avoid multiple subscriptions to the same topic
 	existingTopics map[string]bool
 	mapMutex       *sync.Mutex
-
-	// Client used for functionality related to sending messages
-	publishClient RedisClient
 }
 
 // NewClient creates a new Client based on the provided configuration.
@@ -81,30 +77,12 @@ func NewClientWithCreator(
 		return Client{}, err
 	}
 
-	var publishClient, subscribeClient RedisClient
+	var client RedisClient
 
 	// Create underlying client to use when publishing
-	if !messageBusConfig.PublishHost.IsHostInfoEmpty() {
-		publishClient, err = createRedisClient(
-			messageBusConfig.PublishHost.GetHostURL(),
-			optionalClientConfiguration,
-			tlsConfigurationOptions,
-			creator,
-			pairCreator,
-			keyLoader,
-			caCertCreator,
-			caCertLoader,
-			pemDecoder)
-
-		if err != nil {
-			return Client{}, err
-		}
-	}
-
-	// Create underlying client to use when subscribing
-	if !messageBusConfig.SubscribeHost.IsHostInfoEmpty() {
-		subscribeClient, err = createRedisClient(
-			messageBusConfig.SubscribeHost.GetHostURL(),
+	if !messageBusConfig.Broker.IsHostInfoEmpty() {
+		client, err = createRedisClient(
+			messageBusConfig.Broker.GetHostURL(),
 			optionalClientConfiguration,
 			tlsConfigurationOptions,
 			creator,
@@ -120,10 +98,9 @@ func NewClientWithCreator(
 	}
 
 	return Client{
-		subscribeClient: subscribeClient,
-		existingTopics:  make(map[string]bool),
-		mapMutex:        new(sync.Mutex),
-		publishClient:   publishClient,
+		redisClient:    client,
+		existingTopics: make(map[string]bool),
+		mapMutex:       new(sync.Mutex),
 	}, nil
 }
 
@@ -135,8 +112,8 @@ func (c Client) Connect() error {
 
 // Publish sends the provided message to appropriate Redis Pub/Sub.
 func (c Client) Publish(message types.MessageEnvelope, topic string) error {
-	if c.publishClient == nil {
-		return pkg.NewMissingConfigurationErr("PublishHostInfo", "Unable to create a connection for publishing")
+	if c.redisClient == nil {
+		return pkg.NewMissingConfigurationErr("Broker", "Unable to create a connection for publishing")
 	}
 
 	if topic == "" {
@@ -146,9 +123,9 @@ func (c Client) Publish(message types.MessageEnvelope, topic string) error {
 
 	topic = convertToRedisTopicScheme(topic)
 	var err error
-	if err = c.publishClient.Send(topic, message); err != nil && strings.Contains(err.Error(), "EOF") {
+	if err = c.redisClient.Send(topic, message); err != nil && strings.Contains(err.Error(), "EOF") {
 		// Redis may have been restarted and the first attempt will fail with EOF, so need to try again
-		err = c.publishClient.Send(topic, message)
+		err = c.redisClient.Send(topic, message)
 	}
 
 	return err
@@ -157,8 +134,8 @@ func (c Client) Publish(message types.MessageEnvelope, topic string) error {
 // Subscribe creates background processes which reads messages from the appropriate Redis Pub/Sub and sends to the
 // provided channels
 func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error) error {
-	if c.subscribeClient == nil {
-		return pkg.NewMissingConfigurationErr("SubscribeHostInfo", "Unable to create a connection for subscribing")
+	if c.redisClient == nil {
+		return pkg.NewMissingConfigurationErr("Broker", "Unable to create a connection for subscribing")
 	}
 
 	err := c.validateTopics(topics)
@@ -175,7 +152,7 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 
 			for {
 
-				message, err := c.subscribeClient.Receive(topicName)
+				message, err := c.redisClient.Receive(topicName)
 				if err != nil {
 					// This handles case when getting same repeated error due to Redis connectivity issue
 					// Avoids starving of other threads/processes and recipient spamming the log file.
@@ -204,15 +181,15 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 // Disconnect closes connections to the Redis server.
 func (c Client) Disconnect() error {
 	var disconnectErrors []string
-	if c.publishClient != nil {
-		err := c.publishClient.Close()
+	if c.redisClient != nil {
+		err := c.redisClient.Close()
 		if err != nil {
 			disconnectErrors = append(disconnectErrors, fmt.Sprintf("Unable to disconnect publish client: %v", err))
 		}
 	}
 
-	if c.subscribeClient != nil {
-		err := c.subscribeClient.Close()
+	if c.redisClient != nil {
+		err := c.redisClient.Close()
 		if err != nil {
 			disconnectErrors = append(disconnectErrors, fmt.Sprintf("Unable to disconnect subscribe client: %v", err))
 		}

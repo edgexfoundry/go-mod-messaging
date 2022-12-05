@@ -102,17 +102,17 @@ var SslHostInfo = types.HostInfo{Host: "localhost", Protocol: "ssl", Port: 8883}
 
 // TestMessageBusConfig defines a simple configuration used for testing successful options parsing.
 var TestMessageBusConfig = types.MessageBusConfig{
-	PublishHost: TcpsHostInfo,
-	Optional:    OptionalPropertiesNoTls,
+	Broker:   TcpsHostInfo,
+	Optional: OptionalPropertiesNoTls,
 }
 var TestMessageBusConfigTlsCreate = types.MessageBusConfig{
-	PublishHost: TlsHostInfo,
-	Optional:    OptionalPropertiesCertCreate,
+	Broker:   TlsHostInfo,
+	Optional: OptionalPropertiesCertCreate,
 }
 
 var TestMessageBusConfigTlsLoad = types.MessageBusConfig{
-	PublishHost: TlsHostInfo,
-	Optional:    OptionalPropertiesCertLoad,
+	Broker:   TlsHostInfo,
+	Optional: OptionalPropertiesCertLoad,
 }
 
 // MockToken implements Token and gives control over the information returned to the caller of the various
@@ -279,7 +279,7 @@ func mockClientCreator(connect MockToken, publish MockToken, subscribe MockToken
 }
 
 func TestInvalidClientOptions(t *testing.T) {
-	invalidOptions := types.MessageBusConfig{PublishHost: types.HostInfo{
+	invalidOptions := types.MessageBusConfig{Broker: types.HostInfo{
 		Host:     "    ",
 		Port:     0,
 		Protocol: "    ",
@@ -292,7 +292,7 @@ func TestInvalidClientOptions(t *testing.T) {
 
 func TestInvalidTlsOptions(t *testing.T) {
 	options := types.MessageBusConfig{
-		PublishHost: TlsHostInfo,
+		Broker: TlsHostInfo,
 	}
 	tests := []struct {
 		name           string
@@ -582,8 +582,8 @@ func TestClientCreatorTLS(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			client, _ := NewMQTTClientWithCreator(
 				types.MessageBusConfig{
-					PublishHost: test.hostConfig,
-					Optional:    test.optionalConfig,
+					Broker:   test.hostConfig,
+					Optional: test.optionalConfig,
 				},
 				json.Marshal,
 				json.Unmarshal,
@@ -593,7 +593,9 @@ func TestClientCreatorTLS(t *testing.T) {
 			err := client.Connect()
 
 			// Expecting a connect error since creating mqtt client now at the beginning of the Connect() function
-			if err != nil && strings.Contains(err.Error(), "connect: connection refused") {
+			if err != nil &&
+				(strings.Contains(err.Error(), "connect: connection refused") || // Linux
+					strings.Contains(err.Error(), "Unable to connect")) { // Windows
 				err = nil
 			}
 
@@ -734,7 +736,7 @@ func TestClientCreatorTlsCreatorError(t *testing.T) {
 }
 
 func TestInvalidClientOptionsWithCreator(t *testing.T) {
-	invalidOptions := types.MessageBusConfig{PublishHost: types.HostInfo{
+	invalidOptions := types.MessageBusConfig{Broker: types.HostInfo{
 		Host:     "    ",
 		Port:     0,
 		Protocol: "    ",

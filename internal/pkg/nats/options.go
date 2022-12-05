@@ -22,6 +22,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -70,12 +71,10 @@ type ClientOptions struct {
 // CreateClientConfiguration constructs a ClientConfig based on the provided MessageBusConfig.
 func CreateClientConfiguration(messageBusConfig types.MessageBusConfig) (ClientConfig, error) {
 	var brokerUrl string
-	if !messageBusConfig.PublishHost.IsHostInfoEmpty() {
-		brokerUrl = messageBusConfig.PublishHost.GetHostURL()
-	} else if !messageBusConfig.SubscribeHost.IsHostInfoEmpty() {
-		brokerUrl = messageBusConfig.SubscribeHost.GetHostURL()
+	if !messageBusConfig.Broker.IsHostInfoEmpty() {
+		brokerUrl = messageBusConfig.Broker.GetHostURL()
 	} else {
-		return ClientConfig{}, fmt.Errorf("neither a PublishHost or a SubscribeHost has been configured.")
+		return ClientConfig{}, errors.New("broker information no specified")
 	}
 
 	_, err := url.Parse(brokerUrl)

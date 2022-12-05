@@ -37,7 +37,7 @@ func TestCreateMQTTClientConfiguration(t *testing.T) {
 		{
 			"Successfully load all configurations",
 			args{types.MessageBusConfig{
-				PublishHost: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
+				Broker: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
 				Optional: map[string]string{
 					pkg.Username:       "TestUser",
 					pkg.Password:       "TestPassword",
@@ -66,7 +66,7 @@ func TestCreateMQTTClientConfiguration(t *testing.T) {
 		{
 			"Does not over write host configuration with optional properties",
 			args{types.MessageBusConfig{
-				PublishHost: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
+				Broker: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
 				Optional: map[string]string{
 					pkg.Username:       "TestUser",
 					pkg.Password:       "TestPassword",
@@ -94,7 +94,7 @@ func TestCreateMQTTClientConfiguration(t *testing.T) {
 		{
 			"Invalid URL",
 			args{types.MessageBusConfig{
-				PublishHost: types.HostInfo{Host: "   ", Port: 999999999999, Protocol: "    "},
+				Broker: types.HostInfo{Host: "   ", Port: 999999999999, Protocol: "    "},
 				Optional: map[string]string{
 					// Other valid configurations
 					"ClientId": "TestClientID",
@@ -105,7 +105,7 @@ func TestCreateMQTTClientConfiguration(t *testing.T) {
 		{
 			"Invalid Int",
 			args{types.MessageBusConfig{
-				PublishHost: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
+				Broker: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
 				Optional: map[string]string{
 					"KeepAlive": "abc",
 					// Other valid configurations
@@ -116,7 +116,7 @@ func TestCreateMQTTClientConfiguration(t *testing.T) {
 		{
 			"Invalid Bool",
 			args{types.MessageBusConfig{
-				PublishHost: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
+				Broker: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
 				Optional: map[string]string{
 					"Retained": "abc",
 				}}},
@@ -126,7 +126,7 @@ func TestCreateMQTTClientConfiguration(t *testing.T) {
 		{
 			"Unknown configuration",
 			args{types.MessageBusConfig{
-				PublishHost: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
+				Broker: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
 				Optional: map[string]string{
 					pkg.Username:       "TestUser",
 					pkg.Password:       "TestPassword",
