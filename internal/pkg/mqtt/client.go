@@ -23,8 +23,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
-	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 
 	pahoMqtt "github.com/eclipse/paho.mqtt.golang"
 )

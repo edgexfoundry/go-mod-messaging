@@ -3,7 +3,7 @@ package redis
 import (
 	"testing"
 
-	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
 	"github.com/stretchr/testify/assert"
 )
 
