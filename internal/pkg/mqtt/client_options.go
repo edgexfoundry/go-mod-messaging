@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
-	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 )
 
 // MQTTClientConfig contains all the configurations for the MQTT client.
@@ -34,7 +34,8 @@ type MQTTClientConfig struct {
 // ConnectionOptions contains the connection configurations for the MQTT client.
 //
 // NOTE: The connection properties resides in its own struct in order to avoid the property being loaded in via
-//  reflection during the load process.
+//
+//	reflection during the load process.
 type ConnectionOptions struct {
 	BrokerURL string
 }

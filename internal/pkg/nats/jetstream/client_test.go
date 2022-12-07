@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"testing"
 
-	natsMessaging "github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/nats"
+	natsMessaging "github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg/nats"
 	"github.com/google/uuid"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"

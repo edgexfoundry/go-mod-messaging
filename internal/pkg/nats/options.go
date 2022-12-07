@@ -27,8 +27,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg"
-	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 	"github.com/nats-io/nats.go"
 )
 
@@ -41,7 +41,8 @@ type ClientConfig struct {
 // ConnectionOptions contains the connection configurations for the NATS client.
 //
 // NOTE: The connection properties resides in its own struct in order to avoid the property being loaded in via
-//  reflection during the load process.
+//
+//	reflection during the load process.
 type ConnectionOptions struct {
 	BrokerURL string
 }

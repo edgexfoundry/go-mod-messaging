@@ -22,7 +22,7 @@ package messaging
 import (
 	"errors"
 
-	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 )
 
 // NewMessageClient is noop implementation when service doesn't need the message bus.

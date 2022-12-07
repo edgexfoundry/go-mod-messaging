@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/edgexfoundry/go-mod-messaging/v2/internal/pkg/nats/interfaces"
-	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg/nats/interfaces"
+	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 	"github.com/nats-io/nats.go"
 )
 

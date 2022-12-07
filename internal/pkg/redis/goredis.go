@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/edgexfoundry/go-mod-messaging/v2/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 
 	goRedis "github.com/go-redis/redis/v7"
 )
