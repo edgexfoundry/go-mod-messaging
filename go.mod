@@ -7,7 +7,7 @@ require (
 	github.com/edgexfoundry/go-mod-core-contracts/v3 v3.0.0-dev.2
 	github.com/go-redis/redis/v7 v7.3.0
 	github.com/google/uuid v1.3.0
-	github.com/nats-io/nats-server/v2 v2.9.9
+	github.com/nats-io/nats-server/v2 v2.9.10
 	github.com/nats-io/nats.go v1.20.0
 	github.com/stretchr/testify v1.8.1
 )
