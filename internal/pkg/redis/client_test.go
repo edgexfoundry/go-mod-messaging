@@ -62,7 +62,7 @@ func TestNewClient(t *testing.T) {
 		{
 			name: "Successfully create client with optional configuration",
 			messageBusConfig: types.MessageBusConfig{
-				PublishHost: HostInfo,
+				Broker: HostInfo,
 				Optional: map[string]string{
 					pkg.Password: "Password",
 				},
@@ -73,7 +73,7 @@ func TestNewClient(t *testing.T) {
 		{
 			name: "Invalid Redis Server",
 			messageBusConfig: types.MessageBusConfig{
-				PublishHost: types.HostInfo{
+				Broker: types.HostInfo{
 					Host:     "!@#$",
 					Port:     -1,
 					Protocol: "!@#",
@@ -109,8 +109,8 @@ func TestNewClientWithCreator(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			name:             "Client with Publish Host",
-			messageBusConfig: types.MessageBusConfig{PublishHost: HostInfo},
+			name:             "Client with Publish Broker",
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo},
 			creator:          mockRedisClientCreator(nil, nil),
 			pairCreator:      mockCertCreator(nil),
 			keyLoader:        mockCertLoader(nil),
@@ -118,15 +118,15 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name:             "Create publisher error",
-			messageBusConfig: types.MessageBusConfig{PublishHost: HostInfo},
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo},
 			creator:          mockRedisClientCreator(nil, errors.New("test error")),
 			pairCreator:      mockCertCreator(nil),
 			keyLoader:        mockCertLoader(nil),
 			wantErr:          true,
 		},
 		{
-			name:             "Client with Subscribe Host",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo},
+			name:             "Client with Subscribe Broker",
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo},
 			creator:          mockRedisClientCreator(nil, nil),
 			pairCreator:      mockCertCreator(nil),
 			keyLoader:        mockCertLoader(nil),
@@ -134,7 +134,7 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name:             "Client subscriber error",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo},
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo},
 			creator:          mockRedisClientCreator(nil, errors.New("test error")),
 			pairCreator:      mockCertCreator(nil),
 			keyLoader:        mockCertLoader(nil),
@@ -142,7 +142,7 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name:             "Client with optional configuration",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{"Password": "TestPassword"}},
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo, Optional: map[string]string{"Password": "TestPassword"}},
 			creator:          mockRedisClientCreator(nil, nil),
 			pairCreator:      mockCertCreator(nil),
 			keyLoader:        mockCertLoader(nil),
@@ -150,7 +150,7 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name: "Client with valid TLS configuration",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo, Optional: map[string]string{
 				"CertFile":     "certFile",
 				"KeyFile":      "keyFile",
 				"CertPEMBlock": "certPRMBlock",
@@ -163,7 +163,7 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name: "Client with valid TLS configuration (cacert file)",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo, Optional: map[string]string{
 				"CaFile": "caCertFile",
 			}},
 			creator:       mockRedisClientCreator(nil, nil),
@@ -174,7 +174,7 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name: "Client with valid TLS configuration (cacert PEM block)",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo, Optional: map[string]string{
 				"CaPEMBlock": "caCertPEMBlock",
 			}},
 			creator:       mockRedisClientCreator(nil, nil),
@@ -184,7 +184,7 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name: "Client with invalid TLS configuration",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo, Optional: map[string]string{
 				"SkipCertVerify": "NotABool",
 			}},
 			creator:     mockRedisClientCreator(nil, nil),
@@ -194,7 +194,7 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name: "Client TLS creation error",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo, Optional: map[string]string{
 				"CertFile":     "certFile",
 				"KeyFile":      "keyFile",
 				"CertPEMBlock": "certPRMBlock",
@@ -207,7 +207,7 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name: "Client TLS creation error - cacert file not found",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo, Optional: map[string]string{
 				"CaFile": "caCertFile",
 			}},
 			creator:      mockRedisClientCreator(nil, nil),
@@ -216,7 +216,7 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name: "Client TLS creation error - cacert file without PEM block",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo, Optional: map[string]string{
 				"CaFile": "caCertFile",
 			}},
 			creator:      mockRedisClientCreator(nil, nil),
@@ -226,7 +226,7 @@ func TestNewClientWithCreator(t *testing.T) {
 		},
 		{
 			name: "Client TLS creation error - invalid cacert",
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo, Optional: map[string]string{
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo, Optional: map[string]string{
 				"CaPEMBlock": "caCertPEMBlock",
 			}},
 			creator:       mockRedisClientCreator(nil, nil),
@@ -330,7 +330,7 @@ func TestClient_Publish(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c, err := NewClientWithCreator(types.MessageBusConfig{
-				PublishHost: HostInfo,
+				Broker: HostInfo,
 			}, tt.redisClientCreator, mockCertCreator(nil), mockCertLoader(nil),
 				mockCaCertCreator(nil), mockCaCertLoader(nil), mockPemDecoder(&pem.Block{}))
 
@@ -392,7 +392,7 @@ func TestClient_Subscribe(t *testing.T) {
 			// by the Receive method is client specific.
 			c, err := NewClientWithCreator(
 				types.MessageBusConfig{
-					SubscribeHost: HostInfo,
+					Broker: HostInfo,
 				},
 				mockSubscriptionClientCreator(tt.numberOfMessages, tt.numberOfErrors),
 				mockCertCreator(nil),
@@ -591,7 +591,7 @@ func TestClient_Disconnect(t *testing.T) {
 					arg:        nil,
 					ret:        []interface{}{nil},
 				}}, nil),
-			messageBusConfig: types.MessageBusConfig{PublishHost: HostInfo},
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo},
 			wantErr:          false,
 		},
 		{
@@ -602,7 +602,7 @@ func TestClient_Disconnect(t *testing.T) {
 					arg:        nil,
 					ret:        []interface{}{errors.New("test error")},
 				}}, nil),
-			messageBusConfig: types.MessageBusConfig{PublishHost: HostInfo},
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo},
 			wantErr:          true,
 		},
 		{
@@ -613,7 +613,7 @@ func TestClient_Disconnect(t *testing.T) {
 					arg:        nil,
 					ret:        []interface{}{nil},
 				}}, nil),
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo},
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo},
 			wantErr:          false,
 		},
 		{
@@ -624,7 +624,7 @@ func TestClient_Disconnect(t *testing.T) {
 					arg:        nil,
 					ret:        []interface{}{errors.New("test error")},
 				}}, nil),
-			messageBusConfig: types.MessageBusConfig{SubscribeHost: HostInfo},
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo},
 			wantErr:          true,
 		},
 		{
@@ -635,7 +635,7 @@ func TestClient_Disconnect(t *testing.T) {
 					arg:        nil,
 					ret:        []interface{}{nil},
 				}}, nil),
-			messageBusConfig: types.MessageBusConfig{PublishHost: HostInfo, SubscribeHost: HostInfo},
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo},
 			wantErr:          false,
 		},
 		{
@@ -646,7 +646,7 @@ func TestClient_Disconnect(t *testing.T) {
 					arg:        nil,
 					ret:        []interface{}{errors.New("test error")},
 				}}, nil),
-			messageBusConfig: types.MessageBusConfig{PublishHost: HostInfo, SubscribeHost: HostInfo},
+			messageBusConfig: types.MessageBusConfig{Broker: HostInfo},
 			wantErr:          true,
 		},
 	}

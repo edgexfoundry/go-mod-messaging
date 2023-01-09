@@ -48,8 +48,8 @@ const (
 // the "Type" from the configuration
 func NewMessageClient(msgConfig types.MessageBusConfig) (MessageClient, error) {
 
-	if msgConfig.PublishHost.IsHostInfoEmpty() && msgConfig.SubscribeHost.IsHostInfoEmpty() {
-		return nil, fmt.Errorf("unable to create messageClient: host info not set")
+	if msgConfig.Broker.IsHostInfoEmpty() {
+		return nil, fmt.Errorf("unable to create messageClient: Broker info not set")
 	}
 
 	switch lowerMsgType := strings.ToLower(msgConfig.Type); lowerMsgType {

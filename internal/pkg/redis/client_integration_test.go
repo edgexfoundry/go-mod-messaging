@@ -50,13 +50,11 @@ const (
 func TestRedisStreamsClientIntegration(t *testing.T) {
 	redisHostInfo := getRedisHostInfo(t)
 	client, err := NewClient(types.MessageBusConfig{
-		PublishHost:   redisHostInfo,
-		SubscribeHost: redisHostInfo,
+		Broker: redisHostInfo,
 	})
 
 	require.NoError(t, err, "Failed to create Redis client")
 	testMessage := types.MessageEnvelope{
-		Checksum:      "abcde",
 		CorrelationID: "12345",
 		Payload:       []byte("test-message")}
 

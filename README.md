@@ -68,7 +68,7 @@ Or programmatically in the Optional field of the MessageBusConfig struct. For ex
 
 ```go
 types.MessageBusConfig{
-				PublishHost: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
+				Broker: types.HostInfo{Host: "example.com", Port: 9090, Protocol: "tcp"},
 				Optional: map[string]string{
 					"ClientId":          "MyClientID",
 					"Username":          "MyUser",
@@ -110,7 +110,7 @@ Or programmatically in the Optional field of the MessageBusConfig struct. For ex
 
 ```go
 types.MessageBusConfig{
-				PublishHost: types.HostInfo{Host: "localhost", Port: 6379, Protocol: "redis"},
+				Broker: types.HostInfo{Host: "localhost", Port: 6379, Protocol: "redis"},
 				Optional: map[string]string{
 					"Password":          "MyPassword",
 				}}
@@ -130,7 +130,7 @@ var messageBus messaging.MessageClient
 
 var err error
 messageBus, err = msgFactory.NewMessageClient(types.MessageBusConfig{
-  PublishHost: types.HostInfo{
+  Broker:   types.HostInfo{
   Host:     Configuration.MessageQueue.Host,
   Port:     Configuration.MessageQueue.Port,
   Protocol: Configuration.MessageQueue.Protocol,
@@ -167,7 +167,7 @@ This code snippet shows how to subscribe to the abstract message bus.
 
 ```go
 messageBus, err := factory.NewMessageClient(types.MessageBusConfig{
-  SubscribeHost: types.HostInfo{
+  Broker:   types.HostInfo{
   Host:     Configuration.MessageQueue.Host,
   Port:     Configuration.MessageQueue.Port,
   Protocol: Configuration.MessageQueue.Protocol,

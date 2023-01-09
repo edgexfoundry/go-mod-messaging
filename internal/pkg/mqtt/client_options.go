@@ -15,6 +15,7 @@
 package mqtt
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -59,12 +60,10 @@ type MQTTClientOptions struct {
 // CreateMQTTClientConfiguration constructs a MQTTClientConfig based on the provided MessageBusConfig.
 func CreateMQTTClientConfiguration(messageBusConfig types.MessageBusConfig) (MQTTClientConfig, error) {
 	var brokerUrl string
-	if !messageBusConfig.PublishHost.IsHostInfoEmpty() {
-		brokerUrl = messageBusConfig.PublishHost.GetHostURL()
-	} else if !messageBusConfig.SubscribeHost.IsHostInfoEmpty() {
-		brokerUrl = messageBusConfig.SubscribeHost.GetHostURL()
+	if !messageBusConfig.Broker.IsHostInfoEmpty() {
+		brokerUrl = messageBusConfig.Broker.GetHostURL()
 	} else {
-		return MQTTClientConfig{}, fmt.Errorf("Specified empty broker info.")
+		return MQTTClientConfig{}, errors.New("broker info not specified")
 	}
 
 	_, err := url.Parse(brokerUrl)

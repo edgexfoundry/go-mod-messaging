@@ -239,7 +239,7 @@ func TestClient_Subscribe(t *testing.T) {
 }
 
 func TestNewClientWithConnectionFactory(t *testing.T) {
-	cfg := types.MessageBusConfig{SubscribeHost: types.HostInfo{Host: "xyz", Protocol: "tcp", Port: 50}, Optional: map[string]string{}}
+	cfg := types.MessageBusConfig{Broker: types.HostInfo{Host: "xyz", Protocol: "tcp", Port: 50}, Optional: map[string]string{}}
 	var connector ConnectNats
 
 	t.Run("no connector", func(t *testing.T) {

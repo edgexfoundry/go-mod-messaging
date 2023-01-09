@@ -28,17 +28,17 @@ import (
 )
 
 var natsConfig = types.MessageBusConfig{
-	PublishHost: types.HostInfo{
-		Host:     "*",
-		Port:     4222,
-		Protocol: "tcp",
+	Broker: types.HostInfo{
+		Host:     "localhost",
+		Port:     6379,
+		Protocol: "redis",
 	},
 }
 
 func TestNewMessageClientNatsCore(t *testing.T) {
 	messageBusConfig := natsConfig
 	messageBusConfig.Type = messaging.NatsCore
-	messageBusConfig.SubscribeHost = types.HostInfo{Host: uuid.NewString(), Port: 37, Protocol: "nats"}
+	messageBusConfig.Broker = types.HostInfo{Host: uuid.NewString(), Port: 37, Protocol: "nats"}
 
 	_, err := messaging.NewMessageClient(messageBusConfig)
 
@@ -48,7 +48,7 @@ func TestNewMessageClientNatsCore(t *testing.T) {
 func TestNewMessageClientNatsJetstream(t *testing.T) {
 	messageBusConfig := natsConfig
 	messageBusConfig.Type = messaging.NatsJetStream
-	messageBusConfig.SubscribeHost = types.HostInfo{Host: uuid.NewString(), Port: 37, Protocol: "nats"}
+	messageBusConfig.Broker = types.HostInfo{Host: uuid.NewString(), Port: 37, Protocol: "nats"}
 
 	_, err := messaging.NewMessageClient(messageBusConfig)
 
