@@ -168,12 +168,12 @@ func (c *CommandClient) DeviceCoreCommandsByDeviceName(ctx context.Context, devi
 	}
 }
 
-func (c *CommandClient) IssueGetCommandByName(ctx context.Context, deviceName string, commandName string, dsPushEvent string, dsReturnEvent string) (*responses.EventResponse, edgexErr.EdgeX) {
+func (c *CommandClient) IssueGetCommandByName(ctx context.Context, deviceName string, commandName string, dsPushEvent bool, dsReturnEvent bool) (*responses.EventResponse, edgexErr.EdgeX) {
 	if c.commandMessages == nil {
 		return nil, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "command request/response topics not provided", nil)
 	}
 
-	queryParams := map[string]string{common.PushEvent: dsPushEvent, common.ReturnEvent: dsReturnEvent}
+	queryParams := map[string]string{common.PushEvent: strconv.FormatBool(dsPushEvent), common.ReturnEvent: strconv.FormatBool(dsReturnEvent)}
 	return c.IssueGetCommandByNameWithQueryParams(ctx, deviceName, commandName, queryParams)
 }
 
@@ -207,7 +207,7 @@ func (c *CommandClient) IssueGetCommandByNameWithQueryParams(ctx context.Context
 
 			var res responses.EventResponse
 			returnEvent, ok := queryParams[common.ReturnEvent]
-			if ok && returnEvent == common.ValueNo {
+			if ok && returnEvent == common.ValueFalse {
 				res.ApiVersion = common.ApiVersion
 				res.RequestId = responseEnvelope.RequestID
 				res.StatusCode = http.StatusOK

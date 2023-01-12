@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -151,7 +152,11 @@ func TestCommandClient_IssueGetCommandByName(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		res, err := client.IssueGetCommandByName(context.Background(), testDeviceName, testCommandName, "no", "tes")
+		notPushEvent, err := strconv.ParseBool(common.ValueFalse)
+		require.NoError(t, err)
+		returnEvent, err := strconv.ParseBool(common.ValueTrue)
+		require.NoError(t, err)
+		res, err := client.IssueGetCommandByName(context.Background(), testDeviceName, testCommandName, notPushEvent, returnEvent)
 
 		require.NoError(t, err)
 		require.IsType(t, res, &responses.EventResponse{})
