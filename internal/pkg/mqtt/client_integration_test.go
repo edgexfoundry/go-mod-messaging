@@ -1,5 +1,4 @@
 //go:build mqttIntegration
-// +build mqttIntegration
 
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
@@ -22,73 +21,181 @@
  *
  * This is a list of the requirements necessary to run the tests in this file:
  * - MQTT server with no authentication required by clients.
- * - The MQTT server URL set as the environment variable MQTT_SERVER_TEST. Otherwise the default 'tcp://localhost:1833
+ * - The MQTT server URL set as the environment variable MQTT_SERVER_TEST, Otherwise the default 'tcp://localhost:1833
  *  will be used
  */
 
 package mqtt
 
 import (
-	"net/url"
-	"os"
-	"strconv"
+	"fmt"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 )
 
-const (
-	MQTTURLEnvName = "MQTT_SERVER_TEST"
-	DefaultMQTTURL = "tcp://localhost:1883"
-)
-
 // TestIntegrationWithMQTTServer end-to-end test of the MQTT client with a MQTT server.
 func TestIntegrationWithMQTTServer(t *testing.T) {
-	mqttURL := os.Getenv(MQTTURLEnvName)
-	if mqttURL == "" {
-		mqttURL = DefaultMQTTURL
-	}
-
-	urlMQTT, err := url.Parse(mqttURL)
-	require.NoError(t, err, "Failed to create URL")
-	port, err := strconv.ParseInt(urlMQTT.Port(), 10, 0)
-	require.NoError(t, err, "Unable to parse the port")
-	configOptions := types.MessageBusConfig{
-		Broker: types.HostInfo{
-			Host:     urlMQTT.Hostname(),
-			Port:     int(port),
-			Protocol: urlMQTT.Scheme,
-		},
-		Optional: map[string]string{
-			pkg.ClientId: "integration-test-client",
-		},
-	}
-
-	client, err := NewMQTTClient(configOptions)
-	require.NoError(t, err, "Failed to create MQTT client")
-	err = client.Connect()
+	client := createAndConnectMqttClient(t)
 	defer func() { _ = client.Disconnect() }()
-	require.NoError(t, err, "Failed to connect")
+
 	channel := make(chan types.MessageEnvelope)
 	topics := []types.TopicChannel{{
 		Topic:    "test1",
 		Messages: channel,
 	}}
 
-	err = client.Subscribe(topics, make(chan error))
+	err := client.Subscribe(topics, make(chan error))
 	require.NoError(t, err, "Failed to create subscription")
 	expectedMessage := types.MessageEnvelope{
 		CorrelationID: "456",
 		Payload:       []byte("Testing the MQTT client"),
 		ContentType:   "application/text",
+		ReceivedTopic: "test1",
 	}
 
 	err = client.Publish(expectedMessage, "test1")
 	require.NoError(t, err, "Failed to publish message")
 	actualMessage := <-channel
 	assert.Equal(t, expectedMessage, actualMessage)
+}
+
+// TestUnsubscribeIntegrationWithMQTTServer end-to-end test subscribing and unsubscribing.
+// MQTT broker must be running with Device virtual publishing events.
+func TestUnsubscribeIntegrationWithMQTTServer(t *testing.T) {
+	client := createAndConnectMqttClient(t)
+	defer func() { _ = client.Disconnect() }()
+
+	messages := make(chan types.MessageEnvelope, 1)
+	errs := make(chan error, 1)
+
+	eventTopic := "edgex/events/#"
+	topics := []types.TopicChannel{
+		{
+			Topic:    eventTopic,
+			Messages: messages,
+		},
+	}
+
+	println("Subscribing to topic: " + eventTopic)
+	err := client.Subscribe(topics, errs)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(client.existingSubscriptions))
+
+	messageCount := 0
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-time.After(time.Second * 10):
+				return
+
+			case err = <-errs:
+				require.Failf(t, "failed", "Unexpected error message received: %v", err)
+				return
+
+			case message := <-messages:
+				println(fmt.Sprintf("Received message from topic: %v", message.ReceivedTopic))
+				messageCount++
+				if messageCount > 3 {
+					println("Unsubscribing from topic: " + eventTopic)
+					err = client.Unsubscribe(eventTopic)
+					require.NoError(t, err)
+					require.Equal(t, 0, len(client.existingSubscriptions))
+				}
+			}
+		}
+
+	}()
+
+	wg.Wait()
+	assert.Greater(t, messageCount, 3)
+}
+
+// TestUnsubscribeIntegrationWithMQTTServer end-to-end test subscribing and unsubscribing.
+// MQTT broker must be running with Device virtual publishing events.
+func TestRequestIntegrationWithMQTTServer(t *testing.T) {
+	client := createAndConnectMqttClient(t)
+
+	defer func() { _ = client.Disconnect() }()
+
+	messages := make(chan types.MessageEnvelope, 1)
+	errs := make(chan error, 1)
+
+	requestTopic := "edgex/request"
+	topics := []types.TopicChannel{
+		{
+			Topic:    requestTopic,
+			Messages: messages,
+		},
+	}
+
+	println("Subscribing to topic: " + requestTopic)
+	err := client.Subscribe(topics, errs)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(client.existingSubscriptions))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-time.After(time.Second * 10):
+				return
+
+			case err = <-errs:
+				require.Failf(t, "failed", "Unexpected error message received: %v", err)
+				return
+
+			case message := <-messages:
+				println(fmt.Sprintf("Received message from topic: %v", message.ReceivedTopic))
+
+				responseTopic := fmt.Sprintf("%s/%s", client.configuration.ResponseTopicPrefix, message.RequestID)
+				println(fmt.Sprintf("Publishing response message on topic: %v", responseTopic))
+
+				err = client.Publish(types.MessageEnvelope{RequestID: message.RequestID}, responseTopic)
+				require.NoError(t, err)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second)
+	requestId := uuid.NewString()
+	println(fmt.Sprintf("Sending request to topic %s with requestId %s", requestTopic, requestId))
+	response, err := client.Request(types.MessageEnvelope{RequestID: requestId}, requestTopic, time.Second*10)
+	require.NoError(t, err)
+	assert.Equal(t, requestId, response.RequestID)
+}
+
+func createAndConnectMqttClient(t *testing.T) *Client {
+	client, err := NewMQTTClient(types.MessageBusConfig{
+		Broker: types.HostInfo{
+			Host:     "localhost",
+			Port:     1883,
+			Protocol: "tcp",
+		},
+		Optional: map[string]string{
+			pkg.ClientId:  "test",
+			pkg.KeepAlive: "10",
+		},
+	})
+
+	require.NoError(t, err)
+
+	err = client.Connect()
+	require.NoError(t, err, "Failed to connect")
+
+	return client
 }

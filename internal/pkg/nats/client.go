@@ -1,5 +1,6 @@
 //
 // Copyright (c) 2022 One Track Consulting
+// Copyright (c) 2023 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +22,13 @@ package nats
 import (
 	"fmt"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
 	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg/nats/interfaces"
 	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/nats-io/nats.go"
 )
 
@@ -69,15 +74,23 @@ func NewClientWithConnectionFactory(cfg types.MessageBusConfig, connectionFactor
 		m = &natsMarshaller{}
 	}
 
-	return &Client{config: cc, connect: connectionFactory, m: m}, nil
+	return &Client{
+		config:                cc,
+		connect:               connectionFactory,
+		m:                     m,
+		existingSubscriptions: make(map[string]*nats.Subscription),
+		subscriptionMutex:     new(sync.Mutex),
+	}, nil
 }
 
 // Client provides NATS MessageBus implementations per the underlying connection
 type Client struct {
-	connect    ConnectNats
-	connection interfaces.Connection
-	m          interfaces.MarshallerUnmarshaller
-	config     ClientConfig
+	connect               ConnectNats
+	connection            interfaces.Connection
+	m                     interfaces.MarshallerUnmarshaller
+	config                ClientConfig
+	existingSubscriptions map[string]*nats.Subscription
+	subscriptionMutex     *sync.Mutex
 }
 
 // Connect establishes the connections to publish and subscribe hosts
@@ -126,10 +139,13 @@ func (c *Client) Subscribe(topics []types.TopicChannel, messageErrors chan error
 		return fmt.Errorf("cannot subscribe with disconnected client")
 	}
 
+	c.subscriptionMutex.Lock()
+	defer c.subscriptionMutex.Unlock()
+
 	for _, tc := range topics {
 		s := TopicToSubject(tc.Topic)
 
-		_, err := c.connection.QueueSubscribe(s, c.config.QueueGroup, func(msg *nats.Msg) {
+		subscription, err := c.connection.QueueSubscribe(s, c.config.QueueGroup, func(msg *nats.Msg) {
 			env := types.MessageEnvelope{}
 			err := c.m.Unmarshal(msg, &env)
 			if err != nil {
@@ -142,8 +158,46 @@ func (c *Client) Subscribe(topics []types.TopicChannel, messageErrors chan error
 		if err != nil {
 			return err
 		}
+
+		c.existingSubscriptions[tc.Topic] = subscription
 	}
+
 	return nil
+}
+
+// Request publishes a request and waits for a response
+func (c *Client) Request(message types.MessageEnvelope, targetServiceName string, requestTopic string, timeout time.Duration) (*types.MessageEnvelope, error) {
+	return pkg.DoRequest(c.Subscribe, c.Unsubscribe, c.Publish, message, targetServiceName, requestTopic, c.config.ResponseTopicPrefix, timeout)
+}
+
+// Unsubscribe to unsubscribe from the specified topics.
+func (c *Client) Unsubscribe(topics ...string) error {
+	if c.connection == nil {
+		return fmt.Errorf("cannot unsubscribe with disconnected client")
+	}
+
+	c.subscriptionMutex.Lock()
+	defer c.subscriptionMutex.Unlock()
+
+	var errs error
+	for _, topic := range topics {
+		subscription, exists := c.existingSubscriptions[topic]
+		if !exists {
+			continue
+		}
+
+		if subscription != nil {
+			err := subscription.Unsubscribe()
+			if err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("unable to unsubscribe to topic '%s': %v", topic, err))
+				continue
+			}
+		}
+
+		delete(c.existingSubscriptions, topic)
+	}
+
+	return errs
 }
 
 // Disconnect drains open subscriptions before closing

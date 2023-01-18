@@ -1,5 +1,6 @@
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
+ *  Copyright (c) 2023 Intel Corporation
  *  Copyright (C) 2023 IOTech Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -37,6 +38,7 @@ import (
 	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
 	redisMocks "github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg/redis/mocks"
 	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -420,6 +422,81 @@ func TestClient_Subscribe(t *testing.T) {
 			readFromChannel(t, topics, tt.numberOfMessages, errorMessageChannel, tt.numberOfErrors)
 		})
 	}
+}
+
+func TestClient_Unsubscribe(t *testing.T) {
+	config := types.MessageBusConfig{
+		Broker: types.HostInfo{
+			Host:     "localhost",
+			Port:     6379,
+			Protocol: "redis",
+		},
+	}
+	creator := func(redisServerURL string, password string, tlsConfig *tls.Config) (RedisClient, error) {
+		redisMock := &redisMocks.RedisClient{}
+		redisMock.On("Receive", mock.Anything).After(time.Millisecond*100).Return(types.MessageEnvelope{}, nil)
+		return redisMock, nil
+	}
+
+	target, err := NewClientWithCreator(config, creator, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	messages := make(chan types.MessageEnvelope, 1)
+	errs := make(chan error, 1)
+
+	topics := []types.TopicChannel{
+		{
+			Topic:    "test1",
+			Messages: messages,
+		},
+		{
+			Topic:    "test2",
+			Messages: messages,
+		},
+		{
+			Topic:    "test3",
+			Messages: messages,
+		},
+	}
+
+	err = target.Subscribe(topics, errs)
+	require.NoError(t, err)
+
+	go func() {
+		for {
+			select {
+			case <-errs:
+			case <-messages:
+			}
+		}
+	}()
+
+	exists := target.existingTopics["test1"]
+	require.True(t, exists)
+	exists = target.existingTopics["test2"]
+	require.True(t, exists)
+	exists = target.existingTopics["test3"]
+	require.True(t, exists)
+
+	err = target.Unsubscribe("test1")
+	require.NoError(t, err)
+
+	exists = target.existingTopics["test1"]
+	require.False(t, exists)
+	exists = target.existingTopics["test2"]
+	require.True(t, exists)
+	exists = target.existingTopics["test3"]
+	require.True(t, exists)
+
+	err = target.Unsubscribe("test1", "test2", "test3")
+	require.NoError(t, err)
+
+	exists = target.existingTopics["test1"]
+	require.False(t, exists)
+	exists = target.existingTopics["test2"]
+	require.False(t, exists)
+	exists = target.existingTopics["test3"]
+	require.False(t, exists)
 }
 
 func mockCertCreator(returnError error) pkg.X509KeyPairCreator {

@@ -1,5 +1,6 @@
 //
 // Copyright (c) 2022 One Track Consulting
+// Copyright (c) 2023 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,10 +35,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func createTestClient(t *testing.T) *Client {
+	sut, err := NewClient(types.MessageBusConfig{
+		Broker: types.HostInfo{
+			Host:     "localhost",
+			Port:     6869,
+			Protocol: "tcp",
+		},
+	})
+
+	require.NoError(t, err)
+	return sut
+}
 func TestClient_Connect(t *testing.T) {
-	sut := &Client{
-		config: ClientConfig{},
-	}
+	sut := createTestClient(t)
 
 	t.Run("no connector", func(t *testing.T) {
 		err := sut.Connect()
@@ -82,7 +93,7 @@ func TestClient_Connect(t *testing.T) {
 }
 
 func TestClient_Publish(t *testing.T) {
-	sut := &Client{}
+	sut := createTestClient(t)
 
 	t.Run("not connected", func(t *testing.T) {
 		err := sut.Publish(types.MessageEnvelope{}, "topic")
@@ -151,7 +162,7 @@ func TestClient_Publish(t *testing.T) {
 }
 
 func TestClient_Subscribe(t *testing.T) {
-	sut := &Client{}
+	sut := createTestClient(t)
 
 	t.Run("not connected", func(t *testing.T) {
 		ce := make(chan error)
@@ -238,6 +249,63 @@ func TestClient_Subscribe(t *testing.T) {
 	})
 }
 
+func TestClient_Unsubscribe(t *testing.T) {
+	sut := createTestClient(t)
+
+	connection := &mocks2.Connection{}
+	sut.connection = connection
+
+	connection.On("QueueSubscribe", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+
+	messages := make(chan types.MessageEnvelope, 1)
+	errs := make(chan error, 1)
+
+	topics := []types.TopicChannel{
+		{
+			Topic:    "test1",
+			Messages: messages,
+		},
+		{
+			Topic:    "test2",
+			Messages: messages,
+		},
+		{
+			Topic:    "test3",
+			Messages: messages,
+		},
+	}
+
+	err := sut.Subscribe(topics, errs)
+	require.NoError(t, err)
+
+	_, exists := sut.existingSubscriptions["test1"]
+	require.True(t, exists)
+	_, exists = sut.existingSubscriptions["test2"]
+	require.True(t, exists)
+	_, exists = sut.existingSubscriptions["test3"]
+	require.True(t, exists)
+
+	err = sut.Unsubscribe("test1")
+	require.NoError(t, err)
+
+	_, exists = sut.existingSubscriptions["test1"]
+	require.False(t, exists)
+	_, exists = sut.existingSubscriptions["test2"]
+	require.True(t, exists)
+	_, exists = sut.existingSubscriptions["test3"]
+	require.True(t, exists)
+
+	err = sut.Unsubscribe("test1", "test2", "test3")
+	require.NoError(t, err)
+
+	_, exists = sut.existingSubscriptions["test1"]
+	require.False(t, exists)
+	_, exists = sut.existingSubscriptions["test2"]
+	require.False(t, exists)
+	_, exists = sut.existingSubscriptions["test3"]
+	require.False(t, exists)
+}
+
 func TestNewClientWithConnectionFactory(t *testing.T) {
 	cfg := types.MessageBusConfig{Broker: types.HostInfo{Host: "xyz", Protocol: "tcp", Port: 50}, Optional: map[string]string{}}
 	var connector ConnectNats
@@ -286,7 +354,9 @@ func TestClient_Disconnect(t *testing.T) {
 
 			conn.On("Drain").Return(tt.drainReturn)
 
-			sut := Client{connection: conn}
+			sut := createTestClient(t)
+
+			sut.connection = conn
 
 			tt.wantErr(t, sut.Disconnect())
 		})

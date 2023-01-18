@@ -20,6 +20,8 @@ require (
 	github.com/go-playground/validator/v10 v10.11.1 // indirect
 	github.com/golang/protobuf v1.5.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect

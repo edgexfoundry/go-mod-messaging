@@ -1,5 +1,6 @@
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
+ *  Copyright (c) 2023 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -217,8 +218,12 @@ func (MockMQTTClient) SubscribeMultiple(map[string]byte, pahoMqtt.MessageHandler
 	panic("function not expected to be invoked")
 }
 
-func (MockMQTTClient) Unsubscribe(...string) pahoMqtt.Token {
-	panic("function not expected to be invoked")
+func (mc MockMQTTClient) Unsubscribe(topics ...string) pahoMqtt.Token {
+	for _, topic := range topics {
+		mc.subscriptions[topic] = nil
+	}
+
+	return &mc.subscribe
 }
 
 func (MockMQTTClient) AddRoute(string, pahoMqtt.MessageHandler) {
@@ -274,7 +279,6 @@ func mockClientCreator(connect MockToken, publish MockToken, subscribe MockToken
 			subscribe:     subscribe,
 			subscriptions: make(map[string]pahoMqtt.MessageHandler),
 		}, nil
-
 	}
 }
 
@@ -982,6 +986,66 @@ func TestClient_Subscribe(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClient_Unsubscribe(t *testing.T) {
+	target, err := NewMQTTClientWithCreator(
+		TestMessageBusConfig,
+		json.Marshal,
+		json.Unmarshal,
+		mockClientCreator(SuccessfulMockToken(), SuccessfulMockToken(), SuccessfulMockToken()))
+	require.NoError(t, err)
+
+	err = target.Connect()
+	require.NoError(t, err)
+
+	messages := make(chan types.MessageEnvelope, 1)
+	errs := make(chan error, 1)
+
+	topics := []types.TopicChannel{
+		{
+			Topic:    "test1",
+			Messages: messages,
+		},
+		{
+			Topic:    "test2",
+			Messages: messages,
+		},
+		{
+			Topic:    "test3",
+			Messages: messages,
+		},
+	}
+
+	err = target.Subscribe(topics, errs)
+	require.NoError(t, err)
+
+	_, exists := target.existingSubscriptions["test1"]
+	require.True(t, exists)
+	_, exists = target.existingSubscriptions["test2"]
+	require.True(t, exists)
+	_, exists = target.existingSubscriptions["test3"]
+	require.True(t, exists)
+
+	err = target.Unsubscribe("test1")
+	require.NoError(t, err)
+
+	_, exists = target.existingSubscriptions["test1"]
+	require.False(t, exists)
+	_, exists = target.existingSubscriptions["test2"]
+	require.True(t, exists)
+	_, exists = target.existingSubscriptions["test3"]
+	require.True(t, exists)
+
+	err = target.Unsubscribe("test1", "test2", "test3")
+	require.NoError(t, err)
+
+	_, exists = target.existingSubscriptions["test1"]
+	require.False(t, exists)
+	_, exists = target.existingSubscriptions["test2"]
+	require.False(t, exists)
+	_, exists = target.existingSubscriptions["test3"]
+	require.False(t, exists)
 }
 
 func TestClient_Disconnect(t *testing.T) {

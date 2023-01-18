@@ -1,5 +1,4 @@
 //go:build redisIntegration
-// +build redisIntegration
 
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
@@ -22,12 +21,13 @@
  *
  * This is a list of the requirements necessary to run the tests in this file:
  * - Redis server with no password required by clients.
- * - The Redis server URL set as the environment variable REDIS_SERVER_TEST. Otherwise the default
+ * - The Redis server URL set as the environment variable REDIS_SERVER_TEST, Otherwise the default
  * 'redis://localhost:6379' will be used
  */
 package redis
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"strconv"
@@ -35,6 +35,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -47,7 +48,7 @@ const (
 	TestStream      = "IntegrationTest"
 )
 
-func TestRedisStreamsClientIntegration(t *testing.T) {
+func TestRedisClientIntegration(t *testing.T) {
 	redisHostInfo := getRedisHostInfo(t)
 	client, err := NewClient(types.MessageBusConfig{
 		Broker: redisHostInfo,
@@ -56,7 +57,9 @@ func TestRedisStreamsClientIntegration(t *testing.T) {
 	require.NoError(t, err, "Failed to create Redis client")
 	testMessage := types.MessageEnvelope{
 		CorrelationID: "12345",
-		Payload:       []byte("test-message")}
+		Payload:       []byte("test-message"),
+		ReceivedTopic: "IntegrationTest",
+	}
 
 	testCompleteWaitGroup := &sync.WaitGroup{}
 	testCompleteWaitGroup.Add(1)
@@ -69,6 +72,124 @@ func TestRedisStreamsClientIntegration(t *testing.T) {
 
 	err = client.Disconnect()
 	require.NoError(t, err)
+}
+
+// TestRedisUnsubscribeIntegration end-to-end test of subscribing and unsubscribing.
+// Redis must be running with Device virtual publishing events.
+func TestRedisUnsubscribeIntegration(t *testing.T) {
+	redisHostInfo := getRedisHostInfo(t)
+	client, err := NewClient(types.MessageBusConfig{
+		Broker: redisHostInfo,
+	})
+
+	require.NoError(t, err, "Failed to create Redis client")
+
+	messages := make(chan types.MessageEnvelope, 1)
+	errs := make(chan error, 1)
+
+	eventTopic := "edgex/events/#"
+	topics := []types.TopicChannel{
+		{
+			Topic:    eventTopic,
+			Messages: messages,
+		},
+	}
+
+	println("Subscribing to topic: " + eventTopic)
+	err = client.Subscribe(topics, errs)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(client.existingTopics))
+
+	messageCount := 0
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-time.After(time.Second * 10):
+				return
+
+			case err = <-errs:
+				require.Failf(t, "failed", "Unexpected error message received: %v", err)
+				return
+
+			case message := <-messages:
+				println(fmt.Sprintf("Received message from topic: %v", message.ReceivedTopic))
+				messageCount++
+				if messageCount > 3 {
+					println("Unsubscribing from topic: " + eventTopic)
+					err = client.Unsubscribe(eventTopic)
+					require.NoError(t, err)
+					require.Equal(t, 0, len(client.existingTopics))
+				}
+			}
+		}
+
+	}()
+
+	wg.Wait()
+	assert.Greater(t, messageCount, 3)
+}
+
+func TestRedisRequestIntegration(t *testing.T) {
+	redisHostInfo := getRedisHostInfo(t)
+	client, err := NewClient(types.MessageBusConfig{
+		Broker:              redisHostInfo,
+		ResponseTopicPrefix: "edgex/response",
+	})
+
+	require.NoError(t, err, "Failed to create Redis client")
+
+	messages := make(chan types.MessageEnvelope, 1)
+	errs := make(chan error, 1)
+
+	requestTopic := "edgex/request"
+	topics := []types.TopicChannel{
+		{
+			Topic:    requestTopic,
+			Messages: messages,
+		},
+	}
+
+	println("Subscribing to topic: " + requestTopic)
+	err = client.Subscribe(topics, errs)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(client.existingTopics))
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-time.After(time.Second * 10):
+				return
+
+			case err = <-errs:
+				require.Failf(t, "failed", "Unexpected error message received: %v", err)
+				return
+
+			case message := <-messages:
+				println(fmt.Sprintf("Received message from topic: %v", message.ReceivedTopic))
+
+				responseTopic := fmt.Sprintf("%s/%s", client.responseTopicPrefix, message.RequestID)
+				println(fmt.Sprintf("Publishing response message on topic: %v", responseTopic))
+
+				err = client.Publish(types.MessageEnvelope{RequestID: message.RequestID}, responseTopic)
+				require.NoError(t, err)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second)
+	requestId := uuid.NewString()
+	println(fmt.Sprintf("Sending request to topic %s with requestId %s", requestTopic, requestId))
+	response, err := client.Request(types.MessageEnvelope{RequestID: requestId}, requestTopic, time.Second*10)
+	require.NoError(t, err)
+	assert.Equal(t, requestId, response.RequestID)
 }
 
 func createSub(t *testing.T, client *Client, stream string, expectedMessage types.MessageEnvelope, doneWaitGroup *sync.WaitGroup) {

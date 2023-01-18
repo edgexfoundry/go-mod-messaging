@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Intel Corporation
+// Copyright (c) 2023 Intel Corporation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 package messaging
 
 import (
+	"time"
+
 	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 )
 
@@ -38,6 +40,15 @@ type MessageClient interface {
 	// since subscriber works in asynchronous fashion
 	// the function returns error for any subscribe error
 	Subscribe(topics []types.TopicChannel, messageErrors chan error) error
+
+	// Request publishes a request containing a RequestID to the specified topic,
+	// then subscribes to a response topic which contains the RequestID. Once the response is received the
+	// response topic is unsubscribed and the response data is returned. If not response is received with in
+	// the timeout period, the request is considered timed out resulting in an error returned.
+	Request(message types.MessageEnvelope, targetServiceName string, requestTopic string, timeout time.Duration) (*types.MessageEnvelope, error)
+
+	// Unsubscribe to unsubscribe from the specified topics.
+	Unsubscribe(topics ...string) error
 
 	// Disconnect is to close all connections on the message bus
 	// and TopicChannel will also be closed

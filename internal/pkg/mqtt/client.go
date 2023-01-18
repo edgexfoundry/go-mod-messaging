@@ -1,6 +1,6 @@
 /********************************************************************************
  *  Copyright 2019 Dell Inc.
- *
+ *  Copyright (c) 2023 Intel Corporation
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
  *
@@ -21,6 +21,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
@@ -41,15 +42,16 @@ type MessageUnmarshaller func(data []byte, v interface{}) error
 // Client facilitates communication to an MQTT server and provides functionality needed to send and receive MQTT
 // messages.
 type Client struct {
-	creator             ClientCreator
-	configuration       types.MessageBusConfig
-	mqttClient          pahoMqtt.Client
-	marshaller          MessageMarshaller
-	unmarshaller        MessageUnmarshaller
-	activeSubscriptions []activeSubscription
+	creator               ClientCreator
+	configuration         types.MessageBusConfig
+	mqttClient            pahoMqtt.Client
+	marshaller            MessageMarshaller
+	unmarshaller          MessageUnmarshaller
+	existingSubscriptions map[string]existingSubscription
+	subscriptionMutex     *sync.Mutex
 }
 
-type activeSubscription struct {
+type existingSubscription struct {
 	topic   string
 	qos     byte
 	handler pahoMqtt.MessageHandler
@@ -59,10 +61,12 @@ type activeSubscription struct {
 // NewMQTTClient constructs a new MQTT client based on the options provided.
 func NewMQTTClient(config types.MessageBusConfig) (*Client, error) {
 	client := &Client{
-		creator:       DefaultClientCreator(),
-		configuration: config,
-		marshaller:    json.Marshal,
-		unmarshaller:  json.Unmarshal,
+		creator:               DefaultClientCreator(),
+		configuration:         config,
+		marshaller:            json.Marshal,
+		unmarshaller:          json.Unmarshal,
+		existingSubscriptions: map[string]existingSubscription{},
+		subscriptionMutex:     new(sync.Mutex),
 	}
 
 	return client, nil
@@ -76,10 +80,12 @@ func NewMQTTClientWithCreator(
 	creator ClientCreator) (*Client, error) {
 
 	client := &Client{
-		creator:       creator,
-		configuration: config,
-		marshaller:    marshaller,
-		unmarshaller:  unmarshaller,
+		creator:               creator,
+		configuration:         config,
+		marshaller:            marshaller,
+		unmarshaller:          unmarshaller,
+		existingSubscriptions: make(map[string]existingSubscription),
+		subscriptionMutex:     new(sync.Mutex),
 	}
 
 	return client, nil
@@ -115,9 +121,12 @@ func (mc *Client) Connect() error {
 func (mc *Client) onConnectHandler(_ pahoMqtt.Client) {
 	optionsReader := mc.mqttClient.OptionsReader()
 
-	// activeSubscriptions will be empty on the first connection.
+	mc.subscriptionMutex.Lock()
+	defer mc.subscriptionMutex.Unlock()
+
+	// existingSubscriptions will be empty on the first connection.
 	// On a re-connect is when the subscriptions must be re-created.
-	for _, subscription := range mc.activeSubscriptions {
+	for _, subscription := range mc.existingSubscriptions {
 		token := mc.mqttClient.Subscribe(subscription.topic, subscription.qos, subscription.handler)
 		message := fmt.Sprintf("Failed to re-create subscription for topic=%s", subscription.topic)
 		err := getTokenError(token, optionsReader.ConnectTimeout(), SubscribeOperation, message)
@@ -152,6 +161,9 @@ func (mc *Client) Publish(message types.MessageEnvelope, topic string) error {
 func (mc *Client) Subscribe(topics []types.TopicChannel, messageErrors chan error) error {
 	optionsReader := mc.mqttClient.OptionsReader()
 
+	mc.subscriptionMutex.Lock()
+	defer mc.subscriptionMutex.Unlock()
+
 	for _, topic := range topics {
 		handler := newMessageHandler(mc.unmarshaller, topic.Messages, messageErrors)
 		qos := optionsReader.WillQos()
@@ -162,13 +174,34 @@ func (mc *Client) Subscribe(topics []types.TopicChannel, messageErrors chan erro
 			return err
 		}
 
-		mc.activeSubscriptions = append(mc.activeSubscriptions, activeSubscription{
+		mc.existingSubscriptions[topic.Topic] = existingSubscription{
 			topic:   topic.Topic,
 			qos:     qos,
 			handler: handler,
 			errors:  messageErrors,
-		})
+		}
+	}
 
+	return nil
+}
+
+// Request publishes a request and waits for a response
+func (mc *Client) Request(message types.MessageEnvelope, targetServiceName string, requestTopic string, timeout time.Duration) (*types.MessageEnvelope, error) {
+	return pkg.DoRequest(mc.Subscribe, mc.Unsubscribe, mc.Publish, message, targetServiceName, requestTopic, mc.configuration.ResponseTopicPrefix, timeout)
+}
+
+// Unsubscribe to unsubscribe from the specified topics.
+func (mc *Client) Unsubscribe(topics ...string) error {
+	mc.subscriptionMutex.Lock()
+	defer mc.subscriptionMutex.Unlock()
+
+	token := mc.mqttClient.Unsubscribe(topics...)
+	if token.Error() != nil {
+		return token.Error()
+	}
+
+	for _, topic := range topics {
+		delete(mc.existingSubscriptions, topic)
 	}
 
 	return nil
