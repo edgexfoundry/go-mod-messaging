@@ -156,9 +156,15 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 				message, err := c.redisClient.Receive(topicName)
 
 				// Make sure the topic is still subscribed before processing the message.
-				if !c.existingTopics[topic.Topic] {
+				// If not cleanup and exit from the go func
+				c.mapMutex.Lock()
+				subscribed := c.existingTopics[topic.Topic]
+				if !subscribed {
+					delete(c.existingTopics, topic.Topic)
+					c.mapMutex.Unlock()
 					return
 				}
+				c.mapMutex.Unlock()
 
 				if err != nil {
 					// This handles case when getting same repeated error due to Redis connectivity issue
@@ -194,8 +200,16 @@ func (c Client) Unsubscribe(topics ...string) error {
 	defer c.mapMutex.Unlock()
 
 	for _, topic := range topics {
-		delete(c.existingTopics, topic)
+		c.existingTopics[topic] = false
 	}
+
+	// Need to send dummy messages on the topics to trigger Reads in subscribe to return and exit go func.
+	// This has to be deferred due to the mapMutex
+	defer func(unsubscribedTopics []string) {
+		for _, topic := range topics {
+			_ = c.Publish(types.MessageEnvelope{}, topic)
+		}
+	}(topics)
 
 	return nil
 }

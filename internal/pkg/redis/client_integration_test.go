@@ -2,6 +2,7 @@
 
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
+ *  Copyright (c) 2023 Intel Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -31,6 +32,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -122,7 +124,6 @@ func TestRedisUnsubscribeIntegration(t *testing.T) {
 					println("Unsubscribing from topic: " + eventTopic)
 					err = client.Unsubscribe(eventTopic)
 					require.NoError(t, err)
-					require.Equal(t, 0, len(client.existingTopics))
 				}
 			}
 		}
@@ -131,6 +132,7 @@ func TestRedisUnsubscribeIntegration(t *testing.T) {
 
 	wg.Wait()
 	assert.Greater(t, messageCount, 3)
+	assert.Equal(t, 0, len(client.existingTopics))
 }
 
 func TestRedisRequestIntegration(t *testing.T) {
@@ -145,6 +147,7 @@ func TestRedisRequestIntegration(t *testing.T) {
 	messages := make(chan types.MessageEnvelope, 1)
 	errs := make(chan error, 1)
 
+	serviceName := "test-service"
 	requestTopic := "edgex/request"
 	topics := []types.TopicChannel{
 		{
@@ -174,7 +177,7 @@ func TestRedisRequestIntegration(t *testing.T) {
 			case message := <-messages:
 				println(fmt.Sprintf("Received message from topic: %v", message.ReceivedTopic))
 
-				responseTopic := fmt.Sprintf("%s/%s", client.responseTopicPrefix, message.RequestID)
+				responseTopic := strings.Join([]string{client.responseTopicPrefix, serviceName, message.RequestID}, "/")
 				println(fmt.Sprintf("Publishing response message on topic: %v", responseTopic))
 
 				err = client.Publish(types.MessageEnvelope{RequestID: message.RequestID}, responseTopic)
@@ -187,7 +190,7 @@ func TestRedisRequestIntegration(t *testing.T) {
 	time.Sleep(time.Second)
 	requestId := uuid.NewString()
 	println(fmt.Sprintf("Sending request to topic %s with requestId %s", requestTopic, requestId))
-	response, err := client.Request(types.MessageEnvelope{RequestID: requestId}, requestTopic, time.Second*10)
+	response, err := client.Request(types.MessageEnvelope{RequestID: requestId}, serviceName, requestTopic, time.Second*10)
 	require.NoError(t, err)
 	assert.Equal(t, requestId, response.RequestID)
 }

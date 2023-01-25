@@ -186,6 +186,7 @@ func (c *Client) Unsubscribe(topics ...string) error {
 			continue
 		}
 
+		// If the subscription doesn't exist, not need to and can't unsubscribe from it.
 		if subscription != nil {
 			err := subscription.Unsubscribe()
 			if err != nil {

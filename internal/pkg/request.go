@@ -64,8 +64,11 @@ func DoRequest(
 		return nil, fmt.Errorf("unable to create publish request to %s: %v", requestTopic, err)
 	}
 
+	timer := time.NewTimer(requestTimeout)
+
 	select {
-	case <-time.After(requestTimeout):
+	case <-timer.C:
+		timer.Stop()
 		return nil, fmt.Errorf("timed out waiting for response on %s topic", responseTopicChan.Topic)
 
 	case err = <-errs:
