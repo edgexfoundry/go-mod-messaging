@@ -1,5 +1,6 @@
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
+ *  Copyright (C) 2023 IOTech Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -664,6 +665,46 @@ func TestClient_Disconnect(t *testing.T) {
 			if !tt.wantErr {
 				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestConvertToRedisTopicScheme(t *testing.T) {
+	tests := []struct {
+		name          string
+		topic         string
+		expectedTopic string
+	}{
+		{"topic with separator", "test/UnitTestTopic", "test.UnitTestTopic"},
+		{"topic with multi level wildcard", "test/UnitTestTopic/#", "test.UnitTestTopic.*"},
+		{"topic with single level wildcard", "test/+/UnitTestTopic", "test.*.UnitTestTopic"},
+		{"topic with mixed wildcards", "test/+/UnitTestTopic/#", "test.*.UnitTestTopic.*"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			redisTopic := convertToRedisTopicScheme(tt.topic)
+			assert.Equal(t, redisTopic, tt.expectedTopic)
+		})
+	}
+}
+
+func TestConvertFromRedisTopicScheme(t *testing.T) {
+	tests := []struct {
+		name          string
+		topic         string
+		expectedTopic string
+	}{
+		{"topic with separator", "test.UnitTestTopic", "test/UnitTestTopic"},
+		{"topic with wildcard at the end", "test.UnitTestTopic.*", "test/UnitTestTopic/#"},
+		{"topic with wildcard in the middle", "test.*.UnitTestTopic", "test/+/UnitTestTopic"},
+		{"topic with multiple wildcards", "test.*.UnitTestTopic.*", "test/+/UnitTestTopic/#"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mqttTopic := convertFromRedisTopicScheme(tt.topic)
+			assert.Equal(t, mqttTopic, tt.expectedTopic)
 		})
 	}
 }

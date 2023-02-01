@@ -1,6 +1,7 @@
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
  *  Copyright (c) 2021 Intel Corporation
+ *  Copyright (C) 2023 IOTech Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -34,6 +35,7 @@ const (
 	StandardTopicSeparator = "/"
 	RedisTopicSeparator    = "."
 	StandardWildcard       = "#"
+	SingleLevelWildcard    = "+"
 	RedisWildcard          = "*"
 )
 
@@ -250,18 +252,20 @@ func createRedisClient(
 
 func convertToRedisTopicScheme(topic string) string {
 	// Redis Pub/Sub uses "." for separator and "*" for wild cards.
-	// Since we have standardized on the MQTT style scheme or "/" & "#" we need to
+	// Since we have standardized on the MQTT style scheme of "/" & "#" & "+" we need to
 	// convert it to the Redis Pub/Sub scheme.
 	topic = strings.Replace(topic, StandardTopicSeparator, RedisTopicSeparator, -1)
 	topic = strings.Replace(topic, StandardWildcard, RedisWildcard, -1)
+	topic = strings.Replace(topic, SingleLevelWildcard, RedisWildcard, -1)
 
 	return topic
 }
 
 func convertFromRedisTopicScheme(topic string) string {
 	// Redis Pub/Sub uses "." for separator and "*" for wild cards.
-	// Since we have standardized on the MQTT style scheme or "/" & "#" we need to
+	// Since we have standardized on the MQTT style scheme of "/" & "#" & "+" we need to
 	// convert it from the Redis Pub/Sub scheme.
+	topic = strings.Replace(topic, RedisWildcard+RedisTopicSeparator, SingleLevelWildcard+StandardTopicSeparator, -1)
 	topic = strings.Replace(topic, RedisTopicSeparator, StandardTopicSeparator, -1)
 	topic = strings.Replace(topic, RedisWildcard, StandardWildcard, -1)
 
