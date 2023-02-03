@@ -65,10 +65,10 @@ func DoRequest(
 	}
 
 	timer := time.NewTimer(requestTimeout)
+	defer timer.Stop()
 
 	select {
 	case <-timer.C:
-		timer.Stop()
 		return nil, fmt.Errorf("timed out waiting for response on %s topic", responseTopicChan.Topic)
 
 	case err = <-errs:
