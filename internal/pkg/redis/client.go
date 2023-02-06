@@ -191,8 +191,8 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 
 }
 
-func (c Client) Request(message types.MessageEnvelope, targetServiceName string, requestTopic string, timeout time.Duration) (*types.MessageEnvelope, error) {
-	return pkg.DoRequest(c.Subscribe, c.Unsubscribe, c.Publish, message, targetServiceName, requestTopic, c.responseTopicPrefix, timeout)
+func (c Client) Request(message types.MessageEnvelope, requestTopic string, responseTopicPrefix string, timeout time.Duration) (*types.MessageEnvelope, error) {
+	return pkg.DoRequest(c.Subscribe, c.Unsubscribe, c.Publish, message, requestTopic, responseTopicPrefix, timeout)
 }
 
 func (c Client) Unsubscribe(topics ...string) error {

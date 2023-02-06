@@ -42,10 +42,10 @@ type MessageClient interface {
 	Subscribe(topics []types.TopicChannel, messageErrors chan error) error
 
 	// Request publishes a request containing a RequestID to the specified topic,
-	// then subscribes to a response topic which contains the RequestID. Once the response is received the
+	// then subscribes to a response topic which contains the RequestID. Once the response is received, the
 	// response topic is unsubscribed and the response data is returned. If no response is received within
-	// the timeout period, the request is considered timed out resulting in an error returned.
-	Request(message types.MessageEnvelope, targetServiceName string, requestTopic string, timeout time.Duration) (*types.MessageEnvelope, error)
+	// the timeout period, a timed out  error returned.
+	Request(message types.MessageEnvelope, requestTopic string, responseTopicPrefix string, timeout time.Duration) (*types.MessageEnvelope, error)
 
 	// Unsubscribe to unsubscribe from the specified topics.
 	Unsubscribe(topics ...string) error

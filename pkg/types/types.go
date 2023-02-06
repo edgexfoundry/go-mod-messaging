@@ -31,11 +31,6 @@ type MessageBusConfig struct {
 	Broker HostInfo
 	// Type indicates the message queue platform being used. eg. "redis" for Redis Pub/Sub
 	Type string
-<<<<<<< HEAD
-=======
-	// ResponseTopicPrefix is the base prefix for the topic that is subscribed to when waiting for a response to a published request
-	ResponseTopicPrefix string
->>>>>>> 47188f2 (fix: Addressed PR feedback and added serviceName parameter)
 	// Optional contains all other properties of message bus that are specific to
 	// certain concrete implementations like MQTT's QoS, for example.
 	Optional map[string]string

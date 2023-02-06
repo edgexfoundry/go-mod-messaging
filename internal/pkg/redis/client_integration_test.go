@@ -138,8 +138,7 @@ func TestRedisUnsubscribeIntegration(t *testing.T) {
 func TestRedisRequestIntegration(t *testing.T) {
 	redisHostInfo := getRedisHostInfo(t)
 	client, err := NewClient(types.MessageBusConfig{
-		Broker:              redisHostInfo,
-		ResponseTopicPrefix: "edgex/response",
+		Broker: redisHostInfo,
 	})
 
 	require.NoError(t, err, "Failed to create Redis client")
@@ -147,7 +146,7 @@ func TestRedisRequestIntegration(t *testing.T) {
 	messages := make(chan types.MessageEnvelope, 1)
 	errs := make(chan error, 1)
 
-	serviceName := "test-service"
+	responseTopicPrefix := "/edgex/response/test-service"
 	requestTopic := "edgex/request"
 	topics := []types.TopicChannel{
 		{
@@ -177,7 +176,7 @@ func TestRedisRequestIntegration(t *testing.T) {
 			case message := <-messages:
 				println(fmt.Sprintf("Received message from topic: %v", message.ReceivedTopic))
 
-				responseTopic := strings.Join([]string{client.responseTopicPrefix, serviceName, message.RequestID}, "/")
+				responseTopic := strings.Join([]string{responseTopicPrefix, message.RequestID}, "/")
 				println(fmt.Sprintf("Publishing response message on topic: %v", responseTopic))
 
 				err = client.Publish(types.MessageEnvelope{RequestID: message.RequestID}, responseTopic)
@@ -190,7 +189,7 @@ func TestRedisRequestIntegration(t *testing.T) {
 	time.Sleep(time.Second)
 	requestId := uuid.NewString()
 	println(fmt.Sprintf("Sending request to topic %s with requestId %s", requestTopic, requestId))
-	response, err := client.Request(types.MessageEnvelope{RequestID: requestId}, serviceName, requestTopic, time.Second*10)
+	response, err := client.Request(types.MessageEnvelope{RequestID: requestId}, requestTopic, responseTopicPrefix, time.Second*10)
 	require.NoError(t, err)
 	assert.Equal(t, requestId, response.RequestID)
 }

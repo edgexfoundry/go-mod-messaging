@@ -25,12 +25,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// DoRequest publishes a request containing a RequestID to the specified topic,
+// then subscribes to a response topic which contains the RequestID. Once the response is received, the
+// response topic is unsubscribed and the response data is returned. If no response is received within
+// the timeout period, a timed out  error returned.
 func DoRequest(
 	subscribe func(topics []types.TopicChannel, messageErrors chan error) error,
 	unsubscribe func(topics ...string) error,
 	publish func(message types.MessageEnvelope, topic string) error,
 	requestMessage types.MessageEnvelope,
-	serviceName string,
 	requestTopic string,
 	responseTopicPrefix string,
 	requestTimeout time.Duration) (*types.MessageEnvelope, error) {
@@ -38,8 +41,9 @@ func DoRequest(
 		requestMessage.RequestID = uuid.NewString()
 	}
 
-	// Format of response topic is <prefix>/<service-name>/<request-id>
-	responseTopic := strings.Join([]string{responseTopicPrefix, serviceName, requestMessage.RequestID}, "/")
+	// Format of response topic is <prefix>/<request-id>
+	responseTopic := strings.Join([]string{responseTopicPrefix, requestMessage.RequestID}, "/")
+
 	errs := make(chan error, 1)
 	messages := make(chan types.MessageEnvelope, 1)
 	responseTopicChan := types.TopicChannel{

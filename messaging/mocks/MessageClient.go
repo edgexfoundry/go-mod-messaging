@@ -57,13 +57,13 @@ func (_m *MessageClient) Publish(message types.MessageEnvelope, topic string) er
 	return r0
 }
 
-// Request provides a mock function with given fields: message, targetServiceName, requestTopic, timeout
-func (_m *MessageClient) Request(message types.MessageEnvelope, targetServiceName string, requestTopic string, timeout time.Duration) (*types.MessageEnvelope, error) {
-	ret := _m.Called(message, targetServiceName, requestTopic, timeout)
+// Request provides a mock function with given fields: message, requestTopic, responseTopicPrefix, timeout
+func (_m *MessageClient) Request(message types.MessageEnvelope, requestTopic string, responseTopicPrefix string, timeout time.Duration) (*types.MessageEnvelope, error) {
+	ret := _m.Called(message, requestTopic, responseTopicPrefix, timeout)
 
 	var r0 *types.MessageEnvelope
 	if rf, ok := ret.Get(0).(func(types.MessageEnvelope, string, string, time.Duration) *types.MessageEnvelope); ok {
-		r0 = rf(message, targetServiceName, requestTopic, timeout)
+		r0 = rf(message, requestTopic, responseTopicPrefix, timeout)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.MessageEnvelope)
@@ -72,7 +72,7 @@ func (_m *MessageClient) Request(message types.MessageEnvelope, targetServiceNam
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(types.MessageEnvelope, string, string, time.Duration) error); ok {
-		r1 = rf(message, targetServiceName, requestTopic, timeout)
+		r1 = rf(message, requestTopic, responseTopicPrefix, timeout)
 	} else {
 		r1 = ret.Error(1)
 	}

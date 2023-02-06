@@ -133,7 +133,7 @@ func TestRequestIntegrationWithMQTTServer(t *testing.T) {
 	messages := make(chan types.MessageEnvelope, 1)
 	errs := make(chan error, 1)
 
-	serviceName := "test-service"
+	responseTopicPrefix := "/edgex/response/test-service"
 	requestTopic := "edgex/request"
 	topics := []types.TopicChannel{
 		{
@@ -163,7 +163,7 @@ func TestRequestIntegrationWithMQTTServer(t *testing.T) {
 			case message := <-messages:
 				println(fmt.Sprintf("Received message from topic: %v", message.ReceivedTopic))
 
-				responseTopic := strings.Join([]string{client.configuration.ResponseTopicPrefix, serviceName, message.RequestID}, "/")
+				responseTopic := strings.Join([]string{responseTopicPrefix, message.RequestID}, "/")
 				println(fmt.Sprintf("Publishing response message on topic: %v", responseTopic))
 
 				err = client.Publish(types.MessageEnvelope{RequestID: message.RequestID}, responseTopic)
@@ -176,7 +176,8 @@ func TestRequestIntegrationWithMQTTServer(t *testing.T) {
 	time.Sleep(time.Second)
 	requestId := uuid.NewString()
 	println(fmt.Sprintf("Sending request to topic %s with requestId %s", requestTopic, requestId))
-	response, err := client.Request(types.MessageEnvelope{RequestID: requestId}, serviceName, requestTopic, time.Second*10)
+
+	response, err := client.Request(types.MessageEnvelope{RequestID: requestId}, requestTopic, responseTopicPrefix, time.Second*10)
 	require.NoError(t, err)
 	assert.Equal(t, requestId, response.RequestID)
 }

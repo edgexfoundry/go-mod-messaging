@@ -140,7 +140,7 @@ func TestDoRequest(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			actual, err := DoRequest(test.Subscribe, test.Unsubscribe, test.Publish, expected, "unit-test-service", "test-topic", "edgex/response", time.Second*5)
+			actual, err := DoRequest(test.Subscribe, test.Unsubscribe, test.Publish, expected, "test-topic", "edgex/response/my-service", time.Second*5)
 
 			if test.ExpectError {
 				require.Error(t, err)

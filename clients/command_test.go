@@ -266,8 +266,8 @@ func getCommandClientWithMockMessaging(t *testing.T, expectedResponse *types.Mes
 	mockMessageClient.On("Request", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(expectedResponse, expectedRequestError)
 
 	topics := map[string]string{
-		QueryRequestTopicPrefix:   testQueryRequestTopic,
-		CommandRequestTopicPrefix: testCommandRequestTopicPrefix,
+		common.CommandQueryRequestTopicPrefixKey: testQueryRequestTopic,
+		common.CommandRequestTopicPrefixKey:      testCommandRequestTopicPrefix,
 	}
 
 	client, err := NewCommandClient(mockMessageClient, topics, 10*time.Second)

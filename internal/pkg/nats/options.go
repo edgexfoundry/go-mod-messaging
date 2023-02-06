@@ -36,8 +36,7 @@ import (
 
 // ClientConfig contains all the configurations for the NATS client.
 type ClientConfig struct {
-	BrokerURL           string
-	ResponseTopicPrefix string
+	BrokerURL string
 	ClientOptions
 }
 
@@ -99,9 +98,8 @@ func CreateClientConfiguration(messageBusConfig types.MessageBusConfig) (ClientC
 	clientOptions.TlsConfigurationOptions = tlsConfig
 
 	return ClientConfig{
-		BrokerURL:           brokerUrl,
-		ResponseTopicPrefix: messageBusConfig.ResponseTopicPrefix,
-		ClientOptions:       clientOptions,
+		BrokerURL:     brokerUrl,
+		ClientOptions: clientOptions,
 	}, nil
 }
 

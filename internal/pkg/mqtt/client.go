@@ -186,8 +186,8 @@ func (mc *Client) Subscribe(topics []types.TopicChannel, messageErrors chan erro
 }
 
 // Request publishes a request and waits for a response
-func (mc *Client) Request(message types.MessageEnvelope, targetServiceName string, requestTopic string, timeout time.Duration) (*types.MessageEnvelope, error) {
-	return pkg.DoRequest(mc.Subscribe, mc.Unsubscribe, mc.Publish, message, targetServiceName, requestTopic, mc.configuration.ResponseTopicPrefix, timeout)
+func (mc *Client) Request(message types.MessageEnvelope, requestTopic string, responseTopicPrefix string, timeout time.Duration) (*types.MessageEnvelope, error) {
+	return pkg.DoRequest(mc.Subscribe, mc.Unsubscribe, mc.Publish, message, requestTopic, responseTopicPrefix, timeout)
 }
 
 // Unsubscribe to unsubscribe from the specified topics.
