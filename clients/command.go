@@ -1,5 +1,6 @@
 //
 // Copyright (C) 2022 IOTech Ltd
+// Copyright (c) 2023 Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -24,279 +25,138 @@ import (
 	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 )
 
-const (
-	QueryRequestTopicPrefix   = "QueryRequestTopicPrefix"
-	QueryResponseTopic        = "QueryResponseTopic"
-	CommandRequestTopicPrefix = "CommandRequestTopicPrefix"
-	CommandResponseTopic      = "CommandResponseTopic"
-)
-
 type CommandClient struct {
-	messageBus      messaging.MessageClient
-	queryMessages   chan types.MessageEnvelope
-	queryErrors     chan error
-	commandMessages chan types.MessageEnvelope
-	commandErrors   chan error
-	topics          map[string]string
-	timeout         time.Duration
+	messageBus          messaging.MessageClient
+	topics              map[string]string
+	responseTopicPrefix string
+	timeout             time.Duration
 }
 
 func NewCommandClient(messageBus messaging.MessageClient, topics map[string]string, timeout time.Duration) (interfaces.CommandClient, error) {
 	client := &CommandClient{
-		messageBus: messageBus,
-		topics:     topics,
-		timeout:    timeout,
-	}
-
-	queryResponseTopic, ok := topics[QueryResponseTopic]
-	if ok {
-		queryMessages := make(chan types.MessageEnvelope, 1)
-		queryErrors := make(chan error)
-		queryTopics := []types.TopicChannel{
-			{
-				Topic:    queryResponseTopic,
-				Messages: queryMessages,
-			},
-		}
-		err := messageBus.Subscribe(queryTopics, queryErrors)
-		if err != nil {
-			return nil, err
-		}
-
-		client.queryMessages = queryMessages
-		client.queryErrors = queryErrors
-	}
-
-	commandResponseTopic, ok := topics[CommandResponseTopic]
-	if ok {
-		commandMessages := make(chan types.MessageEnvelope, 1)
-		commandErrors := make(chan error)
-		commandTopics := []types.TopicChannel{
-			{
-				Topic:    commandResponseTopic,
-				Messages: commandMessages,
-			},
-		}
-		err := messageBus.Subscribe(commandTopics, commandErrors)
-		if err != nil {
-			return nil, err
-		}
-
-		client.commandMessages = commandMessages
-		client.commandErrors = commandErrors
+		messageBus:          messageBus,
+		topics:              topics,
+		responseTopicPrefix: strings.Join([]string{topics[common.ResponseTopicPrefixKey], common.CoreCommandServiceKey}, "/"),
+		timeout:             timeout,
 	}
 
 	return client, nil
 }
 
-func (c *CommandClient) AllDeviceCoreCommands(ctx context.Context, offset int, limit int) (responses.MultiDeviceCoreCommandsResponse, edgexErr.EdgeX) {
-	if c.queryMessages == nil {
-		return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "commandquery request/response topics not provided", nil)
-	}
-
+func (c *CommandClient) AllDeviceCoreCommands(_ context.Context, offset int, limit int) (responses.MultiDeviceCoreCommandsResponse, edgexErr.EdgeX) {
 	queryParams := map[string]string{common.Offset: strconv.Itoa(offset), common.Limit: strconv.Itoa(limit)}
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, queryParams)
-	requestTopic := strings.Join([]string{c.topics[QueryRequestTopicPrefix], common.All}, "/")
-	err := c.messageBus.Publish(requestEnvelope, requestTopic)
+	requestTopic := strings.Join([]string{c.topics[common.CommandQueryRequestTopicPrefixKey], common.All}, "/")
+	responseEnvelope, err := c.messageBus.Request(requestEnvelope, common.CoreCommandServiceKey, requestTopic, c.timeout)
 	if err != nil {
 		return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return responses.MultiDeviceCoreCommandsResponse{}, nil
-		case <-time.After(c.timeout):
-			return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "timed out waiting response", nil)
-		case err = <-c.queryErrors:
-			return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
-		case responseEnvelope := <-c.queryMessages:
-			if responseEnvelope.RequestID != requestEnvelope.RequestID {
-				continue
-			}
-			if responseEnvelope.ErrorCode == 1 {
-				return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
-			}
-
-			var res responses.MultiDeviceCoreCommandsResponse
-			err = json.Unmarshal(responseEnvelope.Payload, &res)
-			if err != nil {
-				return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
-			}
-
-			return res, nil
-		}
+	if responseEnvelope.ErrorCode == 1 {
+		return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
 	}
+
+	var res responses.MultiDeviceCoreCommandsResponse
+	err = json.Unmarshal(responseEnvelope.Payload, &res)
+	if err != nil {
+		return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
+	}
+
+	return res, nil
 }
 
-func (c *CommandClient) DeviceCoreCommandsByDeviceName(ctx context.Context, deviceName string) (responses.DeviceCoreCommandResponse, edgexErr.EdgeX) {
-	if c.queryMessages == nil {
-		return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "commandquery request/response topics not provided", nil)
-	}
-
+func (c *CommandClient) DeviceCoreCommandsByDeviceName(_ context.Context, deviceName string) (responses.DeviceCoreCommandResponse, edgexErr.EdgeX) {
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, nil)
-	requestTopic := strings.Join([]string{c.topics[QueryRequestTopicPrefix], deviceName}, "/")
-	err := c.messageBus.Publish(requestEnvelope, requestTopic)
+	requestTopic := strings.Join([]string{c.topics[common.CommandQueryRequestTopicPrefixKey], deviceName}, "/")
+	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return responses.DeviceCoreCommandResponse{}, nil
-		case <-time.After(c.timeout):
-			return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "timed out waiting response", nil)
-		case err = <-c.queryErrors:
-			return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
-		case responseEnvelope := <-c.queryMessages:
-			if responseEnvelope.RequestID != requestEnvelope.RequestID {
-				continue
-			}
-			if responseEnvelope.ErrorCode == 1 {
-				return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
-			}
-
-			var res responses.DeviceCoreCommandResponse
-			err = json.Unmarshal(responseEnvelope.Payload, &res)
-			if err != nil {
-				return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
-			}
-
-			return res, nil
-		}
+	if responseEnvelope.ErrorCode == 1 {
+		return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
 	}
+
+	var res responses.DeviceCoreCommandResponse
+	err = json.Unmarshal(responseEnvelope.Payload, &res)
+	if err != nil {
+		return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
+	}
+
+	return res, nil
 }
 
 func (c *CommandClient) IssueGetCommandByName(ctx context.Context, deviceName string, commandName string, dsPushEvent bool, dsReturnEvent bool) (*responses.EventResponse, edgexErr.EdgeX) {
-	if c.commandMessages == nil {
-		return nil, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "command request/response topics not provided", nil)
-	}
-
 	queryParams := map[string]string{common.PushEvent: strconv.FormatBool(dsPushEvent), common.ReturnEvent: strconv.FormatBool(dsReturnEvent)}
 	return c.IssueGetCommandByNameWithQueryParams(ctx, deviceName, commandName, queryParams)
 }
 
-func (c *CommandClient) IssueGetCommandByNameWithQueryParams(ctx context.Context, deviceName string, commandName string, queryParams map[string]string) (*responses.EventResponse, edgexErr.EdgeX) {
-	if c.commandMessages == nil {
-		return nil, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "command request/response topics not provided", nil)
-	}
-
+func (c *CommandClient) IssueGetCommandByNameWithQueryParams(_ context.Context, deviceName string, commandName string, queryParams map[string]string) (*responses.EventResponse, edgexErr.EdgeX) {
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, queryParams)
-	requestTopic := strings.Join([]string{c.topics[CommandRequestTopicPrefix], deviceName, commandName, "get"}, "/")
-	err := c.messageBus.Publish(requestEnvelope, requestTopic)
+	requestTopic := strings.Join([]string{c.topics[common.CommandRequestTopicPrefixKey], deviceName, commandName, "get"}, "/")
+	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return nil, edgexErr.NewCommonEdgeXWrapper(err)
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, nil
-		case <-time.After(c.timeout):
-			return nil, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "timed out waiting response", nil)
-		case err = <-c.commandErrors:
+	if responseEnvelope.ErrorCode == 1 {
+		return nil, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
+	}
+
+	var res responses.EventResponse
+	returnEvent, ok := queryParams[common.ReturnEvent]
+	if ok && returnEvent == common.ValueFalse {
+		res.ApiVersion = common.ApiVersion
+		res.RequestId = responseEnvelope.RequestID
+		res.StatusCode = http.StatusOK
+	} else {
+		err = json.Unmarshal(responseEnvelope.Payload, &res)
+		if err != nil {
 			return nil, edgexErr.NewCommonEdgeXWrapper(err)
-		case responseEnvelope := <-c.commandMessages:
-			if responseEnvelope.RequestID != requestEnvelope.RequestID {
-				continue
-			}
-			if responseEnvelope.ErrorCode == 1 {
-				return nil, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
-			}
-
-			var res responses.EventResponse
-			returnEvent, ok := queryParams[common.ReturnEvent]
-			if ok && returnEvent == common.ValueFalse {
-				res.ApiVersion = common.ApiVersion
-				res.RequestId = responseEnvelope.RequestID
-				res.StatusCode = http.StatusOK
-			} else {
-				err = json.Unmarshal(responseEnvelope.Payload, &res)
-				if err != nil {
-					return nil, edgexErr.NewCommonEdgeXWrapper(err)
-				}
-			}
-
-			return &res, nil
 		}
 	}
+
+	return &res, nil
 }
 
-func (c *CommandClient) IssueSetCommandByName(ctx context.Context, deviceName string, commandName string, settings map[string]string) (commonDTO.BaseResponse, edgexErr.EdgeX) {
-	if c.commandMessages == nil {
-		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "command request/response topics not provided", nil)
-	}
-
+func (c *CommandClient) IssueSetCommandByName(_ context.Context, deviceName string, commandName string, settings map[string]string) (commonDTO.BaseResponse, edgexErr.EdgeX) {
 	payloadBytes, err := json.Marshal(settings)
 	if err != nil {
 		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
 	}
 
 	requestEnvelope := types.NewMessageEnvelopeForRequest(payloadBytes, nil)
-	requestTopic := strings.Join([]string{c.topics[CommandRequestTopicPrefix], deviceName, commandName, "set"}, "/")
-	err = c.messageBus.Publish(requestEnvelope, requestTopic)
+	requestTopic := strings.Join([]string{c.topics[common.CommandRequestTopicPrefixKey], deviceName, commandName, "set"}, "/")
+	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return commonDTO.BaseResponse{}, nil
-		case <-time.After(c.timeout):
-			return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "timed out waiting response", nil)
-		case err = <-c.commandErrors:
-			return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
-		case responseEnvelope := <-c.commandMessages:
-			if responseEnvelope.RequestID != requestEnvelope.RequestID {
-				continue
-			}
-			if responseEnvelope.ErrorCode == 1 {
-				return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
-			}
-
-			res := commonDTO.NewBaseResponse(responseEnvelope.RequestID, "", http.StatusOK)
-			return res, nil
-		}
+	if responseEnvelope.ErrorCode == 1 {
+		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
 	}
+
+	res := commonDTO.NewBaseResponse(responseEnvelope.RequestID, "", http.StatusOK)
+	return res, nil
 }
 
-func (c *CommandClient) IssueSetCommandByNameWithObject(ctx context.Context, deviceName string, commandName string, settings map[string]any) (commonDTO.BaseResponse, edgexErr.EdgeX) {
-	if c.commandMessages == nil {
-		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "command request/response topics not provided", nil)
-	}
-
+func (c *CommandClient) IssueSetCommandByNameWithObject(_ context.Context, deviceName string, commandName string, settings map[string]any) (commonDTO.BaseResponse, edgexErr.EdgeX) {
 	payloadBytes, err := json.Marshal(settings)
 	if err != nil {
 		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
 	}
 
 	requestEnvelope := types.NewMessageEnvelopeForRequest(payloadBytes, nil)
-	requestTopic := strings.Join([]string{c.topics[CommandRequestTopicPrefix], deviceName, commandName, "set"}, "/")
-	err = c.messageBus.Publish(requestEnvelope, requestTopic)
+	requestTopic := strings.Join([]string{c.topics[common.CommandRequestTopicPrefixKey], deviceName, commandName, "set"}, "/")
+	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return commonDTO.BaseResponse{}, nil
-		case <-time.After(c.timeout):
-			return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeX(edgexErr.KindServerError, "timed out waiting response", nil)
-		case err = <-c.commandErrors:
-			return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
-		case responseEnvelope := <-c.commandMessages:
-			if responseEnvelope.RequestID != requestEnvelope.RequestID {
-				continue
-			}
-			if responseEnvelope.ErrorCode == 1 {
-				return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
-			}
-
-			res := commonDTO.NewBaseResponse(responseEnvelope.RequestID, "", http.StatusOK)
-			return res, nil
-		}
+	if responseEnvelope.ErrorCode == 1 {
+		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
 	}
+
+	res := commonDTO.NewBaseResponse(responseEnvelope.RequestID, "", http.StatusOK)
+	return res, nil
 }

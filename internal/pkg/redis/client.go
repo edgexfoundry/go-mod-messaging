@@ -1,6 +1,6 @@
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
- *  Copyright (c) 2021 Intel Corporation
+ *  Copyright (c) 2023 Intel Corporation
  *  Copyright (C) 2023 IOTech Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -146,7 +146,6 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 	}
 
 	for i := range topics {
-
 		go func(topic types.TopicChannel) {
 			topicName := convertToRedisTopicScheme(topic.Topic)
 			messageChannel := topic.Messages
@@ -155,6 +154,18 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 			for {
 
 				message, err := c.redisClient.Receive(topicName)
+
+				// Make sure the topic is still subscribed before processing the message.
+				// If not cleanup and exit from the go func
+				c.mapMutex.Lock()
+				subscribed := c.existingTopics[topic.Topic]
+				if !subscribed {
+					delete(c.existingTopics, topic.Topic)
+					c.mapMutex.Unlock()
+					return
+				}
+				c.mapMutex.Unlock()
+
 				if err != nil {
 					// This handles case when getting same repeated error due to Redis connectivity issue
 					// Avoids starving of other threads/processes and recipient spamming the log file.
@@ -180,6 +191,29 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 
 }
 
+func (c Client) Request(message types.MessageEnvelope, requestTopic string, responseTopicPrefix string, timeout time.Duration) (*types.MessageEnvelope, error) {
+	return pkg.DoRequest(c.Subscribe, c.Unsubscribe, c.Publish, message, requestTopic, responseTopicPrefix, timeout)
+}
+
+func (c Client) Unsubscribe(topics ...string) error {
+	c.mapMutex.Lock()
+	defer c.mapMutex.Unlock()
+
+	for _, topic := range topics {
+		c.existingTopics[topic] = false
+	}
+
+	// Need to send dummy messages on the topics to trigger Reads in subscribe to return and exit go func.
+	// This has to be deferred due to the mapMutex
+	defer func(unsubscribedTopics []string) {
+		for _, topic := range topics {
+			_ = c.Publish(types.MessageEnvelope{}, topic)
+		}
+	}(topics)
+
+	return nil
+}
+
 // Disconnect closes connections to the Redis server.
 func (c Client) Disconnect() error {
 	var disconnectErrors []string
@@ -188,14 +222,6 @@ func (c Client) Disconnect() error {
 		if err != nil {
 			disconnectErrors = append(disconnectErrors, fmt.Sprintf("Unable to disconnect publish client: %v", err))
 		}
-	}
-
-	if c.redisClient != nil {
-		err := c.redisClient.Close()
-		if err != nil {
-			disconnectErrors = append(disconnectErrors, fmt.Sprintf("Unable to disconnect subscribe client: %v", err))
-		}
-
 	}
 
 	if len(disconnectErrors) > 0 {

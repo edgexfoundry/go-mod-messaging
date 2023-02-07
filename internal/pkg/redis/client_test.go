@@ -1,5 +1,6 @@
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
+ *  Copyright (c) 2023 Intel Corporation
  *  Copyright (C) 2023 IOTech Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -20,7 +21,7 @@
 // 'mocks/RedisClient.go'. The generated code was created by using the mockery command line tool provided by Mockery.
 // For example execute the following CLI command:
 // '$ mockery -name=RedisClient -recursive'
-// For more details visit the Mockery Github page https://github.com/vektra/mockery
+// For more details visit the Mockery GitHub page https://github.com/vektra/mockery
 package redis
 
 import (
@@ -37,6 +38,7 @@ import (
 	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
 	redisMocks "github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg/redis/mocks"
 	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -420,6 +422,131 @@ func TestClient_Subscribe(t *testing.T) {
 			readFromChannel(t, topics, tt.numberOfMessages, errorMessageChannel, tt.numberOfErrors)
 		})
 	}
+}
+
+func TestClient_Unsubscribe(t *testing.T) {
+	testTopic1 := "test1"
+	testTopic2 := "test2"
+	testTopic3 := "test3"
+
+	waitMap := map[string]*sync.WaitGroup{}
+	waitMap[testTopic1] = &sync.WaitGroup{}
+	waitMap[testTopic1].Add(1)
+	waitMap[testTopic2] = &sync.WaitGroup{}
+	waitMap[testTopic2].Add(1)
+	waitMap[testTopic3] = &sync.WaitGroup{}
+	waitMap[testTopic3].Add(1)
+
+	config := types.MessageBusConfig{
+		Broker: types.HostInfo{
+			Host:     "localhost",
+			Port:     6379,
+			Protocol: "redis",
+		},
+	}
+	creator := func(redisServerURL string, password string, tlsConfig *tls.Config) (RedisClient, error) {
+		redisMock := &redisMocks.RedisClient{}
+		redisMock.On("Receive", mock.Anything).After(time.Millisecond*100).Run(func(args mock.Arguments) {
+			topic := args.Get(0).(string)
+			waitMap[topic].Wait()
+		}).Return(&types.MessageEnvelope{}, nil)
+		redisMock.On("Send", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			topic := args.Get(0).(string)
+			waitMap[topic].Done()
+		}).Return(nil)
+		return redisMock, nil
+	}
+
+	target, err := NewClientWithCreator(config, creator, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+
+	messages := make(chan types.MessageEnvelope, 1)
+	errs := make(chan error, 1)
+
+	topics := []types.TopicChannel{
+		{
+			Topic:    testTopic1,
+			Messages: messages,
+		},
+		{
+			Topic:    testTopic2,
+			Messages: messages,
+		},
+		{
+			Topic:    testTopic3,
+			Messages: messages,
+		},
+	}
+
+	err = target.Subscribe(topics, errs)
+	require.NoError(t, err)
+
+	target.mapMutex.Lock()
+	set, exists := target.existingTopics[testTopic1]
+	require.True(t, set)
+	require.True(t, exists)
+	set, exists = target.existingTopics[testTopic2]
+	require.True(t, set)
+	require.True(t, exists)
+	set, exists = target.existingTopics[testTopic3]
+	require.True(t, set)
+	require.True(t, exists)
+	target.mapMutex.Unlock()
+
+	err = target.Unsubscribe(testTopic1)
+	require.NoError(t, err)
+
+	target.mapMutex.Lock()
+	set, exists = target.existingTopics[testTopic1]
+	require.False(t, set)
+	require.True(t, exists)
+	set, exists = target.existingTopics[testTopic2]
+	require.True(t, set)
+	require.True(t, exists)
+	set, exists = target.existingTopics[testTopic3]
+	require.True(t, set)
+	require.True(t, exists)
+	target.mapMutex.Unlock()
+
+	// Need to wait for subscribe to respond and exit its go func
+	waitMap[testTopic1].Wait()
+	time.Sleep(time.Second)
+
+	target.mapMutex.Lock()
+	set, exists = target.existingTopics[testTopic1]
+	require.False(t, set)
+	require.False(t, exists)
+	target.mapMutex.Unlock()
+
+	err = target.Unsubscribe(testTopic2, testTopic3)
+	require.NoError(t, err)
+
+	target.mapMutex.Lock()
+	set, exists = target.existingTopics[testTopic1]
+	require.False(t, set)
+	require.False(t, exists)
+	set, exists = target.existingTopics[testTopic2]
+	require.False(t, set)
+	require.True(t, exists)
+	set, exists = target.existingTopics[testTopic3]
+	require.False(t, set)
+	require.True(t, exists)
+	target.mapMutex.Unlock()
+
+	// Need to wait for subscribe to respond and exit its go func
+	waitMap[testTopic2].Wait()
+	waitMap[testTopic3].Wait()
+	time.Sleep(time.Second)
+
+	target.mapMutex.Lock()
+	set, exists = target.existingTopics[testTopic2]
+	require.False(t, set)
+	require.False(t, exists)
+	set, exists = target.existingTopics[testTopic3]
+	require.False(t, set)
+	require.False(t, exists)
+	target.mapMutex.Unlock()
+
 }
 
 func mockCertCreator(returnError error) pkg.X509KeyPairCreator {
