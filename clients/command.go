@@ -12,7 +12,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-core-contracts/v3/clients/interfaces"
@@ -27,26 +26,27 @@ import (
 
 type CommandClient struct {
 	messageBus          messaging.MessageClient
-	topics              map[string]string
+	baseTopic           string
 	responseTopicPrefix string
 	timeout             time.Duration
 }
 
-func NewCommandClient(messageBus messaging.MessageClient, topics map[string]string, timeout time.Duration) (interfaces.CommandClient, error) {
+func NewCommandClient(messageBus messaging.MessageClient, baseTopic string, timeout time.Duration) interfaces.CommandClient {
 	client := &CommandClient{
 		messageBus:          messageBus,
-		topics:              topics,
-		responseTopicPrefix: strings.Join([]string{topics[common.ResponseTopicPrefixKey], common.CoreCommandServiceKey}, "/"),
+		baseTopic:           baseTopic,
+		responseTopicPrefix: common.BuildTopic(baseTopic, common.ResponseTopic, common.CoreCommandServiceKey),
 		timeout:             timeout,
 	}
 
-	return client, nil
+	return client
 }
 
 func (c *CommandClient) AllDeviceCoreCommands(_ context.Context, offset int, limit int) (responses.MultiDeviceCoreCommandsResponse, edgexErr.EdgeX) {
 	queryParams := map[string]string{common.Offset: strconv.Itoa(offset), common.Limit: strconv.Itoa(limit)}
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, queryParams)
-	requestTopic := strings.Join([]string{c.topics[common.CommandQueryRequestTopicPrefixKey], common.All}, "/")
+
+	requestTopic := common.BuildTopic(c.baseTopic, common.CoreCommandQueryRequestPublishTopic, common.All)
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, common.CoreCommandServiceKey, requestTopic, c.timeout)
 	if err != nil {
 		return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
@@ -67,7 +67,7 @@ func (c *CommandClient) AllDeviceCoreCommands(_ context.Context, offset int, lim
 
 func (c *CommandClient) DeviceCoreCommandsByDeviceName(_ context.Context, deviceName string) (responses.DeviceCoreCommandResponse, edgexErr.EdgeX) {
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, nil)
-	requestTopic := strings.Join([]string{c.topics[common.CommandQueryRequestTopicPrefixKey], deviceName}, "/")
+	requestTopic := common.BuildTopic(c.baseTopic, common.CoreCommandQueryRequestPublishTopic, deviceName)
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
@@ -93,7 +93,7 @@ func (c *CommandClient) IssueGetCommandByName(ctx context.Context, deviceName st
 
 func (c *CommandClient) IssueGetCommandByNameWithQueryParams(_ context.Context, deviceName string, commandName string, queryParams map[string]string) (*responses.EventResponse, edgexErr.EdgeX) {
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, queryParams)
-	requestTopic := strings.Join([]string{c.topics[common.CommandRequestTopicPrefixKey], deviceName, commandName, "get"}, "/")
+	requestTopic := common.BuildTopic(c.baseTopic, common.CoreCommandRequestPublishTopic, deviceName, commandName, "get")
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return nil, edgexErr.NewCommonEdgeXWrapper(err)
@@ -126,7 +126,7 @@ func (c *CommandClient) IssueSetCommandByName(_ context.Context, deviceName stri
 	}
 
 	requestEnvelope := types.NewMessageEnvelopeForRequest(payloadBytes, nil)
-	requestTopic := strings.Join([]string{c.topics[common.CommandRequestTopicPrefixKey], deviceName, commandName, "set"}, "/")
+	requestTopic := common.BuildTopic(c.baseTopic, common.CoreCommandRequestPublishTopic, deviceName, commandName, "set")
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
@@ -147,7 +147,7 @@ func (c *CommandClient) IssueSetCommandByNameWithObject(_ context.Context, devic
 	}
 
 	requestEnvelope := types.NewMessageEnvelopeForRequest(payloadBytes, nil)
-	requestTopic := strings.Join([]string{c.topics[common.CommandRequestTopicPrefixKey], deviceName, commandName, "set"}, "/")
+	requestTopic := common.BuildTopic(c.baseTopic, common.CoreCommandRequestPublishTopic, deviceName, commandName, "set")
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)

@@ -29,10 +29,8 @@ import (
 )
 
 const (
-	testDeviceName                = "test-device"
-	testCommandName               = "test-command"
-	testQueryRequestTopic         = "test/commandquery/request"
-	testCommandRequestTopicPrefix = "test/command/request"
+	testDeviceName  = "test-device"
+	testCommandName = "test-command"
 )
 
 var expectedRequestID = uuid.NewString()
@@ -265,13 +263,7 @@ func getCommandClientWithMockMessaging(t *testing.T, expectedResponse *types.Mes
 	mockMessageClient := &mocks.MessageClient{}
 	mockMessageClient.On("Request", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(expectedResponse, expectedRequestError)
 
-	topics := map[string]string{
-		common.CommandQueryRequestTopicPrefixKey: testQueryRequestTopic,
-		common.CommandRequestTopicPrefixKey:      testCommandRequestTopicPrefix,
-	}
-
-	client, err := NewCommandClient(mockMessageClient, topics, 10*time.Second)
-	require.NoError(t, err)
+	client := NewCommandClient(mockMessageClient, "edgex", 10*time.Second)
 
 	return client
 }
