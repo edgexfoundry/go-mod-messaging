@@ -197,19 +197,20 @@ func (c Client) Request(message types.MessageEnvelope, requestTopic string, resp
 
 func (c Client) Unsubscribe(topics ...string) error {
 	c.mapMutex.Lock()
-	defer c.mapMutex.Unlock()
-
-	for _, topic := range topics {
-		c.existingTopics[topic] = false
-	}
 
 	// Need to send dummy messages on the topics to trigger Reads in subscribe to return and exit go func.
-	// This has to be deferred due to the mapMutex
+	// This has to be deferred due to the mapMutex unlock needing to happen first
 	defer func(unsubscribedTopics []string) {
+		c.mapMutex.Unlock()
+
 		for _, topic := range topics {
 			_ = c.Publish(types.MessageEnvelope{}, topic)
 		}
 	}(topics)
+
+	for _, topic := range topics {
+		c.existingTopics[topic] = false
+	}
 
 	return nil
 }
