@@ -145,11 +145,18 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 		return err
 	}
 
+	var wg sync.WaitGroup
+
 	for i := range topics {
+		wg.Add(1)
 		go func(topic types.TopicChannel) {
 			topicName := convertToRedisTopicScheme(topic.Topic)
 			messageChannel := topic.Messages
 			var previousErr error
+
+			c.redisClient.Subscribe(topicName)
+
+			wg.Done()
 
 			for {
 
@@ -187,6 +194,10 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 		}(topics[i])
 	}
 
+	// Wait for all the subscribe go funcs to be spun up
+	// This is needed for the Request API since the subscribe must be spun up prior to the response being published.
+	wg.Wait()
+
 	return nil
 
 }
@@ -198,18 +209,14 @@ func (c Client) Request(message types.MessageEnvelope, requestTopic string, resp
 func (c Client) Unsubscribe(topics ...string) error {
 	c.mapMutex.Lock()
 
-	// Need to send dummy messages on the topics to trigger Reads in subscribe to return and exit go func.
-	// This has to be deferred due to the mapMutex unlock needing to happen first
-	defer func(unsubscribedTopics []string) {
-		c.mapMutex.Unlock()
-
-		for _, topic := range topics {
-			_ = c.Publish(types.MessageEnvelope{}, topic)
-		}
-	}(topics)
-
 	for _, topic := range topics {
 		c.existingTopics[topic] = false
+	}
+
+	c.mapMutex.Unlock()
+
+	for _, topic := range topics {
+		_ = c.Publish(types.MessageEnvelope{}, topic)
 	}
 
 	return nil

@@ -70,6 +70,11 @@ func (g *goRedisWrapper) Send(topic string, message types.MessageEnvelope) error
 	return nil
 }
 
+// Subscribe creates the subscription in Redis
+func (g *goRedisWrapper) Subscribe(topic string) {
+	g.getSubscription(topic)
+}
+
 // Receive retrieves the next message from the specified topic. This operation blocks indefinitely until a
 // message is received for the topic.
 func (g *goRedisWrapper) Receive(topic string) (*types.MessageEnvelope, error) {
