@@ -28,15 +28,17 @@
 package redis
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/clients/http"
+	commonConstants "github.com/edgexfoundry/go-mod-core-contracts/v3/common"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -135,63 +137,50 @@ func TestRedisUnsubscribeIntegration(t *testing.T) {
 	assert.Equal(t, 0, len(client.existingTopics))
 }
 
+// TestRedisRequestIntegration depends on Redis and Device Virtual to be running
 func TestRedisRequestIntegration(t *testing.T) {
 	redisHostInfo := getRedisHostInfo(t)
 	client, err := NewClient(types.MessageBusConfig{
 		Broker: redisHostInfo,
 	})
+	require.NoError(t, err, "Failed to create Redis client, Redis must be running")
 
-	require.NoError(t, err, "Failed to create Redis client")
+	dsClient := http.NewCommonClient("http://localhost:59900")
+	_, err = dsClient.Ping(context.Background())
+	require.NoError(t, err, "Device Virtual must be running")
 
-	messages := make(chan types.MessageEnvelope, 1)
-	errs := make(chan error, 1)
+	deviceService := "device-virtual"
+	responseTopicPrefix := commonConstants.BuildTopic(commonConstants.DefaultBaseTopic, commonConstants.ResponseTopic, deviceService)
+	requestTopic := commonConstants.BuildTopic(commonConstants.DefaultBaseTopic, deviceService, commonConstants.ValidateDeviceSubscribeTopic)
 
-	responseTopicPrefix := "/edgex/response/test-service"
-	requestTopic := "edgex/request"
-	topics := []types.TopicChannel{
-		{
-			Topic:    requestTopic,
-			Messages: messages,
-		},
-	}
+	// Device Virtual doesn't implement validation interface, so the SDK will always return ok response
+	expectedErrorCode := 0
 
-	println("Subscribing to topic: " + requestTopic)
-	err = client.Subscribe(topics, errs)
-	require.NoError(t, err)
-	require.Equal(t, 1, len(client.existingTopics))
+	// Send multiple Requests to make sure bug that failed after first successfully request is fixed.
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-time.After(time.Second * 10):
-				return
-
-			case err = <-errs:
-				require.Failf(t, "failed", "Unexpected error message received: %v", err)
-				return
-
-			case message := <-messages:
-				println(fmt.Sprintf("Received message from topic: %v", message.ReceivedTopic))
-
-				responseTopic := strings.Join([]string{responseTopicPrefix, message.RequestID}, "/")
-				println(fmt.Sprintf("Publishing response message on topic: %v", responseTopic))
-
-				err = client.Publish(types.MessageEnvelope{RequestID: message.RequestID}, responseTopic)
-				require.NoError(t, err)
-				return
-			}
-		}
-	}()
-
-	time.Sleep(time.Second)
 	requestId := uuid.NewString()
-	println(fmt.Sprintf("Sending request to topic %s with requestId %s", requestTopic, requestId))
-	response, err := client.Request(types.MessageEnvelope{RequestID: requestId}, requestTopic, responseTopicPrefix, time.Second*10)
+	correlationId := uuid.NewString()
+	fmt.Printf("Sending first request to topic %s with requestId %s\n", requestTopic, requestId)
+	response, err := client.Request(types.MessageEnvelope{RequestID: requestId, CorrelationID: correlationId}, requestTopic, responseTopicPrefix, time.Second*5)
 	require.NoError(t, err)
 	assert.Equal(t, requestId, response.RequestID)
+	assert.Equal(t, expectedErrorCode, response.ErrorCode)
+
+	requestId = uuid.NewString()
+	correlationId = uuid.NewString()
+	fmt.Printf("Sending second request to topic %s with requestId %s\n", requestTopic, requestId)
+	response, err = client.Request(types.MessageEnvelope{RequestID: requestId, CorrelationID: correlationId}, requestTopic, responseTopicPrefix, time.Second*5)
+	require.NoError(t, err)
+	assert.Equal(t, requestId, response.RequestID)
+	assert.Equal(t, expectedErrorCode, response.ErrorCode)
+
+	correlationId = uuid.NewString()
+	requestId = uuid.NewString()
+	fmt.Printf("Sending third request to topic %s with requestId %s\n", requestTopic, requestId)
+	response, err = client.Request(types.MessageEnvelope{RequestID: requestId, CorrelationID: correlationId}, requestTopic, responseTopicPrefix, time.Second*5)
+	require.NoError(t, err)
+	assert.Equal(t, requestId, response.RequestID)
+	assert.Equal(t, expectedErrorCode, response.ErrorCode)
 }
 
 func createSub(t *testing.T, client *Client, stream string, expectedMessage types.MessageEnvelope, doneWaitGroup *sync.WaitGroup) {

@@ -40,9 +40,11 @@ type RedisClientCreator func(redisServerURL string, password string, tlsConfig *
 // allow for easy unit testing. Since 'go-redis' does not leverage interfaces and has complicated entities it can become
 // complex to test the operations without requiring a running Redis server.
 type RedisClient interface {
+	// Subscribe creates the subscription in Redis
+	Subscribe(topic string)
 	// Send sends a message to the specified topic, aka Publish.
 	Send(topic string, message types.MessageEnvelope) error
-	// Receive blocking operation which receives the next message for the specified topic, aka Subscribe
+	// Receive blocking operation which receives the next message for the specified subscribed topic
 	// This supports multi-level topic scheme with wild cards
 	Receive(topic string) (*types.MessageEnvelope, error)
 	// Close cleans up any entities which need to be deconstructed.
