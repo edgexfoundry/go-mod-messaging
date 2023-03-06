@@ -42,6 +42,8 @@ type RedisClientCreator func(redisServerURL string, password string, tlsConfig *
 type RedisClient interface {
 	// Subscribe creates the subscription in Redis
 	Subscribe(topic string)
+	// Unsubscribe closes the subscription in Redis and removes it.
+	Unsubscribe(topic string)
 	// Send sends a message to the specified topic, aka Publish.
 	Send(topic string, message types.MessageEnvelope) error
 	// Receive blocking operation which receives the next message for the specified subscribed topic

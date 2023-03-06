@@ -75,6 +75,20 @@ func (g *goRedisWrapper) Subscribe(topic string) {
 	g.getSubscription(topic)
 }
 
+// Unsubscribe closes the subscription in Redis and removes it.
+func (g *goRedisWrapper) Unsubscribe(topic string) {
+	g.subscriptionsMutex.Lock()
+	defer g.subscriptionsMutex.Unlock()
+
+	subscription := g.subscriptions[topic]
+	if subscription == nil {
+		return
+	}
+
+	_ = subscription.Close()
+	delete(g.subscriptions, topic)
+}
+
 // Receive retrieves the next message from the specified topic. This operation blocks indefinitely until a
 // message is received for the topic.
 func (g *goRedisWrapper) Receive(topic string) (*types.MessageEnvelope, error) {

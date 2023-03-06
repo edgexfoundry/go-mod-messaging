@@ -126,6 +126,10 @@ func TestRedisUnsubscribeIntegration(t *testing.T) {
 					println("Unsubscribing from topic: " + eventTopic)
 					err = client.Unsubscribe(eventTopic)
 					require.NoError(t, err)
+
+					time.Sleep(time.Second)
+					_, exists := client.existingTopics[eventTopic]
+					assert.False(t, exists)
 				}
 			}
 		}

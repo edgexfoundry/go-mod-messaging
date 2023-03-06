@@ -72,6 +72,11 @@ func (_m *RedisClient) Subscribe(topic string) {
 	_m.Called(topic)
 }
 
+// Unsubscribe provides a mock function with given fields: topic
+func (_m *RedisClient) Unsubscribe(topic string) {
+	_m.Called(topic)
+}
+
 type mockConstructorTestingTNewRedisClient interface {
 	mock.TestingT
 	Cleanup(func())
