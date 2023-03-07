@@ -429,13 +429,21 @@ func TestClient_Unsubscribe(t *testing.T) {
 	testTopic2 := "test2"
 	testTopic3 := "test3"
 
-	waitMap := map[string]*sync.WaitGroup{}
-	waitMap[testTopic1] = &sync.WaitGroup{}
-	waitMap[testTopic1].Add(1)
-	waitMap[testTopic2] = &sync.WaitGroup{}
-	waitMap[testTopic2].Add(1)
-	waitMap[testTopic3] = &sync.WaitGroup{}
-	waitMap[testTopic3].Add(1)
+	receiveWaitMap := map[string]*sync.WaitGroup{}
+	receiveWaitMap[testTopic1] = &sync.WaitGroup{}
+	receiveWaitMap[testTopic1].Add(1)
+	receiveWaitMap[testTopic2] = &sync.WaitGroup{}
+	receiveWaitMap[testTopic2].Add(1)
+	receiveWaitMap[testTopic3] = &sync.WaitGroup{}
+	receiveWaitMap[testTopic3].Add(1)
+
+	unsubscribeWaitMap := map[string]*sync.WaitGroup{}
+	unsubscribeWaitMap[testTopic1] = &sync.WaitGroup{}
+	unsubscribeWaitMap[testTopic1].Add(1)
+	unsubscribeWaitMap[testTopic2] = &sync.WaitGroup{}
+	unsubscribeWaitMap[testTopic2].Add(1)
+	unsubscribeWaitMap[testTopic3] = &sync.WaitGroup{}
+	unsubscribeWaitMap[testTopic3].Add(1)
 
 	config := types.MessageBusConfig{
 		Broker: types.HostInfo{
@@ -447,14 +455,17 @@ func TestClient_Unsubscribe(t *testing.T) {
 	creator := func(redisServerURL string, password string, tlsConfig *tls.Config) (RedisClient, error) {
 		redisMock := &redisMocks.RedisClient{}
 		redisMock.On("Subscribe", mock.Anything)
-		redisMock.On("Unsubscribe", mock.Anything)
+		redisMock.On("Unsubscribe", mock.Anything).Run(func(args mock.Arguments) {
+			topic := args.Get(0).(string)
+			unsubscribeWaitMap[topic].Done()
+		})
 		redisMock.On("Receive", mock.Anything).After(time.Millisecond*100).Run(func(args mock.Arguments) {
 			topic := args.Get(0).(string)
-			waitMap[topic].Wait()
+			receiveWaitMap[topic].Wait()
 		}).Return(&types.MessageEnvelope{}, nil)
 		redisMock.On("Send", mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
 			topic := args.Get(0).(string)
-			waitMap[topic].Done()
+			receiveWaitMap[topic].Done()
 		}).Return(nil)
 		return redisMock, nil
 	}
@@ -498,21 +509,8 @@ func TestClient_Unsubscribe(t *testing.T) {
 	err = target.Unsubscribe(testTopic1)
 	require.NoError(t, err)
 
-	target.mapMutex.Lock()
-	set, exists = target.existingTopics[testTopic1]
-	require.False(t, set)
-	require.True(t, exists)
-	set, exists = target.existingTopics[testTopic2]
-	require.True(t, set)
-	require.True(t, exists)
-	set, exists = target.existingTopics[testTopic3]
-	require.True(t, set)
-	require.True(t, exists)
-	target.mapMutex.Unlock()
-
-	// Need to wait for subscribe to respond and exit its go func
-	waitMap[testTopic1].Wait()
-	time.Sleep(time.Second)
+	// Need to wait for unsubscribe to have occurred
+	unsubscribeWaitMap[testTopic1].Wait()
 
 	target.mapMutex.Lock()
 	set, exists = target.existingTopics[testTopic1]
@@ -523,22 +521,9 @@ func TestClient_Unsubscribe(t *testing.T) {
 	err = target.Unsubscribe(testTopic2, testTopic3)
 	require.NoError(t, err)
 
-	target.mapMutex.Lock()
-	set, exists = target.existingTopics[testTopic1]
-	require.False(t, set)
-	require.False(t, exists)
-	set, exists = target.existingTopics[testTopic2]
-	require.False(t, set)
-	require.True(t, exists)
-	set, exists = target.existingTopics[testTopic3]
-	require.False(t, set)
-	require.True(t, exists)
-	target.mapMutex.Unlock()
-
-	// Need to wait for subscribe to respond and exit its go func
-	waitMap[testTopic2].Wait()
-	waitMap[testTopic3].Wait()
-	time.Sleep(time.Second)
+	// Need to wait for unsubscribes to have occurred
+	unsubscribeWaitMap[testTopic2].Wait()
+	unsubscribeWaitMap[testTopic3].Wait()
 
 	target.mapMutex.Lock()
 	set, exists = target.existingTopics[testTopic2]
