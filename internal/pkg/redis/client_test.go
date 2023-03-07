@@ -447,6 +447,7 @@ func TestClient_Unsubscribe(t *testing.T) {
 	creator := func(redisServerURL string, password string, tlsConfig *tls.Config) (RedisClient, error) {
 		redisMock := &redisMocks.RedisClient{}
 		redisMock.On("Subscribe", mock.Anything)
+		redisMock.On("Unsubscribe", mock.Anything)
 		redisMock.On("Receive", mock.Anything).After(time.Millisecond*100).Run(func(args mock.Arguments) {
 			topic := args.Get(0).(string)
 			waitMap[topic].Wait()
@@ -630,6 +631,10 @@ func (r *SubscriptionRedisClientMock) Send(string, types.MessageEnvelope) error 
 }
 
 func (r *SubscriptionRedisClientMock) Subscribe(_ string) {
+
+}
+
+func (r *SubscriptionRedisClientMock) Unsubscribe(_ string) {
 
 }
 

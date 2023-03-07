@@ -168,6 +168,8 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 				subscribed := c.existingTopics[topic.Topic]
 				if !subscribed {
 					delete(c.existingTopics, topic.Topic)
+					// Do the actual unsubscribe from Redis with the Redis style topic now that this go func can exit.
+					c.redisClient.Unsubscribe(topicName)
 					c.mapMutex.Unlock()
 					return
 				}
@@ -216,6 +218,7 @@ func (c Client) Unsubscribe(topics ...string) error {
 	c.mapMutex.Unlock()
 
 	for _, topic := range topics {
+		// Must publish a dummy message to kick the subscription go func out of the Receive() call
 		_ = c.Publish(types.MessageEnvelope{}, topic)
 	}
 
