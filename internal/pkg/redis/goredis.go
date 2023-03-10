@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
@@ -128,7 +129,14 @@ func (g *goRedisWrapper) getSubscription(topic string) *goRedis.PubSub {
 	defer g.subscriptionsMutex.Unlock()
 	subscription, exists := g.subscriptions[topic]
 	if !exists {
-		subscription = g.wrappedClient.PSubscribe(topic)
+		// Redis Pub/Sub wildcard doesn't cover empty sub channel level, to match MQTT multi-level wildcard,
+		// subscribe additional channel for empty level if the suffix is multiple wildcard
+		// for example, subscribing channels a.b and a.b.* is equal to MQTT topic a/b/#
+		if strings.HasSuffix(topic, RedisTopicSeparator+RedisWildcard) {
+			subscription = g.wrappedClient.PSubscribe(topic, strings.TrimSuffix(topic, RedisTopicSeparator+RedisWildcard))
+		} else {
+			subscription = g.wrappedClient.PSubscribe(topic)
+		}
 		g.subscriptions[topic] = subscription
 	}
 	return subscription
