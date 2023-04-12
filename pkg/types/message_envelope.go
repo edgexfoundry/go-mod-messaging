@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/dtos/common"
 	"github.com/google/uuid"
 )
 
@@ -36,29 +37,29 @@ const (
 
 // MessageEnvelope is the data structure for messages. It wraps the generic message payload with attributes.
 type MessageEnvelope struct {
-	// ReceivedTopic is the topic that the message was received on.
-	ReceivedTopic string
-	// CorrelationID is an object id to identify the envelope.
-	CorrelationID string
-	// ApiVersion shows the API version in message envelope.
-	ApiVersion string
+	common.Versionable
 	// RequestID is an object id to identify the request.
-	RequestID string
+	// ReceivedTopic is the topic that the message was received on.
+	ReceivedTopic string `json:"receivedTopic"`
+	// CorrelationID is an object id to identify the envelope.
+	CorrelationID string `json:"correlationID"`
+	// ApiVersion shows the API version in message envelope.
+	RequestID string `json:"requestID"`
 	// ErrorCode provides the indication of error. '0' indicates no error, '1' indicates error.
 	// Additional codes may be added in the future. If non-0, the payload will contain the error.
-	ErrorCode int
+	ErrorCode int `json:"errorCode"`
 	// Payload is byte representation of the data being transferred.
-	Payload []byte
+	Payload []byte `json:"payload"`
 	// ContentType is the marshaled type of payload, i.e. application/json, application/xml, application/cbor, etc
-	ContentType string
+	ContentType string `json:"contentType"`
 	// QueryParams is optionally provided key/value pairs.
-	QueryParams map[string]string
+	QueryParams map[string]string `json:"queryParams,omitempty"`
 }
 
 // NewMessageEnvelope creates a new MessageEnvelope for the specified payload with attributes from the specified context
 func NewMessageEnvelope(payload []byte, ctx context.Context) MessageEnvelope {
 	envelope := MessageEnvelope{
-		ApiVersion:    ApiVersion,
+		Versionable:   common.NewVersionable(),
 		CorrelationID: fromContext(ctx, CorrelationID),
 		ContentType:   fromContext(ctx, ContentType),
 		Payload:       payload,
@@ -73,7 +74,7 @@ func NewMessageEnvelope(payload []byte, ctx context.Context) MessageEnvelope {
 func NewMessageEnvelopeForRequest(payload []byte, queryParams map[string]string) MessageEnvelope {
 	envelope := MessageEnvelope{
 		CorrelationID: uuid.NewString(),
-		ApiVersion:    ApiVersion,
+		Versionable:   common.NewVersionable(),
 		RequestID:     uuid.NewString(),
 		ErrorCode:     0,
 		Payload:       payload,
@@ -102,7 +103,7 @@ func NewMessageEnvelopeForResponse(payload []byte, requestId string, correlation
 
 	envelope := MessageEnvelope{
 		CorrelationID: correlationId,
-		ApiVersion:    ApiVersion,
+		Versionable:   common.NewVersionable(),
 		RequestID:     requestId,
 		ErrorCode:     0,
 		Payload:       payload,
@@ -154,7 +155,7 @@ func NewMessageEnvelopeFromJSON(message []byte) (MessageEnvelope, error) {
 func NewMessageEnvelopeWithError(requestId string, errorMessage string) MessageEnvelope {
 	return MessageEnvelope{
 		CorrelationID: uuid.NewString(),
-		ApiVersion:    ApiVersion,
+		Versionable:   common.NewVersionable(),
 		RequestID:     requestId,
 		ErrorCode:     1,
 		Payload:       []byte(errorMessage),

@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/dtos/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -191,10 +192,24 @@ func TestNewMessageEnvelopeWithError(t *testing.T) {
 	assert.Empty(t, envelope.QueryParams)
 }
 
+func TestMessageEnvelopeJSON(t *testing.T) {
+	expected := testMessageEnvelope()
+	expected.QueryParams = make(map[string]string)
+	expected.QueryParams["q1"] = "v1"
+
+	data, err := json.Marshal(expected)
+	require.NoError(t, err)
+
+	actual, err := NewMessageEnvelopeFromJSON(data)
+	require.NoError(t, err)
+
+	assert.Equal(t, expected, actual)
+}
+
 func testMessageEnvelope() MessageEnvelope {
 	return MessageEnvelope{
 		CorrelationID: testCorrelationId,
-		ApiVersion:    ApiVersion,
+		Versionable:   common.NewVersionable(),
 		RequestID:     testRequestId,
 		ErrorCode:     0,
 		Payload:       []byte(testPayload),
