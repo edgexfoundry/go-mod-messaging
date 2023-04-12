@@ -37,13 +37,13 @@ const (
 
 // MessageEnvelope is the data structure for messages. It wraps the generic message payload with attributes.
 type MessageEnvelope struct {
+	// ApiVersion (from Versionable) shows the API version for the message envelope.
 	common.Versionable
-	// RequestID is an object id to identify the request.
 	// ReceivedTopic is the topic that the message was received on.
 	ReceivedTopic string `json:"receivedTopic"`
 	// CorrelationID is an object id to identify the envelope.
 	CorrelationID string `json:"correlationID"`
-	// ApiVersion shows the API version in message envelope.
+	// RequestID is an object id to identify the request.
 	RequestID string `json:"requestID"`
 	// ErrorCode provides the indication of error. '0' indicates no error, '1' indicates error.
 	// Additional codes may be added in the future. If non-0, the payload will contain the error.
