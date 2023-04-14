@@ -1,6 +1,7 @@
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
  *  Copyright (c) 2021 Intel Corporation
+ *  Copyright (c) 2023 IOTech Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -41,7 +42,7 @@ type RedisClientCreator func(redisServerURL string, password string, tlsConfig *
 // complex to test the operations without requiring a running Redis server.
 type RedisClient interface {
 	// Subscribe creates the subscription in Redis
-	Subscribe(topic string)
+	Subscribe(topic string) error
 	// Unsubscribe closes the subscription in Redis and removes it.
 	Unsubscribe(topic string)
 	// Send sends a message to the specified topic, aka Publish.
