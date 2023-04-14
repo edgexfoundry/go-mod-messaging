@@ -68,8 +68,17 @@ func (_m *RedisClient) Send(topic string, message types.MessageEnvelope) error {
 }
 
 // Subscribe provides a mock function with given fields: topic
-func (_m *RedisClient) Subscribe(topic string) {
-	_m.Called(topic)
+func (_m *RedisClient) Subscribe(topic string) error {
+	ret := _m.Called(topic)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(topic)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // Unsubscribe provides a mock function with given fields: topic

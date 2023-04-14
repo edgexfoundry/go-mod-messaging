@@ -154,7 +154,11 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 			messageChannel := topic.Messages
 			var previousErr error
 
-			c.redisClient.Subscribe(topicName)
+			err := c.redisClient.Subscribe(topicName)
+			if err != nil {
+				messageErrors <- err
+				return
+			}
 
 			wg.Done()
 

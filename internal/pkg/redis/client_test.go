@@ -35,13 +35,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
 	redisMocks "github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg/redis/mocks"
 	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
-	"github.com/stretchr/testify/mock"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var HostInfo = types.HostInfo{
@@ -454,7 +454,7 @@ func TestClient_Unsubscribe(t *testing.T) {
 	}
 	creator := func(redisServerURL string, password string, tlsConfig *tls.Config) (RedisClient, error) {
 		redisMock := &redisMocks.RedisClient{}
-		redisMock.On("Subscribe", mock.Anything)
+		redisMock.On("Subscribe", mock.Anything).Return(nil)
 		redisMock.On("Unsubscribe", mock.Anything).Run(func(args mock.Arguments) {
 			topic := args.Get(0).(string)
 			unsubscribeWaitMap[topic].Done()
@@ -615,8 +615,8 @@ func (r *SubscriptionRedisClientMock) Send(string, types.MessageEnvelope) error 
 
 }
 
-func (r *SubscriptionRedisClientMock) Subscribe(_ string) {
-
+func (r *SubscriptionRedisClientMock) Subscribe(_ string) error {
+	return nil
 }
 
 func (r *SubscriptionRedisClientMock) Unsubscribe(_ string) {

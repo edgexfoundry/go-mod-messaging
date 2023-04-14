@@ -1,6 +1,7 @@
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
  *  Copyright (c) 2021 Intel Corporation
+ *  Copyright (c) 2023 IOTech Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -13,12 +14,13 @@
  * the License.
  *******************************************************************************/
 
-// redis package contains a RedisClient which leverages go-redis to interact with a Redis server.
+// Package redis contains a RedisClient which leverages go-redis to interact with a Redis server.
 package redis
 
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -72,8 +74,9 @@ func (g *goRedisWrapper) Send(topic string, message types.MessageEnvelope) error
 }
 
 // Subscribe creates the subscription in Redis
-func (g *goRedisWrapper) Subscribe(topic string) {
-	g.getSubscription(topic)
+func (g *goRedisWrapper) Subscribe(topic string) error {
+	_, err := g.getSubscription(topic)
+	return err
 }
 
 // Unsubscribe closes the subscription in Redis and removes it.
@@ -93,7 +96,10 @@ func (g *goRedisWrapper) Unsubscribe(topic string) {
 // Receive retrieves the next message from the specified topic. This operation blocks indefinitely until a
 // message is received for the topic.
 func (g *goRedisWrapper) Receive(topic string) (*types.MessageEnvelope, error) {
-	subscription := g.getSubscription(topic)
+	subscription, err := g.getSubscription(topic)
+	if err != nil {
+		return nil, err
+	}
 
 	data, err := subscription.ReceiveMessage()
 	if err != nil {
@@ -124,7 +130,7 @@ func (g *goRedisWrapper) Close() error {
 	return g.wrappedClient.Close()
 }
 
-func (g *goRedisWrapper) getSubscription(topic string) *goRedis.PubSub {
+func (g *goRedisWrapper) getSubscription(topic string) (*goRedis.PubSub, error) {
 	g.subscriptionsMutex.Lock()
 	defer g.subscriptionsMutex.Unlock()
 	subscription, exists := g.subscriptions[topic]
@@ -137,7 +143,23 @@ func (g *goRedisWrapper) getSubscription(topic string) *goRedis.PubSub {
 		} else {
 			subscription = g.wrappedClient.PSubscribe(topic)
 		}
+
+		res, err := subscription.Receive()
+		if err != nil {
+			return nil, err
+		}
+
+		sub, ok := res.(*goRedis.Subscription)
+		if !ok {
+			return nil, errors.New("first received message is not redis Subscription")
+		}
+
+		if !strings.HasPrefix(sub.String(), "psubscribe") {
+			return nil, errors.New("first received message is not subscribe confirmation")
+		}
+
 		g.subscriptions[topic] = subscription
 	}
-	return subscription
+
+	return subscription, nil
 }
