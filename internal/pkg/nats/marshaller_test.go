@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/dtos/common"
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +52,9 @@ func TestJSONMarshaller(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	unmarshaled := types.MessageEnvelope{}
+	unmarshaled := types.MessageEnvelope{
+		QueryParams: make(map[string]string),
+	}
 
 	err = sut.Unmarshal(marshaled, &unmarshaled)
 
@@ -136,7 +139,7 @@ func sampleMessage(plSize int) types.MessageEnvelope {
 	return types.MessageEnvelope{
 		ReceivedTopic: uuid.NewString(),
 		CorrelationID: uuid.NewString(),
-		ApiVersion:    types.ApiVersion,
+		Versionable:   common.NewVersionable(),
 		RequestID:     uuid.NewString(),
 		ErrorCode:     0,
 		Payload:       pl,
