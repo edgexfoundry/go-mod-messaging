@@ -1,6 +1,6 @@
 //
 // Copyright (c) 2022 One Track Consulting
-// Copyright (c) 2022 IOTech Ltd
+// Copyright (c) 2022-2023 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/edgexfoundry/go-mod-core-contracts/v3/dtos/common"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/common"
+	commonDTO "github.com/edgexfoundry/go-mod-core-contracts/v3/dtos/common"
 	"github.com/google/uuid"
 	"github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
@@ -98,7 +99,7 @@ func TestNATSMarshaller(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotEmpty(t, marshaled.Header.Get(correlationIDHeader))
 			assert.NotEmpty(t, marshaled.Header.Get(requestIDHeader))
-			assert.Equal(t, types.ApiVersion, marshaled.Header.Get(apiVersionHeader))
+			assert.Equal(t, common.ApiVersion, marshaled.Header.Get(apiVersionHeader))
 			assert.Equal(t, "0", marshaled.Header.Get(errorCodeHeader))
 			if tt.emptyQueryParams {
 				assert.Empty(t, marshaled.Header.Get(queryParamsHeader))
@@ -139,7 +140,7 @@ func sampleMessage(plSize int) types.MessageEnvelope {
 	return types.MessageEnvelope{
 		ReceivedTopic: uuid.NewString(),
 		CorrelationID: uuid.NewString(),
-		Versionable:   common.NewVersionable(),
+		Versionable:   commonDTO.NewVersionable(),
 		RequestID:     uuid.NewString(),
 		ErrorCode:     0,
 		Payload:       pl,

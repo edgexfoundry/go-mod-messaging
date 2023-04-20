@@ -1,6 +1,6 @@
 //
 // Copyright (c) 2019 Intel Corporation
-// Copyright (c) 2022 IOTech Ltd
+// Copyright (c) 2022-2023 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,22 +23,15 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/edgexfoundry/go-mod-core-contracts/v3/dtos/common"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/common"
+	commonDTO "github.com/edgexfoundry/go-mod-core-contracts/v3/dtos/common"
 	"github.com/google/uuid"
-)
-
-const (
-	ApiVersion      = "v2"
-	CorrelationID   = "X-Correlation-ID"
-	ContentType     = "Content-Type"
-	ContentTypeJSON = "application/json"
-	ContentTypeText = "text/plain"
 )
 
 // MessageEnvelope is the data structure for messages. It wraps the generic message payload with attributes.
 type MessageEnvelope struct {
 	// ApiVersion (from Versionable) shows the API version for the message envelope.
-	common.Versionable
+	commonDTO.Versionable
 	// ReceivedTopic is the topic that the message was received on.
 	ReceivedTopic string `json:"receivedTopic"`
 	// CorrelationID is an object id to identify the envelope.
@@ -59,9 +52,9 @@ type MessageEnvelope struct {
 // NewMessageEnvelope creates a new MessageEnvelope for the specified payload with attributes from the specified context
 func NewMessageEnvelope(payload []byte, ctx context.Context) MessageEnvelope {
 	envelope := MessageEnvelope{
-		Versionable:   common.NewVersionable(),
-		CorrelationID: fromContext(ctx, CorrelationID),
-		ContentType:   fromContext(ctx, ContentType),
+		Versionable:   commonDTO.NewVersionable(),
+		CorrelationID: fromContext(ctx, common.CorrelationHeader),
+		ContentType:   fromContext(ctx, common.ContentType),
 		Payload:       payload,
 		QueryParams:   make(map[string]string),
 	}
@@ -74,11 +67,11 @@ func NewMessageEnvelope(payload []byte, ctx context.Context) MessageEnvelope {
 func NewMessageEnvelopeForRequest(payload []byte, queryParams map[string]string) MessageEnvelope {
 	envelope := MessageEnvelope{
 		CorrelationID: uuid.NewString(),
-		Versionable:   common.NewVersionable(),
+		Versionable:   commonDTO.NewVersionable(),
 		RequestID:     uuid.NewString(),
 		ErrorCode:     0,
 		Payload:       payload,
-		ContentType:   ContentTypeJSON,
+		ContentType:   common.ContentTypeJSON,
 		QueryParams:   make(map[string]string),
 	}
 
@@ -103,7 +96,7 @@ func NewMessageEnvelopeForResponse(payload []byte, requestId string, correlation
 
 	envelope := MessageEnvelope{
 		CorrelationID: correlationId,
-		Versionable:   common.NewVersionable(),
+		Versionable:   commonDTO.NewVersionable(),
 		RequestID:     requestId,
 		ErrorCode:     0,
 		Payload:       payload,
@@ -123,8 +116,8 @@ func NewMessageEnvelopeFromJSON(message []byte) (MessageEnvelope, error) {
 		return MessageEnvelope{}, err
 	}
 
-	if envelope.ApiVersion != ApiVersion {
-		return MessageEnvelope{}, errors.New("api version 'v2' is required")
+	if envelope.ApiVersion != common.ApiVersion {
+		return MessageEnvelope{}, fmt.Errorf("api version '%s' is required", common.ApiVersion)
 	}
 
 	if _, err = uuid.Parse(envelope.RequestID); err != nil {
@@ -139,8 +132,8 @@ func NewMessageEnvelopeFromJSON(message []byte) (MessageEnvelope, error) {
 		envelope.CorrelationID = uuid.NewString()
 	}
 
-	if envelope.ContentType != ContentTypeJSON {
-		return envelope, errors.New("ContentType is not application/json")
+	if envelope.ContentType != common.ContentTypeJSON {
+		return envelope, fmt.Errorf("ContentType is not %s", common.ContentTypeJSON)
 	}
 
 	if envelope.QueryParams == nil {
@@ -155,11 +148,11 @@ func NewMessageEnvelopeFromJSON(message []byte) (MessageEnvelope, error) {
 func NewMessageEnvelopeWithError(requestId string, errorMessage string) MessageEnvelope {
 	return MessageEnvelope{
 		CorrelationID: uuid.NewString(),
-		Versionable:   common.NewVersionable(),
+		Versionable:   commonDTO.NewVersionable(),
 		RequestID:     requestId,
 		ErrorCode:     1,
 		Payload:       []byte(errorMessage),
-		ContentType:   ContentTypeText,
+		ContentType:   common.ContentTypeText,
 		QueryParams:   make(map[string]string),
 	}
 }

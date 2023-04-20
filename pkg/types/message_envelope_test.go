@@ -1,6 +1,6 @@
 //
 // Copyright (c) 2019 Intel Corporation
-// Copyright (c) 2022 IOTech Ltd
+// Copyright (c) 2022-2023 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/edgexfoundry/go-mod-core-contracts/v3/dtos/common"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/common"
+	commonDTO "github.com/edgexfoundry/go-mod-core-contracts/v3/dtos/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,16 +37,16 @@ const (
 func TestNewMessageEnvelope(t *testing.T) {
 	// lint:ignore SA1029 legacy
 	// nolint:staticcheck // See golangci-lint #741
-	ctx := context.WithValue(context.Background(), CorrelationID, testCorrelationId)
+	ctx := context.WithValue(context.Background(), common.CorrelationHeader, testCorrelationId)
 	// lint:ignore SA1029 legacy
 	// nolint:staticcheck // See golangci-lint #741
-	ctx = context.WithValue(ctx, ContentType, ContentTypeJSON)
+	ctx = context.WithValue(ctx, common.ContentType, common.ContentTypeJSON)
 
 	envelope := NewMessageEnvelope([]byte(testPayload), ctx)
 
-	assert.Equal(t, ApiVersion, envelope.ApiVersion)
+	assert.Equal(t, common.ApiVersion, envelope.ApiVersion)
 	assert.Equal(t, testCorrelationId, envelope.CorrelationID)
-	assert.Equal(t, ContentTypeJSON, envelope.ContentType)
+	assert.Equal(t, common.ContentTypeJSON, envelope.ContentType)
 	assert.Equal(t, testPayload, string(envelope.Payload))
 	assert.Empty(t, envelope.QueryParams)
 }
@@ -53,7 +54,7 @@ func TestNewMessageEnvelope(t *testing.T) {
 func TestNewMessageEnvelopeEmpty(t *testing.T) {
 	envelope := NewMessageEnvelope([]byte{}, context.Background())
 
-	assert.Equal(t, ApiVersion, envelope.ApiVersion)
+	assert.Equal(t, common.ApiVersion, envelope.ApiVersion)
 	assert.Empty(t, envelope.RequestID)
 	assert.Empty(t, envelope.CorrelationID)
 	assert.Empty(t, envelope.ContentType)
@@ -81,9 +82,9 @@ func TestNewMessageEnvelopeForRequest(t *testing.T) {
 
 			assert.NotEmpty(t, envelope.RequestID)
 			assert.NotEmpty(t, envelope.CorrelationID)
-			assert.Equal(t, ApiVersion, envelope.ApiVersion)
+			assert.Equal(t, common.ApiVersion, envelope.ApiVersion)
 			assert.Equal(t, testPayload, string(envelope.Payload))
-			assert.Equal(t, ContentTypeJSON, envelope.ContentType)
+			assert.Equal(t, common.ContentTypeJSON, envelope.ContentType)
 			assert.Equal(t, 0, envelope.ErrorCode)
 			assert.NotNil(t, envelope.QueryParams)
 			if tt.expectedEmpty {
@@ -106,9 +107,9 @@ func TestNewMessageEnvelopeForResponse(t *testing.T) {
 		contentType   string
 		expectedError bool
 	}{
-		{"valid", testCorrelationId, testRequestId, ContentTypeJSON, false},
-		{"invalid - CorrelationID is not in UUID format", invalidUUID, testRequestId, ContentTypeJSON, true},
-		{"invalid - invalid requestID is not in UUID format", testCorrelationId, invalidUUID, ContentTypeJSON, true},
+		{"valid", testCorrelationId, testRequestId, common.ContentTypeJSON, false},
+		{"invalid - CorrelationID is not in UUID format", invalidUUID, testRequestId, common.ContentTypeJSON, true},
+		{"invalid - invalid requestID is not in UUID format", testCorrelationId, invalidUUID, common.ContentTypeJSON, true},
 		{"invalid - ContentType is empty", testCorrelationId, testRequestId, "", true},
 	}
 	for _, tt := range tests {
@@ -121,9 +122,9 @@ func TestNewMessageEnvelopeForResponse(t *testing.T) {
 
 			assert.Equal(t, testRequestId, envelope.RequestID)
 			assert.Equal(t, testCorrelationId, envelope.CorrelationID)
-			assert.Equal(t, ApiVersion, envelope.ApiVersion)
+			assert.Equal(t, common.ApiVersion, envelope.ApiVersion)
 			assert.Equal(t, testPayload, string(envelope.Payload))
-			assert.Equal(t, ContentTypeJSON, envelope.ContentType)
+			assert.Equal(t, common.ContentTypeJSON, envelope.ContentType)
 			assert.Equal(t, 0, envelope.ErrorCode)
 			assert.NotNil(t, envelope.QueryParams)
 		})
@@ -169,9 +170,9 @@ func TestNewMessageEnvelopeFromJSON(t *testing.T) {
 
 			assert.Equal(t, testRequestId, envelope.RequestID)
 			assert.NotEmpty(t, testCorrelationId, envelope.CorrelationID)
-			assert.Equal(t, ApiVersion, envelope.ApiVersion)
+			assert.Equal(t, common.ApiVersion, envelope.ApiVersion)
 			assert.Equal(t, testPayload, string(envelope.Payload))
-			assert.Equal(t, ContentTypeJSON, envelope.ContentType)
+			assert.Equal(t, common.ContentTypeJSON, envelope.ContentType)
 			assert.Equal(t, 0, envelope.ErrorCode)
 			assert.NotNil(t, envelope.QueryParams)
 		})
@@ -184,11 +185,11 @@ func TestNewMessageEnvelopeWithError(t *testing.T) {
 	envelope := NewMessageEnvelopeWithError(testRequestId, expectedPayload)
 
 	assert.NotEmpty(t, testCorrelationId, envelope.CorrelationID)
-	assert.Equal(t, ApiVersion, envelope.ApiVersion)
+	assert.Equal(t, common.ApiVersion, envelope.ApiVersion)
 	assert.Equal(t, testRequestId, envelope.RequestID)
 	assert.Equal(t, 1, envelope.ErrorCode)
 	assert.Equal(t, expectedPayload, string(envelope.Payload))
-	assert.Equal(t, ContentTypeText, envelope.ContentType)
+	assert.Equal(t, common.ContentTypeText, envelope.ContentType)
 	assert.Empty(t, envelope.QueryParams)
 }
 
@@ -209,10 +210,10 @@ func TestMessageEnvelopeJSON(t *testing.T) {
 func testMessageEnvelope() MessageEnvelope {
 	return MessageEnvelope{
 		CorrelationID: testCorrelationId,
-		Versionable:   common.NewVersionable(),
+		Versionable:   commonDTO.NewVersionable(),
 		RequestID:     testRequestId,
 		ErrorCode:     0,
 		Payload:       []byte(testPayload),
-		ContentType:   ContentTypeJSON,
+		ContentType:   common.ContentTypeJSON,
 	}
 }
