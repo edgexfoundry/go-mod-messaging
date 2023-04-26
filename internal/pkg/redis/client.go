@@ -157,6 +157,7 @@ func (c Client) Subscribe(topics []types.TopicChannel, messageErrors chan error)
 			err := c.redisClient.Subscribe(topicName)
 			if err != nil {
 				messageErrors <- err
+				wg.Done()
 				return
 			}
 
