@@ -7,6 +7,59 @@
 
 - [go-mod-core-contracts](https://github.com/edgexfoundry/go-mod-core-contracts/blob/main/CHANGELOG.md)
 
+## [v3.0.0] - 2023-05-31
+
+### Features ✨
+- Update API version to v3 ([#dc1fa9](https://github.com/edgexfoundry/go-mod-messaging/commit/dc1fa98dd5cff36050f0a22e2fc1163a68747014))
+  ```text
+  BREAKING CHANGE: apiVersion in MessageEnvelope has changed to v3
+  ```
+- Remove deprecated ZeroMQ implementation ([#1801bc4](https://github.com/edgexfoundry/go-mod-messaging/commits/1801bc4))
+  ```text
+  BREAKING CHANGE:  ZeroMQ no longer an option for the EdgeX MessageBus.
+  ```
+- Add Request and Unsubscribe capability. Refactor Command Client to use the new Request API ([#2af8c61](https://github.com/edgexfoundry/go-mod-messaging/commit/2af8c61d0e656fe444bc90452b65213b17b562fd))
+
+### Bug Fixes 🐛
+
+- Fix failing unit tests ([#7bea0f0](https://github.com/edgexfoundry/go-mod-messaging/commits/7bea0f0))
+- Assure redis correctly subscribe to topic before receiving ([#ff3b20a](https://github.com/edgexfoundry/go-mod-messaging/commits/ff3b20a))
+- Subscribe redis topic for empty suffix to match MQTT multi-level wildcard ([#82827e6](https://github.com/edgexfoundry/go-mod-messaging/commits/82827e6))
+
+### Code Refactoring ♻
+
+- Replace topics from config with new constants ([#364627](https://github.com/edgexfoundry/go-mod-messaging/commit/3646279d0d8422a850dd5d44cc6aff0ea4631ac0))
+  ```text
+  BREAKING CHANGE: Topics no longer in config. Client factory method has additional baseTopic parameter 
+  ```
+- Refactor Redis Pub/sub topic wild cards to match that of MQTT ([#5426f9](https://github.com/edgexfoundry/go-mod-messaging/commit/5426f937f3aee4cda3bcc0daa344856af0d8fc62))
+  ```text
+  BREAKING CHANGE: implement the topic conversion between Redis Pub/sub wild card `*` and MQTT wild cards `+` for single level and `#` for multiple levels
+  ```
+- Command Client: Use bool types for command parameters to be more consistent ([#8751af3](https://github.com/edgexfoundry/go-mod-messaging/commit/8751af38578a3e010e883831076946c588ab1e84))
+  ```text
+  BREAKING CHANGE: ds-pushevent and ds-returnevent to use bool true/false instead of yes/no
+  ```
+- Reduce MessageBus config to have a single host ([#e8e57f3](https://github.com/edgexfoundry/go-mod-messaging/commit/e8e57f3b0af30f535f07ddfc2349a27bb1632bae))
+  ```text
+  BREAKING CHANGE: Configuration now only needs single broker host info
+  ```
+- Update module to v3 ([#189c2d2](https://github.com/edgexfoundry/go-mod-messaging/commit/189c2d28ed056c67dc7662a8657f6f9aa31afc7f))
+  ```text
+  BREAKING CHANGE: Import paths will need to change to v3
+  ```
+- Add JSON attributes to MessageEnvelope fields ([#7366411](https://github.com/edgexfoundry/go-mod-messaging/commits/7366411))
+- Remove new mock ([#77f8ddb](https://github.com/edgexfoundry/go-mod-messaging/commits/77f8ddb))
+- Restore nats.go import and comment ([#c20c641](https://github.com/edgexfoundry/go-mod-messaging/commits/c20c641))
+
+### Documentation 📖
+
+- Update Stale README ([#a497a32](https://github.com/edgexfoundry/go-mod-messaging/commits/a497a32))
+
+### Build 👷
+
+- Update to Go 1.20 and linter v1.51.2 ([#362e614](https://github.com/edgexfoundry/go-mod-messaging/commits/362e614))
+
 ## [v2.3.0] - 2022-11-09
 
 ### Features ✨
