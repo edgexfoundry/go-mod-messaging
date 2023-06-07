@@ -8,7 +8,7 @@ require (
 	github.com/go-redis/redis/v7 v7.3.0
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/nats-io/nats-server/v2 v2.9.16
+	github.com/nats-io/nats-server/v2 v2.9.17
 	github.com/nats-io/nats.go v1.25.0
 	github.com/stretchr/testify v1.8.4
 )
@@ -22,7 +22,7 @@ require (
 	github.com/golang/protobuf v1.5.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
-	github.com/klauspost/compress v1.16.4 // indirect
+	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/leodido/go-urn v1.2.3 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/nats-io/jwt/v2 v2.4.1 // indirect
