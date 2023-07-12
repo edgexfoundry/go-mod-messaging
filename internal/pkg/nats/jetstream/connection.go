@@ -45,7 +45,6 @@ func (j connection) QueueSubscribe(s string, q string, handler nats.MsgHandler) 
 		// use the configured subject to bind subscription to stream
 		opts = append(opts, nats.BindStream(subjectToStreamName(natsMessaging.TopicToSubject(j.cfg.Subject))))
 	}
-
 	return j.js.QueueSubscribe(s, q, handler, opts...)
 }
 

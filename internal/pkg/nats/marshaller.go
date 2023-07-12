@@ -21,6 +21,7 @@ package nats
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -29,7 +30,9 @@ import (
 	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 )
 
-type jsonMarshaller struct{}
+type jsonMarshaller struct {
+	opts ClientConfig
+}
 
 func (jm *jsonMarshaller) Marshal(v types.MessageEnvelope, publishTopic string) (*nats.Msg, error) {
 	var err error
@@ -38,6 +41,11 @@ func (jm *jsonMarshaller) Marshal(v types.MessageEnvelope, publishTopic string) 
 
 	out := nats.NewMsg(subject)
 	out.Data, err = json.Marshal(v)
+
+	if jm.opts.ExactlyOnce {
+		// the broker should only accept a message once per publishing service / correlation ID
+		out.Header.Set(nats.MsgIdHdr, fmt.Sprintf("%s-%s", jm.opts.ClientId, v.CorrelationID))
+	}
 
 	if err != nil {
 		return nil, err
@@ -65,7 +73,9 @@ const (
 	queryParamsHeader   = "QueryParams"
 )
 
-type natsMarshaller struct{}
+type natsMarshaller struct {
+	opts ClientConfig
+}
 
 func (nm *natsMarshaller) Marshal(v types.MessageEnvelope, publishTopic string) (*nats.Msg, error) {
 	subject := TopicToSubject(publishTopic)
@@ -82,6 +92,10 @@ func (nm *natsMarshaller) Marshal(v types.MessageEnvelope, publishTopic string) 
 			query := key + ":" + value
 			out.Header.Add(queryParamsHeader, query)
 		}
+	}
+	if nm.opts.ExactlyOnce {
+		// the broker should only accept a message once per publishing service / correlation ID
+		out.Header.Set(nats.MsgIdHdr, fmt.Sprintf("%s-%s", nm.opts.ClientId, v.CorrelationID))
 	}
 
 	return out, nil

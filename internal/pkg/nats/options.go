@@ -67,6 +67,7 @@ type ClientOptions struct {
 	DefaultPubRetryAttempts int
 	NKeySeedFile            string
 	CredentialsFile         string
+	ExactlyOnce             bool
 }
 
 // CreateClientConfiguration constructs a ClientConfig based on the provided MessageBusConfig.
@@ -162,5 +163,7 @@ func CreateClientOptionsWithDefaults() ClientOptions {
 		Format:                  "nats",
 		NKeySeedFile:            "",
 		CredentialsFile:         "",
+		Deliver:                 "new",
+		ExactlyOnce:             false, //could use QOS = 2 here
 	}
 }

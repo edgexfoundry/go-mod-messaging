@@ -41,27 +41,36 @@ var marshallerCases = map[string]interfaces.MarshallerUnmarshaller{
 }
 
 func TestJSONMarshaller(t *testing.T) {
-	sut := &jsonMarshaller{}
-	pubTopic := uuid.NewString()
+	suts := []*jsonMarshaller{{}, {ClientConfig{ClientOptions: ClientOptions{ClientId: uuid.NewString(), ExactlyOnce: true}}}}
 
-	orig := sampleMessage(100)
-	expected := orig
+	for _, sut := range suts {
+		t.Run(fmt.Sprintf("ExactlyOnce_%t", sut.opts.ExactlyOnce), func(t *testing.T) {
+			pubTopic := uuid.NewString()
 
-	expected.ReceivedTopic = pubTopic // this is set from NATS message
+			orig := sampleMessage(100)
+			expected := orig
 
-	marshaled, err := sut.Marshal(orig, pubTopic)
+			expected.ReceivedTopic = pubTopic // this is set from NATS message
 
-	assert.NoError(t, err)
+			marshaled, err := sut.Marshal(orig, pubTopic)
 
-	unmarshaled := types.MessageEnvelope{
-		QueryParams: make(map[string]string),
+			assert.NoError(t, err)
+
+			if sut.opts.ExactlyOnce {
+				assert.Equal(t, fmt.Sprintf("%s-%s", sut.opts.ClientId, orig.CorrelationID), marshaled.Header.Get(nats.MsgIdHdr))
+			}
+
+			unmarshaled := types.MessageEnvelope{
+				QueryParams: make(map[string]string),
+			}
+
+			err = sut.Unmarshal(marshaled, &unmarshaled)
+
+			assert.NoError(t, err)
+
+			assert.Equal(t, expected, unmarshaled)
+		})
 	}
-
-	err = sut.Unmarshal(marshaled, &unmarshaled)
-
-	assert.NoError(t, err)
-
-	assert.Equal(t, expected, unmarshaled)
 }
 
 func TestJSONMarshaller_Unmarshal_Invalid_JSON(t *testing.T) {
@@ -77,40 +86,48 @@ func TestJSONMarshaller_Unmarshal_Invalid_JSON(t *testing.T) {
 }
 
 func TestNATSMarshaller(t *testing.T) {
-	sut := &natsMarshaller{}
-	pubTopic := uuid.NewString()
+	suts := []*natsMarshaller{{}, {ClientConfig{ClientOptions: ClientOptions{ClientId: uuid.NewString(), ExactlyOnce: true}}}}
 
-	validWithNoQueryParams := sampleMessage(100)
-	validWithNoQueryParams.ReceivedTopic = pubTopic
-	validWithQueryParams := validWithNoQueryParams
-	validWithQueryParams.QueryParams = map[string]string{"foo": "bar"}
+	for _, sut := range suts {
+		t.Run(fmt.Sprintf("ExactlyOnce_%t", sut.opts.ExactlyOnce), func(t *testing.T) {
 
-	tests := []struct {
-		name             string
-		envelope         types.MessageEnvelope
-		emptyQueryParams bool
-	}{
-		{"valid", validWithQueryParams, false},
-		{"valid - no query parameters", validWithNoQueryParams, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			marshaled, err := sut.Marshal(tt.envelope, pubTopic)
-			assert.NoError(t, err)
-			assert.NotEmpty(t, marshaled.Header.Get(correlationIDHeader))
-			assert.NotEmpty(t, marshaled.Header.Get(requestIDHeader))
-			assert.Equal(t, common.ApiVersion, marshaled.Header.Get(apiVersionHeader))
-			assert.Equal(t, "0", marshaled.Header.Get(errorCodeHeader))
-			if tt.emptyQueryParams {
-				assert.Empty(t, marshaled.Header.Get(queryParamsHeader))
-			} else {
-				assert.NotEmpty(t, marshaled.Header.Get(queryParamsHeader))
+			pubTopic := uuid.NewString()
+
+			validWithNoQueryParams := sampleMessage(100)
+			validWithNoQueryParams.ReceivedTopic = pubTopic
+			validWithQueryParams := validWithNoQueryParams
+			validWithQueryParams.QueryParams = map[string]string{"foo": "bar"}
+
+			tests := []struct {
+				name             string
+				envelope         types.MessageEnvelope
+				emptyQueryParams bool
+			}{
+				{"valid", validWithQueryParams, false},
+				{"valid - no query parameters", validWithNoQueryParams, true},
 			}
-
-			unmarshaled := types.MessageEnvelope{}
-			err = sut.Unmarshal(marshaled, &unmarshaled)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.envelope, unmarshaled)
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					marshaled, err := sut.Marshal(tt.envelope, pubTopic)
+					assert.NoError(t, err)
+					assert.NotEmpty(t, marshaled.Header.Get(correlationIDHeader))
+					assert.NotEmpty(t, marshaled.Header.Get(requestIDHeader))
+					assert.Equal(t, common.ApiVersion, marshaled.Header.Get(apiVersionHeader))
+					assert.Equal(t, "0", marshaled.Header.Get(errorCodeHeader))
+					if tt.emptyQueryParams {
+						assert.Empty(t, marshaled.Header.Get(queryParamsHeader))
+					} else {
+						assert.NotEmpty(t, marshaled.Header.Get(queryParamsHeader))
+					}
+					if sut.opts.ExactlyOnce {
+						assert.Equal(t, fmt.Sprintf("%s-%s", sut.opts.ClientId, tt.envelope.CorrelationID), marshaled.Header.Get(nats.MsgIdHdr))
+					}
+					unmarshaled := types.MessageEnvelope{}
+					err = sut.Unmarshal(marshaled, &unmarshaled)
+					assert.NoError(t, err)
+					assert.Equal(t, tt.envelope, unmarshaled)
+				})
+			}
 		})
 	}
 }

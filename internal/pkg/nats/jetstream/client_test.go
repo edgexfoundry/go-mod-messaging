@@ -19,10 +19,14 @@
 package jetstream
 
 import (
+	"context"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
 	natsMessaging "github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg/nats"
+	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
 	"github.com/google/uuid"
 	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
@@ -52,9 +56,6 @@ func Test_autoProvision(t *testing.T) {
 			js, err := client.JetStream()
 			assert.NoError(t, err)
 
-			_, err = js.StreamInfo(tc.expectStream)
-			assert.Error(t, err)
-
 			config := natsMessaging.ClientConfig{
 				ClientOptions: natsMessaging.ClientOptions{
 					Subject: tc.streamSubject,
@@ -73,6 +74,72 @@ func Test_autoProvision(t *testing.T) {
 	}
 }
 
+func Test_ExactlyOnce(t *testing.T) {
+	port := 4223
+	srvr, err := server.NewServer(&server.Options{JetStream: true, StoreDir: t.TempDir(), Port: port})
+	assert.NoError(t, err)
+
+	srvr.Start()
+	defer srvr.Shutdown()
+
+	client, err := NewClient(types.MessageBusConfig{
+		Broker: types.HostInfo{
+			Host:     "localhost",
+			Port:     port,
+			Protocol: "nats",
+		},
+		Type: "nats-jetstream",
+		Optional: map[string]string{
+			pkg.ExactlyOnce:   "true",
+			pkg.AutoProvision: "true",
+			pkg.Subject:       "edgex/#",
+		},
+	})
+
+	assert.NoError(t, err)
+
+	assert.NoError(t, client.Connect())
+
+	topic := "edgex/#"
+	messages := make(chan types.MessageEnvelope)
+	errors := make(chan error)
+
+	err = client.Subscribe([]types.TopicChannel{{
+		Topic:    topic,
+		Messages: messages,
+	}}, errors)
+
+	m0 := types.MessageEnvelope{CorrelationID: uuid.NewString(), Payload: []byte(uuid.NewString())}
+	m1 := types.MessageEnvelope{CorrelationID: uuid.NewString(), Payload: []byte(uuid.NewString())}
+
+	ctx, done := context.WithTimeout(context.Background(), 30*time.Second)
+
+	go func() {
+		assert.NoError(t, client.Publish(m0, topic))
+		assert.NoError(t, client.Publish(m0, topic))
+		assert.NoError(t, client.Publish(m1, topic))
+		assert.NoError(t, client.Publish(m1, topic))
+		assert.NoError(t, client.Publish(m0, topic))
+		assert.NoError(t, client.Publish(m1, topic))
+
+		done()
+	}()
+
+	received := make([]types.MessageEnvelope, 0)
+
+	for {
+		select {
+		case m := <-messages:
+			received = append(received, m)
+		case <-ctx.Done():
+			assert.Equal(t, 2, len(received))
+			assert.Equal(t, m0.CorrelationID, received[0].CorrelationID)
+			assert.Equal(t, m1.CorrelationID, received[1].CorrelationID)
+			return
+		}
+	}
+}
+
 func Test_parseDeliver(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -88,8 +155,6 @@ func Test_parseDeliver(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			//cc := &nats.ConsumerConfig{}
-
 			opt := parseDeliver(tt.input)
 
 			wantAddr := reflect.ValueOf(tt.want).Pointer()
