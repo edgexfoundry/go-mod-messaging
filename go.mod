@@ -8,7 +8,7 @@ require (
 	github.com/go-redis/redis/v7 v7.3.0
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/nats-io/nats-server/v2 v2.9.19
+	github.com/nats-io/nats-server/v2 v2.9.20
 	github.com/nats-io/nats.go v1.27.1
 	github.com/stretchr/testify v1.8.4
 )
