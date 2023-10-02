@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/nats-io/nats-server/v2 v2.10.1
-	github.com/nats-io/nats.go v1.30.1
+	github.com/nats-io/nats.go v1.30.2
 	github.com/stretchr/testify v1.8.4
 )
 
