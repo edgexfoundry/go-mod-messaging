@@ -7,6 +7,20 @@
 
 - [go-mod-core-contracts](https://github.com/edgexfoundry/go-mod-core-contracts/blob/main/CHANGELOG.md)
 
+## [v3.1.0] - 2023-11-15
+
+### ✨  Features
+
+- Jetstream ExactlyOnce Configuration ([3c55305…](https://github.com/edgexfoundry/go-mod-messaging/commit/3c55305cfd05bef29fbb93d4e3d90757e4d22020))
+
+### 👷 Build
+
+- Upgrade to go 1.21 and linter 1.54.2 ([7b59a25…](https://github.com/edgexfoundry/go-mod-messaging/commit/7b59a25c1822550825b9974141cd735907edc1f3))
+
+### 🧪 Testing
+
+- Remove JetStream Integration Tests ([1a5f5cf…](https://github.com/edgexfoundry/go-mod-messaging/commit/1a5f5cf7ee1694f85f5961da7ec7b42515e04c2b))
+
 ## [v3.0.0] - 2023-05-31
 
 ### Features ✨
