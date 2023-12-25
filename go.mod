@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.4.3
-	github.com/edgexfoundry/go-mod-core-contracts/v3 v3.2.0-dev.2
+	github.com/edgexfoundry/go-mod-core-contracts/v3 v3.2.0-dev.4
 	github.com/go-redis/redis/v7 v7.3.0
 	github.com/google/uuid v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -28,10 +28,10 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
