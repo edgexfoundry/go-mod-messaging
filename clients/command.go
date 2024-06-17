@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2022 IOTech Ltd
+// Copyright (C) 2022-2024 IOTech Ltd
 // Copyright (c) 2023 Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -25,18 +25,33 @@ import (
 )
 
 type CommandClient struct {
-	messageBus          messaging.MessageClient
-	baseTopic           string
-	responseTopicPrefix string
-	timeout             time.Duration
+	messageBus            messaging.MessageClient
+	baseTopic             string
+	responseTopicPrefix   string
+	timeout               time.Duration
+	enableNameFieldEscape bool
 }
 
+// NewCommandClient returns the command client with the disabled NameFieldEscape
 func NewCommandClient(messageBus messaging.MessageClient, baseTopic string, timeout time.Duration) interfaces.CommandClient {
 	client := &CommandClient{
 		messageBus:          messageBus,
 		baseTopic:           baseTopic,
 		responseTopicPrefix: common.BuildTopic(baseTopic, common.ResponseTopic, common.CoreCommandServiceKey),
 		timeout:             timeout,
+	}
+
+	return client
+}
+
+// NewCommandClientWithNameFieldEscape returns the command client with the enabled NameFieldEscape
+func NewCommandClientWithNameFieldEscape(messageBus messaging.MessageClient, baseTopic string, timeout time.Duration) interfaces.CommandClient {
+	client := &CommandClient{
+		messageBus:            messageBus,
+		baseTopic:             baseTopic,
+		responseTopicPrefix:   common.BuildTopic(baseTopic, common.ResponseTopic, common.CoreCommandServiceKey),
+		timeout:               timeout,
+		enableNameFieldEscape: true,
 	}
 
 	return client
@@ -67,7 +82,8 @@ func (c *CommandClient) AllDeviceCoreCommands(_ context.Context, offset int, lim
 
 func (c *CommandClient) DeviceCoreCommandsByDeviceName(_ context.Context, deviceName string) (responses.DeviceCoreCommandResponse, edgexErr.EdgeX) {
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, nil)
-	requestTopic := common.BuildTopic(c.baseTopic, common.CoreCommandQueryRequestPublishTopic, deviceName)
+	requestTopic := common.NewPathBuilder().EnableNameFieldEscape(c.enableNameFieldEscape).
+		SetPath(c.baseTopic).SetPath(common.CoreCommandQueryRequestPublishTopic).SetNameFieldPath(deviceName).BuildPath()
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
@@ -93,7 +109,8 @@ func (c *CommandClient) IssueGetCommandByName(ctx context.Context, deviceName st
 
 func (c *CommandClient) IssueGetCommandByNameWithQueryParams(_ context.Context, deviceName string, commandName string, queryParams map[string]string) (*responses.EventResponse, edgexErr.EdgeX) {
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, queryParams)
-	requestTopic := common.BuildTopic(c.baseTopic, common.CoreCommandRequestPublishTopic, deviceName, commandName, "get")
+	requestTopic := common.NewPathBuilder().EnableNameFieldEscape(c.enableNameFieldEscape).
+		SetPath(c.baseTopic).SetPath(common.CoreCommandRequestPublishTopic).SetNameFieldPath(deviceName).SetNameFieldPath(commandName).SetPath("get").BuildPath()
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return nil, edgexErr.NewCommonEdgeXWrapper(err)
@@ -126,7 +143,8 @@ func (c *CommandClient) IssueSetCommandByName(_ context.Context, deviceName stri
 	}
 
 	requestEnvelope := types.NewMessageEnvelopeForRequest(payloadBytes, nil)
-	requestTopic := common.BuildTopic(c.baseTopic, common.CoreCommandRequestPublishTopic, deviceName, commandName, "set")
+	requestTopic := common.NewPathBuilder().EnableNameFieldEscape(c.enableNameFieldEscape).
+		SetPath(c.baseTopic).SetPath(common.CoreCommandRequestPublishTopic).SetNameFieldPath(deviceName).SetNameFieldPath(commandName).SetPath("set").BuildPath()
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
@@ -147,7 +165,8 @@ func (c *CommandClient) IssueSetCommandByNameWithObject(_ context.Context, devic
 	}
 
 	requestEnvelope := types.NewMessageEnvelopeForRequest(payloadBytes, nil)
-	requestTopic := common.BuildTopic(c.baseTopic, common.CoreCommandRequestPublishTopic, deviceName, commandName, "set")
+	requestTopic := common.NewPathBuilder().EnableNameFieldEscape(c.enableNameFieldEscape).
+		SetPath(c.baseTopic).SetPath(common.CoreCommandRequestPublishTopic).SetNameFieldPath(deviceName).SetNameFieldPath(commandName).SetPath("set").BuildPath()
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
