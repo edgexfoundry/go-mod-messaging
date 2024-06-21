@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2022 IOTech Ltd
+// Copyright (C) 2022-2024 IOTech Ltd
 // Copyright (c) 2023 Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -263,7 +263,7 @@ func getCommandClientWithMockMessaging(t *testing.T, expectedResponse *types.Mes
 	mockMessageClient := &mocks.MessageClient{}
 	mockMessageClient.On("Request", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(expectedResponse, expectedRequestError)
 
-	client := NewCommandClient(mockMessageClient, "edgex", 10*time.Second)
+	client := NewCommandClientWithNameFieldEscape(mockMessageClient, "edgex", 10*time.Second)
 
 	return client
 }
