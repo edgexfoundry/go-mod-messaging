@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.4.3
-	github.com/edgexfoundry/go-mod-core-contracts/v3 v3.2.0-dev.30
+	github.com/edgexfoundry/go-mod-core-contracts/v3 v3.2.0-dev.31
 	github.com/go-redis/redis/v7 v7.3.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
