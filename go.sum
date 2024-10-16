@@ -2,8 +2,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/eclipse/paho.mqtt.golang v1.5.0 h1:EH+bUVJNgttidWFkLLVKaQPGmkTUfQQqjOsyvMGvD6o=
 github.com/eclipse/paho.mqtt.golang v1.5.0/go.mod h1:du/2qNQVqJf/Sqs4MEL77kR8QTqANF7XU7Fk0aOTAgk=
-github.com/edgexfoundry/go-mod-core-contracts/v3 v3.2.0-dev.50 h1:Ho1TAQki5DN/ALdYP4YGNzj/Z/CXBXSeBancA+YHtO4=
-github.com/edgexfoundry/go-mod-core-contracts/v3 v3.2.0-dev.50/go.mod h1:MLk37/79M26+bZr3IptNZuYmQBEVbXwzDp1VHQkFhIk=
+github.com/edgexfoundry/go-mod-core-contracts/v3 v3.2.0-dev.52 h1:NCGxIphF2Wcg0H9Bxxo/71o9zqHwzdKtK26udJj9ToA=
+github.com/edgexfoundry/go-mod-core-contracts/v3 v3.2.0-dev.52/go.mod h1:MLk37/79M26+bZr3IptNZuYmQBEVbXwzDp1VHQkFhIk=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/fxamacker/cbor/v2 v2.7.0 h1:iM5WgngdRBanHcxugY4JySA0nk1wZorNOpTgCMedv5E=
 github.com/fxamacker/cbor/v2 v2.7.0/go.mod h1:pxXPTn3joSm21Gbwsv0w9OSA2y1HFR9qXEeXQVeNoDQ=
