@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 )
 
 func TestNewClientConfiguration(t *testing.T) {

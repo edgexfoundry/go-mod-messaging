@@ -34,12 +34,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 )
 
 // TestIntegrationWithMQTTServer end-to-end test of the MQTT client with a MQTT server.

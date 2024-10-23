@@ -37,13 +37,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgexfoundry/go-mod-core-contracts/v3/clients/http"
-	commonConstants "github.com/edgexfoundry/go-mod-core-contracts/v3/common"
+	"github.com/edgexfoundry/go-mod-core-contracts/v4/clients/http"
+	commonConstants "github.com/edgexfoundry/go-mod-core-contracts/v4/common"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 )
 
 const (

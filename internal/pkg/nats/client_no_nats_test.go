@@ -20,7 +20,7 @@ package nats
 import (
 	"testing"
 
-	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
