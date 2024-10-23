@@ -20,8 +20,8 @@ package nats
 import (
 	"fmt"
 
-	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
-	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 )
 
 // NewClient initializes creates a new client using NATS core

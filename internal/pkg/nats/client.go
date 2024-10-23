@@ -25,9 +25,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
-	"github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg/nats/interfaces"
-	"github.com/edgexfoundry/go-mod-messaging/v3/pkg/types"
+	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg/nats/interfaces"
+	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 	"github.com/hashicorp/go-multierror"
 	"github.com/nats-io/nats.go"
 )

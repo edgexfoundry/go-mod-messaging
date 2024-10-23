@@ -1,6 +1,6 @@
 package redis
 
-import "github.com/edgexfoundry/go-mod-messaging/v3/internal/pkg"
+import "github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg"
 
 type redisOptionalConfigurationBuilder struct {
 	options map[string]string
