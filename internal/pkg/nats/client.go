@@ -223,3 +223,11 @@ func (c *Client) Disconnect() error {
 	}
 	return c.connection.Drain()
 }
+
+func (c *Client) PublishBinaryData(data []byte, topic string) error {
+	return fmt.Errorf("not supported PublishBinaryData func")
+}
+
+func (c *Client) SubscribeBinaryData(topics []types.TopicChannel, messageErrors chan error) error {
+	return fmt.Errorf("not supported SubscribeBinaryData func")
+}
