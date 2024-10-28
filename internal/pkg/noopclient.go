@@ -18,6 +18,7 @@
 package pkg
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
@@ -47,4 +48,11 @@ func (n NoopClient) Subscribe(topics []types.TopicChannel, messageErrors chan er
 
 func (n NoopClient) Disconnect() error {
 	panic("implement me")
+}
+
+func (n NoopClient) PublishBinaryData(data []byte, topic string) error {
+	return fmt.Errorf("not supported PublishBinaryData func")
+}
+func (n NoopClient) SubscribeBinaryData(topics []types.TopicChannel, messageErrors chan error) error {
+	return fmt.Errorf("not supported SubscribeBinaryData func")
 }

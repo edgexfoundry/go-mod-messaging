@@ -311,3 +311,10 @@ func convertFromRedisTopicScheme(topic string) string {
 
 	return topic
 }
+
+func (c Client) PublishBinaryData(data []byte, topic string) error {
+	return fmt.Errorf("not supported PublishBinaryData func")
+}
+func (c Client) SubscribeBinaryData(topics []types.TopicChannel, messageErrors chan error) error {
+	return fmt.Errorf("not supported SubscribeBinaryData func")
+}

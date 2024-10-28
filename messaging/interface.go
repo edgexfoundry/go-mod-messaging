@@ -47,6 +47,12 @@ type MessageClient interface {
 	// the timeout period, a timed out  error returned.
 	Request(message types.MessageEnvelope, requestTopic string, responseTopicPrefix string, timeout time.Duration) (*types.MessageEnvelope, error)
 
+	// PublishBinaryData sends binary data to the message bus
+	PublishBinaryData(data []byte, topic string) error
+
+	// SubscribeBinaryData receives binary data from the specified topic, and wrap it in MessageEnvelope.
+	SubscribeBinaryData(topics []types.TopicChannel, messageErrors chan error) error
+
 	// Unsubscribe to unsubscribe from the specified topics.
 	Unsubscribe(topics ...string) error
 
