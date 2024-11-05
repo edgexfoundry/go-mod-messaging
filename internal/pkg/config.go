@@ -25,7 +25,7 @@ import (
 	"strconv"
 )
 
-var TlsSchemes = []string{"tcps", "ssl", "tls", "redis", "nats"}
+var TlsSchemes = []string{"tcps", "ssl", "tls", "nats"}
 
 // X509KeyPairCreator defines the function signature for creating a tls.Certificate based on PEM encoding.
 type X509KeyPairCreator func(certPEMBlock []byte, keyPEMBlock []byte) (tls.Certificate, error)

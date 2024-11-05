@@ -26,8 +26,8 @@ import (
 var msgConfig = types.MessageBusConfig{
 	Broker: types.HostInfo{
 		Host:     "localhost",
-		Port:     6379,
-		Protocol: "redis",
+		Port:     1883,
+		Protocol: "mqtt",
 	},
 }
 
