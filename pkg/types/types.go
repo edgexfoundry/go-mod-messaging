@@ -29,7 +29,7 @@ type TopicChannel struct {
 type MessageBusConfig struct {
 	// Broker contains the connection information for publishing and subscribing to the broker for the EdgeX MessageBus
 	Broker HostInfo
-	// Type indicates the message queue platform being used. eg. "redis" for Redis Pub/Sub
+	// Type indicates the message queue platform being used. eg. "mqtt" for MQTT
 	Type string
 	// Optional contains all other properties of message bus that are specific to
 	// certain concrete implementations like MQTT's QoS, for example.

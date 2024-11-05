@@ -26,16 +26,12 @@ import (
 	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg/nats"
 	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg/nats/jetstream"
-	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg/redis"
 	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 )
 
 const (
 	// MQTT messaging implementation
 	MQTT = "mqtt"
-
-	// Redis Pub/Sub messaging implementation
-	Redis = "redis"
 
 	// NatsCore implementation
 	NatsCore = "nats-core"
@@ -55,8 +51,6 @@ func NewMessageClient(msgConfig types.MessageBusConfig) (MessageClient, error) {
 	switch lowerMsgType := strings.ToLower(msgConfig.Type); lowerMsgType {
 	case MQTT:
 		return mqtt.NewMQTTClient(msgConfig)
-	case Redis:
-		return redis.NewClient(msgConfig)
 	case NatsCore:
 		return nats.NewClient(msgConfig)
 	case NatsJetStream:
