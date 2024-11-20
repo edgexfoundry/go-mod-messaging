@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.5.0
-	github.com/edgexfoundry/go-mod-core-contracts/v4 v4.0.0-dev.3
+	github.com/edgexfoundry/go-mod-core-contracts/v4 v4.0.0-dev.10
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/nats-io/nats.go v1.37.0
@@ -17,7 +17,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.22.1 // indirect
+	github.com/go-playground/validator/v10 v10.23.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.2 // indirect
