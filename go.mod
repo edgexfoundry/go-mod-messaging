@@ -4,11 +4,11 @@ go 1.23
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.5.0
-	github.com/edgexfoundry/go-mod-core-contracts/v4 v4.0.0-dev.11
+	github.com/edgexfoundry/go-mod-core-contracts/v4 v4.0.0-dev.13
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/nats-io/nats.go v1.37.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 )
 
 require (
