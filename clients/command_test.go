@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2022-2024 IOTech Ltd
+// Copyright (C) 2022-2025 IOTech Ltd
 // Copyright (c) 2023 Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -8,7 +8,6 @@ package clients
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
@@ -39,10 +38,8 @@ var errorResponse = types.NewMessageEnvelopeWithError(expectedRequestID, "reques
 
 func TestCommandClient_AllDeviceCoreCommands(t *testing.T) {
 	responseDTO := responses.NewMultiDeviceCoreCommandsResponse(expectedRequestID, "", http.StatusOK, 0, nil)
-	responseBytes, err := json.Marshal(responseDTO)
-	require.NoError(t, err)
 
-	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseBytes, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
+	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseDTO, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -76,10 +73,8 @@ func TestCommandClient_AllDeviceCoreCommands(t *testing.T) {
 
 func TestCommandClient_DeviceCoreCommandsByDeviceName(t *testing.T) {
 	responseDTO := responses.NewDeviceCoreCommandResponse(expectedRequestID, "", http.StatusOK, dtos.DeviceCoreCommand{})
-	responseBytes, err := json.Marshal(responseDTO)
-	require.NoError(t, err)
 
-	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseBytes, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
+	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseDTO, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -113,10 +108,8 @@ func TestCommandClient_DeviceCoreCommandsByDeviceName(t *testing.T) {
 
 func TestCommandClient_IssueGetCommandByName(t *testing.T) {
 	responseDTO := responses.NewEventResponse(expectedRequestID, "", http.StatusOK, dtos.Event{})
-	responseBytes, err := json.Marshal(responseDTO)
-	require.NoError(t, err)
 
-	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseBytes, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
+	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseDTO, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -150,10 +143,8 @@ func TestCommandClient_IssueGetCommandByName(t *testing.T) {
 
 func TestCommandClient_IssueGetCommandByNameWithQueryParams(t *testing.T) {
 	responseDTO := responses.NewEventResponse(expectedRequestID, "", http.StatusOK, dtos.Event{})
-	responseBytes, err := json.Marshal(responseDTO)
-	require.NoError(t, err)
 
-	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseBytes, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
+	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseDTO, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -187,10 +178,8 @@ func TestCommandClient_IssueGetCommandByNameWithQueryParams(t *testing.T) {
 
 func TestCommandClient_IssueSetCommandByName(t *testing.T) {
 	responseDTO := commonDTO.NewBaseResponse(expectedRequestID, "", http.StatusOK)
-	responseBytes, err := json.Marshal(responseDTO)
-	require.NoError(t, err)
 
-	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseBytes, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
+	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseDTO, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -224,10 +213,8 @@ func TestCommandClient_IssueSetCommandByName(t *testing.T) {
 
 func TestCommandClient_IssueSetCommandByNameWithObject(t *testing.T) {
 	responseDTO := commonDTO.NewBaseResponse(expectedRequestID, "", http.StatusOK)
-	responseBytes, err := json.Marshal(responseDTO)
-	require.NoError(t, err)
 
-	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseBytes, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
+	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseDTO, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
 	require.NoError(t, err)
 
 	tests := []struct {

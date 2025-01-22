@@ -81,7 +81,11 @@ func (nm *natsMarshaller) Marshal(v types.MessageEnvelope, publishTopic string) 
 	subject := TopicToSubject(publishTopic)
 
 	out := nats.NewMsg(subject)
-	out.Data = v.Payload
+	payload, err := types.ConvertMsgPayloadToByteArray(v.ContentType, v.Payload)
+	if err != nil {
+		return nil, err
+	}
+	out.Data = payload
 	out.Header.Set(correlationIDHeader, v.CorrelationID)
 	out.Header.Set(contentTypeHeader, v.ContentType)
 	out.Header.Set(requestIDHeader, v.RequestID)

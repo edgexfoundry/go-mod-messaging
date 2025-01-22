@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2022-2024 IOTech Ltd
+// Copyright (C) 2022-2025 IOTech Ltd
 // Copyright (c) 2023 Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -8,8 +8,7 @@ package clients
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -68,11 +67,11 @@ func (c *CommandClient) AllDeviceCoreCommands(_ context.Context, offset int, lim
 	}
 
 	if responseEnvelope.ErrorCode == 1 {
-		return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
+		return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(fmt.Errorf("%v", responseEnvelope.Payload))
 	}
 
 	var res responses.MultiDeviceCoreCommandsResponse
-	err = json.Unmarshal(responseEnvelope.Payload, &res)
+	res, err = types.GetMsgPayload[responses.MultiDeviceCoreCommandsResponse](*responseEnvelope)
 	if err != nil {
 		return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
 	}
@@ -90,11 +89,11 @@ func (c *CommandClient) DeviceCoreCommandsByDeviceName(_ context.Context, device
 	}
 
 	if responseEnvelope.ErrorCode == 1 {
-		return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
+		return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(fmt.Errorf("%v", responseEnvelope.Payload))
 	}
 
 	var res responses.DeviceCoreCommandResponse
-	err = json.Unmarshal(responseEnvelope.Payload, &res)
+	res, err = types.GetMsgPayload[responses.DeviceCoreCommandResponse](*responseEnvelope)
 	if err != nil {
 		return responses.DeviceCoreCommandResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
 	}
@@ -117,7 +116,7 @@ func (c *CommandClient) IssueGetCommandByNameWithQueryParams(_ context.Context, 
 	}
 
 	if responseEnvelope.ErrorCode == 1 {
-		return nil, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
+		return nil, edgexErr.NewCommonEdgeXWrapper(fmt.Errorf("%v", responseEnvelope.Payload))
 	}
 
 	var res responses.EventResponse
@@ -127,7 +126,7 @@ func (c *CommandClient) IssueGetCommandByNameWithQueryParams(_ context.Context, 
 		res.RequestId = responseEnvelope.RequestID
 		res.StatusCode = http.StatusOK
 	} else {
-		err = json.Unmarshal(responseEnvelope.Payload, &res)
+		res, err = types.GetMsgPayload[responses.EventResponse](*responseEnvelope)
 		if err != nil {
 			return nil, edgexErr.NewCommonEdgeXWrapper(err)
 		}
@@ -137,12 +136,7 @@ func (c *CommandClient) IssueGetCommandByNameWithQueryParams(_ context.Context, 
 }
 
 func (c *CommandClient) IssueSetCommandByName(_ context.Context, deviceName string, commandName string, settings map[string]string) (commonDTO.BaseResponse, edgexErr.EdgeX) {
-	payloadBytes, err := json.Marshal(settings)
-	if err != nil {
-		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
-	}
-
-	requestEnvelope := types.NewMessageEnvelopeForRequest(payloadBytes, nil)
+	requestEnvelope := types.NewMessageEnvelopeForRequest(settings, nil)
 	requestTopic := common.NewPathBuilder().EnableNameFieldEscape(c.enableNameFieldEscape).
 		SetPath(c.baseTopic).SetPath(common.CoreCommandRequestPublishTopic).SetNameFieldPath(deviceName).SetNameFieldPath(commandName).SetPath("set").BuildPath()
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
@@ -151,7 +145,7 @@ func (c *CommandClient) IssueSetCommandByName(_ context.Context, deviceName stri
 	}
 
 	if responseEnvelope.ErrorCode == 1 {
-		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
+		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(fmt.Errorf("%v", responseEnvelope.Payload))
 	}
 
 	res := commonDTO.NewBaseResponse(responseEnvelope.RequestID, "", http.StatusOK)
@@ -159,12 +153,7 @@ func (c *CommandClient) IssueSetCommandByName(_ context.Context, deviceName stri
 }
 
 func (c *CommandClient) IssueSetCommandByNameWithObject(_ context.Context, deviceName string, commandName string, settings map[string]any) (commonDTO.BaseResponse, edgexErr.EdgeX) {
-	payloadBytes, err := json.Marshal(settings)
-	if err != nil {
-		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
-	}
-
-	requestEnvelope := types.NewMessageEnvelopeForRequest(payloadBytes, nil)
+	requestEnvelope := types.NewMessageEnvelopeForRequest(settings, nil)
 	requestTopic := common.NewPathBuilder().EnableNameFieldEscape(c.enableNameFieldEscape).
 		SetPath(c.baseTopic).SetPath(common.CoreCommandRequestPublishTopic).SetNameFieldPath(deviceName).SetNameFieldPath(commandName).SetPath("set").BuildPath()
 	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
@@ -173,7 +162,7 @@ func (c *CommandClient) IssueSetCommandByNameWithObject(_ context.Context, devic
 	}
 
 	if responseEnvelope.ErrorCode == 1 {
-		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(errors.New(string(responseEnvelope.Payload)))
+		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(fmt.Errorf("%v", responseEnvelope.Payload))
 	}
 
 	res := commonDTO.NewBaseResponse(responseEnvelope.RequestID, "", http.StatusOK)
