@@ -65,7 +65,8 @@ func TestJSONMarshaller(t *testing.T) {
 			}
 
 			err = sut.Unmarshal(marshaled, &unmarshaled)
-
+			assert.NoError(t, err)
+			unmarshaled.Payload, err = types.GetMsgPayload[[]byte](unmarshaled)
 			assert.NoError(t, err)
 
 			assert.Equal(t, expected, unmarshaled)
