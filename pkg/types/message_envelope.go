@@ -260,6 +260,10 @@ func GetMsgPayload[T any](msg MessageEnvelope) (res T, err error) {
 }
 
 func marshalMsgPayload(contentType string, payload any) (bytes []byte, err error) {
+	// no need to marshal nil payload
+	if payload == nil {
+		return nil, nil
+	}
 	switch contentType {
 	case common.ContentTypeJSON:
 		bytes, err = json.Marshal(payload)
