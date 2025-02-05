@@ -29,8 +29,12 @@ type MessageClient interface {
 	Connect() error
 
 	// Publish is to send message to the message bus
-	// the message contains data payload to send to the message queue
+	// the message contains data payload to send to the message bus
 	Publish(message types.MessageEnvelope, topic string) error
+
+	// PublishWithSizeLimit checks the message size in kilobytes after marshall and send it to the message bus
+	// the message contains data payload to send to the message bus
+	PublishWithSizeLimit(message types.MessageEnvelope, topic string, limit int64) error
 
 	// Subscribe is to receive messages from topic channels
 	// if message does not require a topic, then use empty string ("") for topic

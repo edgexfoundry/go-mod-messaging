@@ -1,6 +1,7 @@
 //
 // Copyright (c) 2022 One Track Consulting
 // Copyright (c) 2023 Intel Corporation
+// Copyright (c) 2025 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -128,6 +129,29 @@ func (c *Client) Publish(message types.MessageEnvelope, topic string) error {
 
 	if err != nil {
 		return err
+	}
+
+	return c.connection.PublishMsg(msg)
+}
+
+// PublishWithSizeLimit checks the message size and publishes EdgeX messages to NATS
+func (c *Client) PublishWithSizeLimit(message types.MessageEnvelope, topic string, limit int64) error {
+	if c.connection == nil {
+		return fmt.Errorf("cannot publish with disconnected client")
+	}
+
+	if topic == "" {
+		return fmt.Errorf("cannot publish to empty topic")
+	}
+
+	msg, err := c.m.Marshal(message, topic)
+
+	if err != nil {
+		return err
+	}
+
+	if limit > 0 && int64(msg.Size()) > limit*1024 {
+		return fmt.Errorf("message size exceed limit(%d KB)", limit)
 	}
 
 	return c.connection.PublishMsg(msg)

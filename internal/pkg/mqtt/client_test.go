@@ -1,6 +1,7 @@
 /********************************************************************************
  *  Copyright 2020 Dell Inc.
  *  Copyright (c) 2023 Intel Corporation
+ *  Copyright (c) 2025 IOTech Ltd
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
@@ -884,6 +885,100 @@ func TestClient_Publish(t *testing.T) {
 			require.NoError(t, err)
 
 			err = client.Publish(test.message, "test-topic")
+			if test.expectError {
+				require.Error(t, err)
+				return // End test for expected error
+			} else {
+				require.NoError(t, err)
+			}
+
+			if test.errorType != nil {
+				eet := reflect.TypeOf(test.errorType)
+				aet := reflect.TypeOf(err)
+				assert.Condition(t, func() (success bool) {
+					return aet.AssignableTo(eet)
+				}, "Expected error of type %v, but got an error of type %v", eet, aet)
+			}
+		})
+	}
+}
+
+func TestClient_PublishWithSizeLimit(t *testing.T) {
+	tests := []struct {
+		name         string
+		publishToken MockToken
+		message      types.MessageEnvelope
+		marshaller   MessageMarshaller
+		exceedLimit  bool
+		expectError  bool
+		errorType    error
+	}{
+		{
+			"Successful publish",
+			SuccessfulMockToken(),
+			types.MessageEnvelope{},
+			json.Marshal,
+			false,
+			false,
+			nil,
+		},
+		{
+			"Marshal error",
+			SuccessfulMockToken(),
+			types.MessageEnvelope{},
+			mockMarshallerError,
+			false,
+			true,
+			OperationErr{},
+		},
+		{
+			"Message exceed limit",
+			SuccessfulMockToken(),
+			types.MessageEnvelope{Payload: make([]int, 1024)},
+			json.Marshal,
+			true,
+			true,
+			OperationErr{},
+		},
+		{
+			"Publish error",
+			ErrorMockToken(),
+			types.MessageEnvelope{},
+			json.Marshal,
+			false,
+			true,
+			OperationErr{},
+		},
+		{
+			"Publish timeout with error",
+			TimeoutWithErrorMockToken(),
+			types.MessageEnvelope{},
+			json.Marshal,
+			false,
+			true,
+			TimeoutErr{},
+		},
+		{
+			"Publish timeout without error",
+			TimeoutNoErrorMockToken(),
+			types.MessageEnvelope{},
+			json.Marshal,
+			false,
+			true,
+			TimeoutErr{},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client, _ := NewMQTTClientWithCreator(
+				TestMessageBusConfig,
+				test.marshaller,
+				json.Unmarshal,
+				mockClientCreator(SuccessfulMockToken(), test.publishToken, MockToken{}))
+
+			err := client.Connect()
+			require.NoError(t, err)
+			err = client.PublishWithSizeLimit(test.message, "test-topic", int64(1))
 			if test.expectError {
 				require.Error(t, err)
 				return // End test for expected error

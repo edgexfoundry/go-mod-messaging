@@ -1,6 +1,6 @@
 //
 // Copyright (c) 2019 Intel Corporation
-// Copyright (c) 2022-2023 IOTech Ltd
+// Copyright (c) 2022-2025 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,17 +42,28 @@ func TestNewMessageEnvelope(t *testing.T) {
 	// lint:ignore SA1029 legacy
 	// nolint:staticcheck // See golangci-lint #741
 	ctx := context.WithValue(context.Background(), common.CorrelationHeader, testCorrelationId)
-	// lint:ignore SA1029 legacy
-	// nolint:staticcheck // See golangci-lint #741
-	ctx = context.WithValue(ctx, common.ContentType, common.ContentTypeJSON)
 
-	envelope := NewMessageEnvelope(testPayload, ctx)
-
-	assert.Equal(t, common.ApiVersion, envelope.ApiVersion)
-	assert.Equal(t, testCorrelationId, envelope.CorrelationID)
-	assert.Equal(t, common.ContentTypeJSON, envelope.ContentType)
-	assert.Equal(t, testPayload, envelope.Payload)
-	assert.Empty(t, envelope.QueryParams)
+	tests := []struct {
+		name            string
+		contentType     string
+		expectedPayload any
+	}{
+		{"valid - normal queryParams map", common.ContentTypeJSON, testPayload},
+		{"valid - empty queryParams map", common.ContentTypeCBOR, []byte(testPayload)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// lint:ignore SA1029 legacy
+			// nolint:staticcheck // See golangci-lint #741
+			ctx = context.WithValue(ctx, common.ContentType, tt.contentType)
+			envelope := NewMessageEnvelope(testPayload, ctx)
+			assert.Equal(t, common.ApiVersion, envelope.ApiVersion)
+			assert.Equal(t, testCorrelationId, envelope.CorrelationID)
+			assert.Empty(t, envelope.QueryParams)
+			assert.Equal(t, tt.contentType, envelope.ContentType)
+			assert.Equal(t, tt.expectedPayload, envelope.Payload)
+		})
+	}
 }
 
 func TestNewMessageEnvelopeWithEnv(t *testing.T) {

@@ -67,7 +67,7 @@ func NewMessageEnvelope(payload any, ctx context.Context) MessageEnvelope {
 		QueryParams:   make(map[string]string),
 	}
 
-	if IsMsgBase64Payload() {
+	if IsMsgBase64Payload() || envelope.ContentType == common.ContentTypeCBOR {
 		err := envelope.ConvertMsgPayloadToByteArray()
 		if err != nil {
 			fmt.Println("convert message payload to bytes failed, err: " + err.Error())
@@ -93,7 +93,7 @@ func NewMessageEnvelopeForRequest(payload any, queryParams map[string]string) Me
 		envelope.QueryParams = queryParams
 	}
 
-	if IsMsgBase64Payload() {
+	if IsMsgBase64Payload() || envelope.ContentType == common.ContentTypeCBOR {
 		err := envelope.ConvertMsgPayloadToByteArray()
 		if err != nil {
 			fmt.Println("convert message payload to bytes failed, err: " + err.Error())
@@ -125,7 +125,7 @@ func NewMessageEnvelopeForResponse(payload any, requestId string, correlationId 
 		QueryParams:   make(map[string]string),
 	}
 
-	if IsMsgBase64Payload() {
+	if IsMsgBase64Payload() || envelope.ContentType == common.ContentTypeCBOR {
 		err = envelope.ConvertMsgPayloadToByteArray()
 		if err != nil {
 			return MessageEnvelope{}, fmt.Errorf("failed to convert payload to []byte: %v", err)
