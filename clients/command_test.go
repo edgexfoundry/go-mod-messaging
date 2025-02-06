@@ -232,7 +232,7 @@ func TestCommandClient_IssueSetCommandByNameWithObject(t *testing.T) {
 		t.Run(test.Name, func(t *testing.T) {
 			client := getCommandClientWithMockMessaging(t, test.ExpectedResponse, test.ExpectedRequestError)
 
-			res, err := client.IssueSetCommandByNameWithObject(context.Background(), testDeviceName, testCommandName, nil)
+			res, err := client.IssueSetCommandByName(context.Background(), testDeviceName, testCommandName, nil)
 
 			if test.ExpectError {
 				require.Error(t, err)

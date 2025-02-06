@@ -135,24 +135,7 @@ func (c *CommandClient) IssueGetCommandByNameWithQueryParams(_ context.Context, 
 	return &res, nil
 }
 
-func (c *CommandClient) IssueSetCommandByName(_ context.Context, deviceName string, commandName string, settings map[string]string) (commonDTO.BaseResponse, edgexErr.EdgeX) {
-	requestEnvelope := types.NewMessageEnvelopeForRequest(settings, nil)
-	requestTopic := common.NewPathBuilder().EnableNameFieldEscape(c.enableNameFieldEscape).
-		SetPath(c.baseTopic).SetPath(common.CoreCommandRequestPublishTopic).SetNameFieldPath(deviceName).SetNameFieldPath(commandName).SetPath("set").BuildPath()
-	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
-	if err != nil {
-		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
-	}
-
-	if responseEnvelope.ErrorCode == 1 {
-		return commonDTO.BaseResponse{}, edgexErr.NewCommonEdgeXWrapper(fmt.Errorf("%v", responseEnvelope.Payload))
-	}
-
-	res := commonDTO.NewBaseResponse(responseEnvelope.RequestID, "", http.StatusOK)
-	return res, nil
-}
-
-func (c *CommandClient) IssueSetCommandByNameWithObject(_ context.Context, deviceName string, commandName string, settings map[string]any) (commonDTO.BaseResponse, edgexErr.EdgeX) {
+func (c *CommandClient) IssueSetCommandByName(_ context.Context, deviceName string, commandName string, settings map[string]any) (commonDTO.BaseResponse, edgexErr.EdgeX) {
 	requestEnvelope := types.NewMessageEnvelopeForRequest(settings, nil)
 	requestTopic := common.NewPathBuilder().EnableNameFieldEscape(c.enableNameFieldEscape).
 		SetPath(c.baseTopic).SetPath(common.CoreCommandRequestPublishTopic).SetNameFieldPath(deviceName).SetNameFieldPath(commandName).SetPath("set").BuildPath()
