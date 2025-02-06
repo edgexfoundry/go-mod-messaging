@@ -1,6 +1,7 @@
 /********************************************************************************
  *  Copyright 2019 Dell Inc.
  *  Copyright (c) 2023 Intel Corporation
+ *  Copyright (c) 2025 IOTech Ltd
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
  *
@@ -158,6 +159,30 @@ func (mc *Client) Publish(message types.MessageEnvelope, topic string) error {
 		PublishOperation,
 		"Unable to publish message")
 
+}
+
+// PublishWithSizeLimit checks the message size and sends it to the connected MQTT server.
+func (mc *Client) PublishWithSizeLimit(message types.MessageEnvelope, topic string, limit int64) error {
+	marshaledMessage, err := mc.marshaller(message)
+	if err != nil {
+		return NewOperationErr(PublishOperation, err.Error())
+	}
+
+	if limit > 0 && int64(len(marshaledMessage)) > limit*1024 {
+		return fmt.Errorf("message size exceed limit(%d KB)", limit)
+	}
+
+	optionsReader := mc.mqttClient.OptionsReader()
+
+	return getTokenError(
+		mc.mqttClient.Publish(
+			topic,
+			optionsReader.WillQos(),
+			optionsReader.WillRetained(),
+			marshaledMessage),
+		optionsReader.ConnectTimeout(),
+		PublishOperation,
+		"Unable to publish message")
 }
 
 // Subscribe creates a subscription for the specified topics.

@@ -1,6 +1,7 @@
 //
 // Copyright (c) 2022 One Track Consulting
 // Copyright (c) 2023 Intel Corporation
+// Copyright (c) 2025 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,6 +40,10 @@ func (n NoopClient) Connect() error {
 }
 
 func (n NoopClient) Publish(message types.MessageEnvelope, topic string) error {
+	panic("implement me")
+}
+
+func (n NoopClient) PublishWithSizeLimit(message types.MessageEnvelope, topic string, limit int64) error {
 	panic("implement me")
 }
 
