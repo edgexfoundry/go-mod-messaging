@@ -54,7 +54,7 @@ func DoRequest(
 	// Must create the subscription first so that it is in place when the request is handled and response published back
 	err := subscribe([]types.TopicChannel{responseTopicChan}, errs)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create response subscription: %v", err)
+		return nil, fmt.Errorf("unable to create response subscription: %w", err)
 	}
 
 	defer func() {
@@ -65,7 +65,7 @@ func DoRequest(
 
 	err = publish(requestMessage, requestTopic)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create publish request to %s: %v", requestTopic, err)
+		return nil, fmt.Errorf("unable to create publish request to %s: %w", requestTopic, err)
 	}
 
 	timer := time.NewTimer(requestTimeout)
@@ -76,7 +76,7 @@ func DoRequest(
 		return nil, fmt.Errorf("timed out waiting for response on %s topic", responseTopicChan.Topic)
 
 	case err = <-errs:
-		return nil, fmt.Errorf("encountered error waiting for response to %s: %v", requestTopic, err)
+		return nil, fmt.Errorf("encountered error waiting for response to %s: %w", requestTopic, err)
 
 	case responseMessage := <-messages:
 		return &responseMessage, nil
