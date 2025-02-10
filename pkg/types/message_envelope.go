@@ -128,7 +128,7 @@ func NewMessageEnvelopeForResponse(payload any, requestId string, correlationId 
 	if IsMsgBase64Payload() || envelope.ContentType == common.ContentTypeCBOR {
 		err = envelope.ConvertMsgPayloadToByteArray()
 		if err != nil {
-			return MessageEnvelope{}, fmt.Errorf("failed to convert payload to []byte: %v", err)
+			return MessageEnvelope{}, fmt.Errorf("failed to convert payload to []byte: %w", err)
 		}
 	}
 
@@ -227,7 +227,7 @@ func ConvertMsgPayloadToByteArray(contentType string, payload any) (result []byt
 
 // GetMsgPayload handles different payload types and attempts to convert them to the desired type T.
 func GetMsgPayload[T any](msg MessageEnvelope) (res T, err error) {
-	unmarshalErrStr := "failed to unmarshal to %T, error: %v"
+	unmarshalErrStr := "failed to unmarshal to %T, error: %w"
 	switch v := msg.Payload.(type) {
 	case T:
 		res = v
@@ -240,7 +240,7 @@ func GetMsgPayload[T any](msg MessageEnvelope) (res T, err error) {
 		// Check if payload is base64 string
 		decodeValue, err := base64.StdEncoding.DecodeString(v)
 		if err != nil {
-			return res, fmt.Errorf("failed to decode base64 string to %T: %v", res, err)
+			return res, fmt.Errorf("failed to decode base64 string to %T: %w", res, err)
 		}
 		// If T is []byte
 		if reflect.TypeOf(res).String() == reflect.TypeOf(decodeValue).String() {
@@ -254,7 +254,7 @@ func GetMsgPayload[T any](msg MessageEnvelope) (res T, err error) {
 	default:
 		bytes, err := marshalMsgPayload(msg.ContentType, v)
 		if err != nil {
-			return res, fmt.Errorf("failed to marshal to []byte: %v", err)
+			return res, fmt.Errorf("failed to marshal to []byte: %w", err)
 		}
 		err = unmarshalMsgPayload(msg.ContentType, bytes, &res)
 		if err != nil {
@@ -274,12 +274,12 @@ func marshalMsgPayload(contentType string, payload any) (bytes []byte, err error
 	case common.ContentTypeJSON:
 		bytes, err = json.Marshal(payload)
 		if err != nil {
-			return bytes, fmt.Errorf("failed to marshal to JSON, error: %v", err)
+			return bytes, fmt.Errorf("failed to marshal to JSON, error: %w", err)
 		}
 	case common.ContentTypeCBOR:
 		bytes, err = cbor.Marshal(payload)
 		if err != nil {
-			return bytes, fmt.Errorf("failed to marshal to CBOR, error: %v", err)
+			return bytes, fmt.Errorf("failed to marshal to CBOR, error: %w", err)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported content type: %s", contentType)

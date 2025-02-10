@@ -229,7 +229,7 @@ func (c *Client) Unsubscribe(topics ...string) error {
 		if subscription != nil {
 			err := subscription.Unsubscribe()
 			if err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("unable to unsubscribe to topic '%s': %v", topic, err))
+				errs = multierror.Append(errs, fmt.Errorf("unable to unsubscribe to topic '%s': %w", topic, err))
 				continue
 			}
 		}
