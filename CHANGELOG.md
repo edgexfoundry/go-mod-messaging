@@ -7,6 +7,51 @@
 
 - [go-mod-core-contracts](https://github.com/edgexfoundry/go-mod-core-contracts/blob/main/CHANGELOG.md)
 
+## [v4.0.0] - 2025-03-12
+
+### ✨ Features
+
+- Use the %w verb to wrap errors for clearer and more detailed error messages ([c0c0e3c…](https://github.com/edgexfoundry/go-mod-messaging/commit/c0c0e3ccf37876b3e7806cb91a930626e044b80e))
+- Ensure proper encoding and validate size ([#388](https://github.com/edgexfoundry/go-mod-messaging/issues/388)) ([072525f…](https://github.com/edgexfoundry/go-mod-messaging/commit/072525f16f12b154736297d351c7418c7fe9afb9))
+```text
+
+BREAKING CHANGE: Ensure proper encoding and validate size ([#388](https://github.com/edgexfoundry/go-mod-messaging/issues/388))
+
+```
+- Use normal JSON object in message envelope payload instead of base64 ([6e7195d…](https://github.com/edgexfoundry/go-mod-messaging/commit/6e7195df5bad8ecc5b9e02eabead1f0c7d3c68c6))
+```text
+
+BREAKING CHANGE: Change MessageEnvelope payload from a byte array to a generic type
+
+```
+- Remove Redis Pub/Sub feature and dependency ([5c95ef1…](https://github.com/edgexfoundry/go-mod-messaging/commit/5c95ef1e1ea7f94014dfdf648d8e3706e8c041ea))
+```text
+
+BREAKING CHANGE: Remove Redis Pub/Sub feature and dependency
+
+```
+- MessageClient can Pub/Sub binary data ([91b7407…](https://github.com/edgexfoundry/go-mod-messaging/commit/91b74073917e063e8818dc571c129eb4cd65a148))
+- Encode the topic path for MessageBus ([0dd17d8…](https://github.com/edgexfoundry/go-mod-messaging/commit/0dd17d8fbb32bdd335e6776b05a4f7eef09d9f72))
+
+
+### ♻ Code Refactoring
+
+- Update go module to v4 ([c98b13c…](https://github.com/edgexfoundry/go-mod-messaging/commit/c98b13c8339e79adac4838616c0cc03c55f44290))
+```text
+
+BREAKING CHANGE: Update go module to v4
+
+```
+
+### 🐛 Bug Fixes
+
+- Avoid marshaling nil payload when `EDGEX_MSG_BASE64_PAYLOAD` is `true` ([a4a626b…](https://github.com/edgexfoundry/go-mod-messaging/commit/a4a626b56a66e86496d7d9755491e10cf704e653))
+
+
+### 👷 Build
+
+- Upgrade to go-1.23, Linter1.61.0 ([8353905…](https://github.com/edgexfoundry/go-mod-messaging/commit/83539050e85f8a3d042edc6eb1dd3a070801e5f0))
+
 ## [v3.1.0] - 2023-11-15
 
 ### ✨  Features
