@@ -12,10 +12,10 @@
 ### ✨ Features
 
 - Use the %w verb to wrap errors for clearer and more detailed error messages ([c0c0e3c…](https://github.com/edgexfoundry/go-mod-messaging/commit/c0c0e3ccf37876b3e7806cb91a930626e044b80e))
-- Ensure proper encoding and validate size ([#388](https://github.com/edgexfoundry/go-mod-messaging/issues/388)) ([072525f…](https://github.com/edgexfoundry/go-mod-messaging/commit/072525f16f12b154736297d351c7418c7fe9afb9))
+- Ensure proper encoding before message publication and validate size limit when marshalling message ([#388](https://github.com/edgexfoundry/go-mod-messaging/issues/388)) ([072525f…](https://github.com/edgexfoundry/go-mod-messaging/commit/072525f16f12b154736297d351c7418c7fe9afb9))
 ```text
 
-BREAKING CHANGE: Ensure proper encoding and validate size ([#388](https://github.com/edgexfoundry/go-mod-messaging/issues/388))
+BREAKING CHANGE: Ensure proper encoding before message publication and validate size limit when marshalling message ([#388](https://github.com/edgexfoundry/go-mod-messaging/issues/388))
 
 ```
 - Use normal JSON object in message envelope payload instead of base64 ([6e7195d…](https://github.com/edgexfoundry/go-mod-messaging/commit/6e7195df5bad8ecc5b9e02eabead1f0c7d3c68c6))
