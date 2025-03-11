@@ -69,6 +69,9 @@ type RESTAddress struct {
 }
 
 func NewRESTAddress(host string, port int, httpMethod string, scheme string) Address {
+	if scheme == "" {
+		scheme = common.HTTP
+	}
 	return Address{
 		Type:   common.REST,
 		Host:   host,

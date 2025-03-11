@@ -21,7 +21,7 @@ type AutoEvent struct {
 type Retention struct {
 	MaxCap   int64  `json:"maxCap" yaml:"maxCap"`
 	MinCap   int64  `json:"minCap" yaml:"minCap"`
-	Duration string `json:"duration" yaml:"duration" validate:"edgex-dto-duration=0s"`
+	Duration string `json:"duration" yaml:"duration" validate:"omitempty,edgex-dto-duration=0s"`
 }
 
 // ToAutoEventModel transforms the AutoEvent DTO to the AutoEvent model
