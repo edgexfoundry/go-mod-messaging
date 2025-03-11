@@ -5,7 +5,7 @@ github.com/davecgh/go-spew/spew
 ## explicit; go 1.20
 github.com/eclipse/paho.mqtt.golang
 github.com/eclipse/paho.mqtt.golang/packets
-# github.com/edgexfoundry/go-mod-core-contracts/v4 v4.0.0
+# github.com/edgexfoundry/go-mod-core-contracts/v4 v4.0.1
 ## explicit; go 1.23
 github.com/edgexfoundry/go-mod-core-contracts/v4/clients/interfaces
 github.com/edgexfoundry/go-mod-core-contracts/v4/common

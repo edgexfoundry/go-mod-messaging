@@ -203,7 +203,24 @@ func convertFloatValue(valueType string, kind reflect.Kind, value any) (string, 
 		return "", err
 	}
 
-	return fmt.Sprintf("%e", value), nil
+	switch kind {
+	case reflect.Float32:
+		// as above has validated the value type/kind/value, it is safe to cast the value to float32 here
+		float32Val, ok := value.(float32)
+		if !ok {
+			return "", fmt.Errorf("unable to cast value to float32 for %s", valueType)
+		}
+		return strconv.FormatFloat(float64(float32Val), 'e', -1, 32), nil
+	case reflect.Float64:
+		// as above has validated the value type/kind/value, it is safe to cast the value to float64 here
+		float64Val, ok := value.(float64)
+		if !ok {
+			return "", fmt.Errorf("unable to cast value to float64 for %s", valueType)
+		}
+		return strconv.FormatFloat(float64Val, 'e', -1, 64), nil
+	default:
+		return "", fmt.Errorf("invalid kind %s to convert float value to string", kind.String())
+	}
 }
 
 func convertSimpleArrayValue(valueType string, kind reflect.Kind, value any) (string, error) {
