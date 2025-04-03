@@ -2,13 +2,15 @@ module github.com/edgexfoundry/go-mod-messaging/v4
 
 go 1.23.0
 
+toolchain go1.24.1
+
 require (
 	github.com/eclipse/paho.mqtt.golang v1.5.0
 	github.com/edgexfoundry/go-mod-core-contracts/v4 v4.1.0-dev.1
 	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/nats-io/nats.go v1.40.1
+	github.com/nats-io/nats.go v1.41.0
 	github.com/stretchr/testify v1.10.0
 )
 
