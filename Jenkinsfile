@@ -1,5 +1,6 @@
 //
 // Copyright (c) 2019 Intel Corporation
+// Copyright (c) 2025 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,5 +16,6 @@
 //
 
 edgeXBuildGoMod (
-    project: 'go-mod-messaging'
+    project: 'go-mod-messaging',
+    goVersion: '1.23'
 )
