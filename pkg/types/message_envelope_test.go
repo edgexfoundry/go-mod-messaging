@@ -25,11 +25,13 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/common"
 	commonDTO "github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/common"
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/responses"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -278,4 +280,38 @@ func TestGetMsgPayloadFromBytesToBytes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.IsType(t, "[]uint8", reflect.TypeOf(res).String())
 	assert.Equal(t, testBytesPayload, res)
+}
+
+func TestEnvMessageCborEncode(t *testing.T) {
+	tests := []struct {
+		name               string
+		messageCborEncoded string
+	}{
+		{"skip payload encoding", common.ValueTrue},
+		{"encode the payload with CBOR", common.ValueFalse},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := os.Setenv(common.EnvMessageCborEncode, tt.messageCborEncoded)
+			require.NoError(t, err)
+
+			ctx := context.WithValue(context.Background(), common.ContentType, common.ContentTypeCBOR) // nolint: staticcheck
+			envelope := NewMessageEnvelope(testPayload, ctx)
+			_, ok := envelope.Payload.([]byte)
+			if tt.messageCborEncoded == common.ValueTrue {
+				assert.False(t, ok) // when EDGEX_MSG_CBOR_ENCODE is true, skip payload encoding, the payload is not byte array
+			} else {
+				assert.True(t, ok)
+			}
+
+			envelope, err = NewMessageEnvelopeForResponse(testPayload, uuid.New().String(), uuid.New().String(), common.ContentTypeCBOR)
+			require.NoError(t, err)
+			_, ok = envelope.Payload.([]byte)
+			if tt.messageCborEncoded == common.ValueTrue {
+				assert.False(t, ok) // when EDGEX_MSG_CBOR_ENCODE is true, skip payload encoding, the payload is not byte array
+			} else {
+				assert.True(t, ok)
+			}
+		})
+	}
 }

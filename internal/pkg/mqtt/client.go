@@ -18,7 +18,6 @@ package mqtt
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"os"
@@ -26,6 +25,7 @@ import (
 	"time"
 
 	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg"
+	"github.com/edgexfoundry/go-mod-messaging/v4/messaging/envelope"
 	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 
 	pahoMqtt "github.com/eclipse/paho.mqtt.golang"
@@ -67,8 +67,8 @@ func NewMQTTClient(config types.MessageBusConfig) (*Client, error) {
 	client := &Client{
 		creator:               DefaultClientCreator(),
 		configuration:         config,
-		marshaller:            json.Marshal,
-		unmarshaller:          json.Unmarshal,
+		marshaller:            envelope.Marshal,
+		unmarshaller:          envelope.Unmarshal,
 		existingSubscriptions: map[string]existingSubscription{},
 		subscriptionMutex:     new(sync.Mutex),
 	}

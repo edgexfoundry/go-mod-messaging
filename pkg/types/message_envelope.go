@@ -28,6 +28,7 @@ import (
 
 	"github.com/edgexfoundry/go-mod-core-contracts/v4/common"
 	commonDTO "github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/common"
+
 	"github.com/fxamacker/cbor/v2"
 	"github.com/google/uuid"
 )
@@ -67,6 +68,12 @@ func NewMessageEnvelope(payload any, ctx context.Context) MessageEnvelope {
 		QueryParams:   make(map[string]string),
 	}
 
+	if os.Getenv(common.EnvMessageCborEncode) == common.ValueTrue {
+		// the full message envelope should be encoded with CBOR, so we can skip payload encode
+		envelope.ContentType = common.ContentTypeCBOR
+		return envelope
+	}
+
 	if IsMsgBase64Payload() || envelope.ContentType == common.ContentTypeCBOR {
 		err := envelope.ConvertMsgPayloadToByteArray()
 		if err != nil {
@@ -91,6 +98,12 @@ func NewMessageEnvelopeForRequest(payload any, queryParams map[string]string) Me
 
 	if len(queryParams) > 0 {
 		envelope.QueryParams = queryParams
+	}
+
+	if os.Getenv(common.EnvMessageCborEncode) == common.ValueTrue {
+		// the full message envelope should be encoded with CBOR, so we can skip payload encode
+		envelope.ContentType = common.ContentTypeCBOR
+		return envelope
 	}
 
 	if IsMsgBase64Payload() || envelope.ContentType == common.ContentTypeCBOR {
@@ -123,6 +136,12 @@ func NewMessageEnvelopeForResponse(payload any, requestId string, correlationId 
 		Payload:       payload,
 		ContentType:   contentType,
 		QueryParams:   make(map[string]string),
+	}
+
+	if os.Getenv(common.EnvMessageCborEncode) == common.ValueTrue {
+		// the full message envelope should be encoded with CBOR, so we can skip payload encode
+		envelope.ContentType = common.ContentTypeCBOR
+		return envelope, nil
 	}
 
 	if IsMsgBase64Payload() || envelope.ContentType == common.ContentTypeCBOR {
