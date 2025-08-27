@@ -81,6 +81,7 @@ func NewClientWithConnectionFactory(cfg types.MessageBusConfig, connectionFactor
 		m:                     m,
 		existingSubscriptions: make(map[string]*nats.Subscription),
 		subscriptionMutex:     new(sync.Mutex),
+		criticalOpsManager:    pkg.NewCriticalOperationManager(),
 	}, nil
 }
 
@@ -92,6 +93,7 @@ type Client struct {
 	config                ClientConfig
 	existingSubscriptions map[string]*nats.Subscription
 	subscriptionMutex     *sync.Mutex
+	criticalOpManager     *pkg.CriticalOperationManager
 }
 
 // Connect establishes the connections to publish and subscribe hosts
@@ -254,4 +256,15 @@ func (c *Client) PublishBinaryData(data []byte, topic string) error {
 
 func (c *Client) SubscribeBinaryData(topics []types.TopicChannel, messageErrors chan error) error {
 	return fmt.Errorf("not supported SubscribeBinaryData func")
+}
+
+// RegisterCriticalOperation registers a critical operation with a finish signal channel
+func (c *Client) RegisterCriticalOperation(finishSignal chan struct{}) {
+	c.criticalOpManager.RegisterCriticalOperation(finishSignal)
+}
+
+// WaitForCriticalOperations waits for all critical operations to complete within the specified timeout
+// returns true if all operations completed, false if timeout occurred
+func (c *Client) WaitForCriticalOperations(timeout time.Duration) bool {
+	return c.criticalOpManager.WaitForCriticalOperations(timeout)
 }

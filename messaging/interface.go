@@ -1,5 +1,6 @@
 //
 // Copyright (c) 2023 Intel Corporation
+// Copyright (c) 2025 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,4 +64,14 @@ type MessageClient interface {
 	// Disconnect is to close all connections on the message bus
 	// and TopicChannel will also be closed
 	Disconnect() error
+}
+
+// MessageClientExt is an extended interface of MessageClient that includes critical operation management
+type MessageClientExt interface {
+	// RegisterCriticalOperation registers a critical operation with a finish signal channel
+	RegisterCriticalOperation(finishSignal chan struct{})
+
+	// WaitForCriticalOperations waits for all critical operations to complete within the specified timeout
+	// returns true if all operations completed, false if timeout occurred
+	WaitForCriticalOperations(timeout time.Duration) bool
 }
