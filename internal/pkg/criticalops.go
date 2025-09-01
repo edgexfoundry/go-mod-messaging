@@ -14,6 +14,8 @@
 package pkg
 
 import (
+	"maps"
+	"slices"
 	"sync"
 	"time"
 )
@@ -42,32 +44,31 @@ func (m *CriticalOperationManager) RegisterCriticalOperation(finishSignal chan s
 // WaitForCriticalOperations waits for all critical operations to complete within the specified timeout
 // returns true if all operations completed, false if timeout occurred
 func (m *CriticalOperationManager) WaitForCriticalOperations(timeout time.Duration) bool {
-	m.criticalOpsMutex.RLock()
-	operations := make([]chan struct{}, 0, len(m.criticalOperations))
-	for finishSignal := range m.criticalOperations {
-		operations = append(operations, finishSignal)
-	}
-	m.criticalOpsMutex.RUnlock()
-
-	if len(operations) == 0 {
+	ops := slices.Collect(maps.Keys(m.criticalOperations))
+	if len(ops) == 0 {
 		return true
 	}
 
-	done := make(chan bool, 1)
+	var wg sync.WaitGroup
+	wg.Add(len(ops))
+	for _, op := range ops {
+		go func(op chan struct{}) {
+			<-op
+			wg.Done()
+		}(op)
+	}
+
+	done := make(chan struct{})
 	go func() {
-		for _, finishSignal := range operations {
-			<-finishSignal
-		}
-		done <- true
+		wg.Wait()
+		close(done)
 	}()
 
 	select {
 	case <-done:
 		m.criticalOpsMutex.Lock()
-		for _, finishSignal := range operations {
-			delete(m.criticalOperations, finishSignal)
-		}
-		m.criticalOpsMutex.Unlock()
+		defer m.criticalOpsMutex.Unlock()
+		clear(m.criticalOperations)
 		return true
 	case <-time.After(timeout):
 		return false
