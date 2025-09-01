@@ -61,3 +61,11 @@ func (n NoopClient) PublishBinaryData(data []byte, topic string) error {
 func (n NoopClient) SubscribeBinaryData(topics []types.TopicChannel, messageErrors chan error) error {
 	return fmt.Errorf("not supported SubscribeBinaryData func")
 }
+
+func (n NoopClient) RegisterCriticalOperation(finishSignal chan struct{}) {
+	panic("implement me")
+}
+
+func (n NoopClient) WaitForCriticalOperations(timeout time.Duration) bool {
+	panic("implement me")
+}

@@ -53,6 +53,7 @@ type Client struct {
 	unmarshaller          MessageUnmarshaller
 	existingSubscriptions map[string]existingSubscription
 	subscriptionMutex     *sync.Mutex
+	criticalOpManager     *pkg.CriticalOperationManager
 }
 
 type existingSubscription struct {
@@ -71,6 +72,7 @@ func NewMQTTClient(config types.MessageBusConfig) (*Client, error) {
 		unmarshaller:          envelope.Unmarshal,
 		existingSubscriptions: map[string]existingSubscription{},
 		subscriptionMutex:     new(sync.Mutex),
+		criticalOpManager:     pkg.NewCriticalOperationManager(),
 	}
 
 	return client, nil
@@ -90,6 +92,7 @@ func NewMQTTClientWithCreator(
 		unmarshaller:          unmarshaller,
 		existingSubscriptions: make(map[string]existingSubscription),
 		subscriptionMutex:     new(sync.Mutex),
+		criticalOpManager:     pkg.NewCriticalOperationManager(),
 	}
 
 	return client, nil
@@ -406,4 +409,15 @@ func (mc *Client) subscribe(topics []types.TopicChannel, messageErrors chan erro
 	}
 
 	return nil
+}
+
+// RegisterCriticalOperation registers a critical operation with a finish signal channel
+func (mc *Client) RegisterCriticalOperation(finishSignal chan struct{}) {
+	mc.criticalOpManager.RegisterCriticalOperation(finishSignal)
+}
+
+// WaitForCriticalOperations waits for all critical operations to complete within the specified timeout
+// returns true if all operations completed, false if timeout occurred
+func (mc *Client) WaitForCriticalOperations(timeout time.Duration) bool {
+	return mc.criticalOpManager.WaitForCriticalOperations(timeout)
 }
