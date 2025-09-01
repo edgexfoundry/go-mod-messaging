@@ -14,8 +14,6 @@
 package pkg
 
 import (
-	"maps"
-	"slices"
 	"sync"
 	"time"
 )
@@ -24,6 +22,7 @@ import (
 type CriticalOperationManager struct {
 	criticalOperations map[chan struct{}]bool
 	criticalOpsMutex   sync.RWMutex
+	waitGroup          sync.WaitGroup
 }
 
 // NewCriticalOperationManager creates a new critical operations manager
@@ -31,6 +30,7 @@ func NewCriticalOperationManager() *CriticalOperationManager {
 	return &CriticalOperationManager{
 		criticalOperations: make(map[chan struct{}]bool),
 		criticalOpsMutex:   sync.RWMutex{},
+		waitGroup:          sync.WaitGroup{},
 	}
 }
 
@@ -39,28 +39,22 @@ func (m *CriticalOperationManager) RegisterCriticalOperation(finishSignal chan s
 	m.criticalOpsMutex.Lock()
 	defer m.criticalOpsMutex.Unlock()
 	m.criticalOperations[finishSignal] = true
+	m.waitGroup.Add(1)
+	go func() {
+		<-finishSignal
+		m.waitGroup.Done()
+		m.criticalOpsMutex.Lock()
+		defer m.criticalOpsMutex.Unlock()
+		delete(m.criticalOperations, finishSignal)
+	}()
 }
 
 // WaitForCriticalOperations waits for all critical operations to complete within the specified timeout
 // returns true if all operations completed, false if timeout occurred
 func (m *CriticalOperationManager) WaitForCriticalOperations(timeout time.Duration) bool {
-	ops := slices.Collect(maps.Keys(m.criticalOperations))
-	if len(ops) == 0 {
-		return true
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(len(ops))
-	for _, op := range ops {
-		go func(op chan struct{}) {
-			<-op
-			wg.Done()
-		}(op)
-	}
-
 	done := make(chan struct{})
 	go func() {
-		wg.Wait()
+		m.waitGroup.Wait()
 		close(done)
 	}()
 
