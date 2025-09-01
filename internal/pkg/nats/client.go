@@ -81,7 +81,7 @@ func NewClientWithConnectionFactory(cfg types.MessageBusConfig, connectionFactor
 		m:                     m,
 		existingSubscriptions: make(map[string]*nats.Subscription),
 		subscriptionMutex:     new(sync.Mutex),
-		criticalOpsManager:    pkg.NewCriticalOperationManager(),
+		criticalOpManager:     pkg.NewCriticalOperationManager(),
 	}, nil
 }
 
