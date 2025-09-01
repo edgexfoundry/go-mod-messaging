@@ -60,9 +60,6 @@ func (m *CriticalOperationManager) WaitForCriticalOperations(timeout time.Durati
 
 	select {
 	case <-done:
-		m.criticalOpsMutex.Lock()
-		defer m.criticalOpsMutex.Unlock()
-		clear(m.criticalOperations)
 		return true
 	case <-time.After(timeout):
 		return false
