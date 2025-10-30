@@ -224,6 +224,7 @@ func (mc *Client) Disconnect() error {
 	// Specify a wait time equal to the write timeout so that we allow other any queued processing to complete before
 	// disconnecting.
 	optionsReader := mc.mqttClient.OptionsReader()
+	// #nosec G115 -- convert timeout to uint is safe here
 	mc.mqttClient.Disconnect(uint(optionsReader.ConnectTimeout() * time.Millisecond))
 
 	return nil
