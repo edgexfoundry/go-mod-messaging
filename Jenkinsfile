@@ -15,5 +15,6 @@
 //
 
 edgeXBuildGoMod (
-    project: 'go-mod-messaging'
+    project: 'go-mod-messaging',
+    goVersion: '1.25'
 )
