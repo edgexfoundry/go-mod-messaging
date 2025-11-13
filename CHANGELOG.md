@@ -7,6 +7,18 @@
 
 - [go-mod-core-contracts](https://github.com/edgexfoundry/go-mod-core-contracts/blob/main/CHANGELOG.md)
 
+## [v4.0.2]
+
+### 🐛 Bug Fixes 
+- Ensure that Unsubscribe waits for the operation to complete by using `getTokenError` ([#421](https://github.com/edgexfoundry/go-mod-messaging/issues/421)) ([#446](https://github.com/edgexfoundry/go-mod-messaging/issues/446)) ([#2e9bd2d](https://github.com/edgexfoundry/go-mod-messaging/commits/2e9bd2d))
+
+
+## [v4.0.1]
+
+### 👷 Build 
+- Update to new go-mod-contracts 4.0.1 for odessa ([#402](https://github.com/edgexfoundry/go-mod-messaging/issues/402)) ([#8b8dffb](https://github.com/edgexfoundry/go-mod-messaging/commits/8b8dffb))
+
+
 ## [v4.0.0] - 2025-03-12
 
 ### ✨ Features
