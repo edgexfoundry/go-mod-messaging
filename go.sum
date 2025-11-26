@@ -2,8 +2,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/eclipse/paho.mqtt.golang v1.5.1 h1:/VSOv3oDLlpqR2Epjn1Q7b2bSTplJIeV2ISgCl2W7nE=
 github.com/eclipse/paho.mqtt.golang v1.5.1/go.mod h1:1/yJCneuyOoCOzKSsOTUc0AJfpsItBGWvYpBLimhArU=
-github.com/edgexfoundry/go-mod-core-contracts/v4 v4.1.0-dev.21 h1:gh+CoXbkXa2E3favumU513BYnB8U3ubW2zBUJpWNSwU=
-github.com/edgexfoundry/go-mod-core-contracts/v4 v4.1.0-dev.21/go.mod h1:jDm9E4z9svXErYAxr0oigmVV50wmIoHaveOlP7FBkHQ=
+github.com/edgexfoundry/go-mod-core-contracts/v4 v4.1.0-dev.22 h1:rV4aHYBoLvlyy9XHBDSC+cXbhiyRotF0RqZVI46Rd7I=
+github.com/edgexfoundry/go-mod-core-contracts/v4 v4.1.0-dev.22/go.mod h1:jDm9E4z9svXErYAxr0oigmVV50wmIoHaveOlP7FBkHQ=
 github.com/fxamacker/cbor/v2 v2.9.0 h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sapM=
 github.com/fxamacker/cbor/v2 v2.9.0/go.mod h1:vM4b+DJCtHn+zz7h3FFp/hDAI9WNWCsZj23V5ytsSxQ=
 github.com/gabriel-vasile/mimetype v1.4.10 h1:zyueNbySn/z8mJZHLt6IPw0KoZsiQNszIpU+bX4+ZK0=
