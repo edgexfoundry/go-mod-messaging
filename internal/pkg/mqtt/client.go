@@ -1,7 +1,7 @@
 /********************************************************************************
  *  Copyright 2019 Dell Inc.
  *  Copyright (c) 2023 Intel Corporation
- *  Copyright (c) 2025 IOTech Ltd
+ *  Copyright (c) 2025-2026 IOTech Ltd
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
  *
@@ -20,6 +20,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -127,6 +128,9 @@ func (mc *Client) Connect() error {
 
 func (mc *Client) onConnectHandler(_ pahoMqtt.Client) {
 	optionsReader := mc.mqttClient.OptionsReader()
+
+	log.Printf("INFO: MQTT connection established (ClientID: %s, Broker: %s)", optionsReader.ClientID(),
+		optionsReader.Servers()[0])
 
 	mc.subscriptionMutex.Lock()
 	defer mc.subscriptionMutex.Unlock()
@@ -338,6 +342,14 @@ func createClientOptions(
 	clientOptions.CleanSession = clientConfiguration.CleanSession
 	clientOptions.SetAutoReconnect(clientConfiguration.AutoReconnect)
 	clientOptions.SetConnectTimeout(time.Duration(clientConfiguration.ConnectTimeout) * time.Second)
+	clientOptions.SetConnectionLostHandler(func(client pahoMqtt.Client, err error) {
+		log.Printf("WARNING: MQTT connection lost (ClientID: %s, Broker: %s), error: %v",
+			clientConfiguration.ClientId, clientConfiguration.BrokerURL, err)
+	})
+	clientOptions.SetReconnectingHandler(func(client pahoMqtt.Client, opts *pahoMqtt.ClientOptions) {
+		log.Printf("INFO: MQTT reconnecting (ClientID: %s, Broker: %s)", clientConfiguration.ClientId,
+			clientConfiguration.BrokerURL)
+	})
 	tlsConfiguration, err := pkg.GenerateTLSForClientClientOptions(
 		clientConfiguration.BrokerURL,
 		clientConfiguration.TlsConfigurationOptions,
