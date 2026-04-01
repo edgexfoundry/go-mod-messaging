@@ -211,7 +211,7 @@ func (mc *Client) Unsubscribe(topics ...string) error {
 
 	optionsReader := mc.mqttClient.OptionsReader()
 
-	err := getTokenError(token, optionsReader.WriteTimeout(), UnsubscribeOperation, "Failed to unsubscribe")
+	err := getTokenError(token, optionsReader.ConnectTimeout(), UnsubscribeOperation, "Failed to unsubscribe")
 	if err != nil {
 		return err
 	}
