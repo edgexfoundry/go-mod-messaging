@@ -1,6 +1,6 @@
 //
 // Copyright (c) 2019 Intel Corporation
-// Copyright (c) 2022-2025 IOTech Ltd
+// Copyright (c) 2022-2026 IOTech Ltd
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,17 +21,19 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"os"
 	"reflect"
 	"testing"
 
+	"github.com/edgexfoundry/go-mod-core-contracts/v4/common"
+	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos"
+	commonDTO "github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/common"
+	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/responses"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/edgexfoundry/go-mod-core-contracts/v4/common"
-	commonDTO "github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/common"
-	"github.com/edgexfoundry/go-mod-core-contracts/v4/dtos/responses"
 )
 
 const (
@@ -255,7 +257,8 @@ func testMessageEnvelope() MessageEnvelope {
 }
 
 func TestGetMsgPayloadFromBytesToStruct(t *testing.T) {
-	testStructPayload := responses.EventResponse{}
+	event := dtos.NewEvent("profile", "device", "source")
+	testStructPayload := responses.NewEventResponse(testRequestId, "", http.StatusOK, event)
 	testStructBytesPayload, err := json.Marshal(testStructPayload)
 	require.NoError(t, err)
 	testBase64Payload := base64.StdEncoding.EncodeToString(testStructBytesPayload)
