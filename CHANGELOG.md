@@ -15,8 +15,7 @@
 - Apply CBOR encoding to message envelope ([#425](https://github.com/edgexfoundry/go-mod-messaging/issues/425)) ([#a5e2e0e](https://github.com/edgexfoundry/go-mod-messaging/commits/a5e2e0e))
 
 ### 🐛 Bug Fixes 
-- Bump go-mod-core-contracts to v4.1.0-dev.36 and fix test ([#dc07f0e](https://github.com/edgexfoundry/go-mod-messaging/commits/dc07f0e))
-- use `ConnectTimeout` for Unsubscribe operation to align with other operations ([#b0e0ba9](https://github.com/edgexfoundry/go-mod-messaging/commits/b0e0ba9))
+- Use `ConnectTimeout` for Unsubscribe operation to align with other operations ([#b0e0ba9](https://github.com/edgexfoundry/go-mod-messaging/commits/b0e0ba9))
 - Remove redundant clearing of `criticalOperations` in `WaitForCriticalOperations` ([#440](https://github.com/edgexfoundry/go-mod-messaging/issues/440)) ([#9041a53](https://github.com/edgexfoundry/go-mod-messaging/commits/9041a53))
 - Ensure Unsubscribe operations wait fot completion using `getTokenError` ([#421](https://github.com/edgexfoundry/go-mod-messaging/issues/421)) ([#53a0ec2](https://github.com/edgexfoundry/go-mod-messaging/commits/53a0ec2))
 
