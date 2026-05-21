@@ -7,6 +7,22 @@
 
 - [go-mod-core-contracts](https://github.com/edgexfoundry/go-mod-core-contracts/blob/main/CHANGELOG.md)
 
+
+## [v4.0.2] - 2026-05-31
+
+### ✨ Features 
+- Add MQTT connection lifecycle event logging ([#463](https://github.com/edgexfoundry/go-mod-messaging/issues/463)) ([#8b4e441](https://github.com/edgexfoundry/go-mod-messaging/commits/8b4e441))
+- Apply CBOR encoding to message envelope ([#425](https://github.com/edgexfoundry/go-mod-messaging/issues/425)) ([#a5e2e0e](https://github.com/edgexfoundry/go-mod-messaging/commits/a5e2e0e))
+
+### 🐛 Bug Fixes 
+- Use `ConnectTimeout` for Unsubscribe operation to align with other operations ([#b0e0ba9](https://github.com/edgexfoundry/go-mod-messaging/commits/b0e0ba9))
+- Remove redundant clearing of `criticalOperations` in `WaitForCriticalOperations` ([#440](https://github.com/edgexfoundry/go-mod-messaging/issues/440)) ([#9041a53](https://github.com/edgexfoundry/go-mod-messaging/commits/9041a53))
+- Ensure Unsubscribe operations wait fot completion using `getTokenError` ([#421](https://github.com/edgexfoundry/go-mod-messaging/issues/421)) ([#53a0ec2](https://github.com/edgexfoundry/go-mod-messaging/commits/53a0ec2))
+
+### 👷 Build 
+- Update goVersion to 1.25 and golangci-lint to 2.5.0 ([#cd0b86c](https://github.com/edgexfoundry/go-mod-messaging/commits/cd0b86c))
+
+
 ## [v4.0.0] - 2025-03-12
 
 ### ✨ Features
