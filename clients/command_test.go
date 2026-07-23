@@ -71,6 +71,26 @@ func TestCommandClient_AllDeviceCoreCommands(t *testing.T) {
 	}
 }
 
+func TestCommandClient_AllDeviceCoreCommandsUsesCommandQueryRequestTopicAndResponsePrefix(t *testing.T) {
+	responseDTO := responses.NewMultiDeviceCoreCommandsResponse(expectedRequestID, "", http.StatusOK, 0, nil)
+
+	responseEnvelope, err := types.NewMessageEnvelopeForResponse(responseDTO, expectedRequestID, expectedCorrelationID, common.ContentTypeJSON)
+	require.NoError(t, err)
+
+	timeout := 10 * time.Second
+	requestTopic := common.BuildTopic("edgex", common.CoreCommandQueryRequestPublishTopic, common.All)
+	responseTopicPrefix := common.BuildTopic("edgex", common.ResponseTopic, common.CoreCommandServiceKey)
+	messageClient := mocks.NewMessageClient(t)
+	messageClient.On("Request", mock.Anything, requestTopic, responseTopicPrefix, timeout).
+		Return(&responseEnvelope, nil).
+		Once()
+
+	client := NewCommandClientWithNameFieldEscape(messageClient, "edgex", timeout)
+	_, err = client.AllDeviceCoreCommands(context.Background(), 0, 20)
+
+	require.NoError(t, err)
+}
+
 func TestCommandClient_DeviceCoreCommandsByDeviceName(t *testing.T) {
 	responseDTO := responses.NewDeviceCoreCommandResponse(expectedRequestID, "", http.StatusOK, dtos.DeviceCoreCommand{})
 
