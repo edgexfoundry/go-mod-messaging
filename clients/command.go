@@ -61,7 +61,7 @@ func (c *CommandClient) AllDeviceCoreCommands(_ context.Context, offset int, lim
 	requestEnvelope := types.NewMessageEnvelopeForRequest(nil, queryParams)
 
 	requestTopic := common.BuildTopic(c.baseTopic, common.CoreCommandQueryRequestPublishTopic, common.All)
-	responseEnvelope, err := c.messageBus.Request(requestEnvelope, common.CoreCommandServiceKey, requestTopic, c.timeout)
+	responseEnvelope, err := c.messageBus.Request(requestEnvelope, requestTopic, c.responseTopicPrefix, c.timeout)
 	if err != nil {
 		return responses.MultiDeviceCoreCommandsResponse{}, edgexErr.NewCommonEdgeXWrapper(err)
 	}
