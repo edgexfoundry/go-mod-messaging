@@ -4,16 +4,15 @@ go 1.25.0
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.5.1
-	github.com/edgexfoundry/go-mod-core-contracts/v4 v4.1.0-dev.39
-	github.com/fxamacker/cbor/v2 v2.9.2
+	github.com/edgexfoundry/go-mod-core-contracts/v4 v4.1.0-dev.43
+	github.com/fxamacker/cbor/v2 v2.9.3
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/nats-io/nats.go v1.53.1
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.1
 )
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -24,13 +23,12 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/nats-io/nkeys v0.4.15 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/stretchr/objx v0.5.2 // indirect
+	github.com/stretchr/objx v0.5.3 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
