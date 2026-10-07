@@ -1,0 +1,12 @@
+name: Make Test
+on:
+  pull_request:
+    branches: [main]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  make-test:
+    uses: edgexfoundry/edgex-global-pipelines/.github/workflows/go-make-test.yml@stable
+    permissions:
+      contents: read
