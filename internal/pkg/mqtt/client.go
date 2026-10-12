@@ -331,6 +331,10 @@ func createClientOptions(
 	caCertLoader pkg.X509CaCertLoader,
 	pemDecoder pkg.PEMDecoder) (*pahoMqtt.ClientOptions, error) {
 
+	if clientConfiguration.Qos < 0 || clientConfiguration.Qos > 2 {
+		return nil, fmt.Errorf("invalid MQTT QoS %d, must be 0, 1 or 2", clientConfiguration.Qos)
+	}
+
 	clientOptions := pahoMqtt.NewClientOptions()
 	clientOptions.AddBroker(clientConfiguration.BrokerURL)
 	clientOptions.SetUsername(clientConfiguration.Username)

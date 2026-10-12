@@ -23,6 +23,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -1332,9 +1333,35 @@ func TestCreateClientOptions(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, config.ClientId, options.ClientID)
-	assert.Equal(t, byte(config.Qos), options.WillQos)
+	assert.EqualValues(t, config.Qos, options.WillQos)
 	assert.Equal(t, config.Retained, options.WillRetained)
 	assert.Equal(t, int64(config.KeepAlive), options.KeepAlive)
 	assert.Equal(t, config.AutoReconnect, options.AutoReconnect)
 	assert.Equal(t, time.Duration(config.ConnectTimeout)*time.Second, options.ConnectTimeout)
+}
+
+func TestCreateClientOptionsQos(t *testing.T) {
+	tests := []struct {
+		qos         int
+		expectError bool
+	}{
+		{0, false},
+		{2, false},
+		{-1, true},
+		{3, true},
+		// would wrap to 0 if converted to byte unchecked
+		{256, true},
+	}
+	for _, testCase := range tests {
+		t.Run(strconv.Itoa(testCase.qos), func(t *testing.T) {
+			config := MQTTClientConfig{MQTTClientOptions: MQTTClientOptions{Qos: testCase.qos}}
+			options, err := createClientOptions(config, nil, nil, nil, nil, nil)
+			if testCase.expectError {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.EqualValues(t, testCase.qos, options.WillQos)
+		})
+	}
 }
