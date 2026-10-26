@@ -8,7 +8,7 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.6
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/nats-io/nats.go v1.54.0
+	github.com/nats-io/nats.go v1.55.0
 	github.com/stretchr/testify v1.12.1
 )
 
