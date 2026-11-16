@@ -193,7 +193,7 @@ func createAndConnectMqttClient(t *testing.T) *Client {
 			pkg.ClientId:  "test",
 			pkg.KeepAlive: "10",
 		},
-	})
+	}, nil)
 
 	require.NoError(t, err)
 

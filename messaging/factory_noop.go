@@ -22,6 +22,8 @@ package messaging
 import (
 	"errors"
 
+	"github.com/edgexfoundry/go-mod-core-contracts/v4/clients/logger"
+
 	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
 )
 
@@ -30,4 +32,9 @@ import (
 // such as security service have no need for messaging.
 func NewMessageClient(msgConfig types.MessageBusConfig) (MessageClient, error) {
 	return nil, errors.New("messaging was disabled during build with the no_messagebus build flag")
+}
+
+// NewMessageClientWithLogger is noop implementation when service doesn't need the message bus.
+func NewMessageClientWithLogger(msgConfig types.MessageBusConfig, _ logger.LoggingClient) (MessageClient, error) {
+	return NewMessageClient(msgConfig)
 }

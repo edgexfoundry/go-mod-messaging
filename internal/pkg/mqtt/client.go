@@ -19,11 +19,17 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
-	"log"
+	"io"
+	"net"
 	"os"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/edgexfoundry/go-mod-core-contracts/v4/clients/logger"
+	"github.com/edgexfoundry/go-mod-core-contracts/v4/models"
 
 	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg"
 	"github.com/edgexfoundry/go-mod-messaging/v4/messaging/envelope"
@@ -33,7 +39,8 @@ import (
 )
 
 // ClientCreator defines the function signature for creating an MQTT client.
-type ClientCreator func(config types.MessageBusConfig, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error)
+type ClientCreator func(config types.MessageBusConfig, lc logger.LoggingClient,
+	handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error)
 
 // MessageMarshaller defines the function signature for marshaling structs into []byte.
 type MessageMarshaller func(v interface{}) ([]byte, error)
@@ -48,6 +55,7 @@ type MessageHandlerCreator func(unmarshaler MessageUnmarshaller,
 // messages.
 type Client struct {
 	creator               ClientCreator
+	lc                    logger.LoggingClient
 	configuration         types.MessageBusConfig
 	mqttClient            pahoMqtt.Client
 	marshaller            MessageMarshaller
@@ -64,10 +72,11 @@ type existingSubscription struct {
 	errors  chan error
 }
 
-// NewMQTTClient constructs a new MQTT client based on the options provided.
-func NewMQTTClient(config types.MessageBusConfig) (*Client, error) {
+// NewMQTTClient constructs a new MQTT client based on the options provided; a nil lc uses a default logger.
+func NewMQTTClient(config types.MessageBusConfig, lc logger.LoggingClient) (*Client, error) {
 	client := &Client{
 		creator:               DefaultClientCreator(),
+		lc:                    lc,
 		configuration:         config,
 		marshaller:            envelope.Marshal,
 		unmarshaller:          envelope.Unmarshal,
@@ -105,7 +114,7 @@ func (mc *Client) Connect() error {
 	if mc.mqttClient == nil {
 		// Move created MQTT Client here since we need to set the onConnectHandler which needs to have access to
 		// the Client's activeSubscriptions. This was not possible from the factory method.
-		mqttClient, err := mc.creator(mc.configuration, mc.onConnectHandler)
+		mqttClient, err := mc.creator(mc.configuration, mc.lc, mc.onConnectHandler)
 		if err != nil {
 			return err
 		}
@@ -128,9 +137,6 @@ func (mc *Client) Connect() error {
 
 func (mc *Client) onConnectHandler(_ pahoMqtt.Client) {
 	optionsReader := mc.mqttClient.OptionsReader()
-
-	log.Printf("INFO: MQTT connection established (ClientID: %s, Broker: %s)", optionsReader.ClientID(),
-		optionsReader.Servers()[0])
 
 	mc.subscriptionMutex.Lock()
 	defer mc.subscriptionMutex.Unlock()
@@ -236,19 +242,18 @@ func (mc *Client) Disconnect() error {
 
 // DefaultClientCreator returns a default function for creating MQTT clients.
 func DefaultClientCreator() ClientCreator {
-	return func(config types.MessageBusConfig, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error) {
+	return func(config types.MessageBusConfig, lc logger.LoggingClient, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error) {
 		clientConfiguration, err := CreateMQTTClientConfiguration(config)
 		if err != nil {
 			return nil, err
 		}
 
 		clientOptions, err := createClientOptions(clientConfiguration, tls.X509KeyPair, tls.LoadX509KeyPair,
-			x509.ParseCertificate, os.ReadFile, pem.Decode)
+			x509.ParseCertificate, os.ReadFile, pem.Decode, lc, handler)
 		if err != nil {
 			return nil, err
 		}
 
-		clientOptions.OnConnect = handler
 		return pahoMqtt.NewClient(clientOptions), nil
 	}
 }
@@ -257,19 +262,18 @@ func DefaultClientCreator() ClientCreator {
 // creating an MQTT client.
 func ClientCreatorWithCertLoader(certCreator pkg.X509KeyPairCreator, certLoader pkg.X509KeyLoader,
 	caCertCreator pkg.X509CaCertCreator, caCertLoader pkg.X509CaCertLoader, pemDecoder pkg.PEMDecoder) ClientCreator {
-	return func(options types.MessageBusConfig, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error) {
+	return func(options types.MessageBusConfig, lc logger.LoggingClient, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error) {
 		clientConfiguration, err := CreateMQTTClientConfiguration(options)
 		if err != nil {
 			return nil, err
 		}
 
 		clientOptions, err := createClientOptions(clientConfiguration, certCreator, certLoader, caCertCreator,
-			caCertLoader, pemDecoder)
+			caCertLoader, pemDecoder, lc, handler)
 		if err != nil {
 			return nil, err
 		}
 
-		clientOptions.OnConnect = handler
 		return pahoMqtt.NewClient(clientOptions), nil
 	}
 }
@@ -329,7 +333,9 @@ func createClientOptions(
 	certLoader pkg.X509KeyLoader,
 	caCertCreator pkg.X509CaCertCreator,
 	caCertLoader pkg.X509CaCertLoader,
-	pemDecoder pkg.PEMDecoder) (*pahoMqtt.ClientOptions, error) {
+	pemDecoder pkg.PEMDecoder,
+	lc logger.LoggingClient,
+	onConnect pahoMqtt.OnConnectHandler) (*pahoMqtt.ClientOptions, error) {
 
 	if clientConfiguration.Qos < 0 || clientConfiguration.Qos > 2 {
 		return nil, fmt.Errorf("invalid MQTT QoS %d, must be 0, 1 or 2", clientConfiguration.Qos)
@@ -346,12 +352,22 @@ func createClientOptions(
 	clientOptions.CleanSession = clientConfiguration.CleanSession
 	clientOptions.SetAutoReconnect(clientConfiguration.AutoReconnect)
 	clientOptions.SetConnectTimeout(time.Duration(clientConfiguration.ConnectTimeout) * time.Second)
+	if lc == nil {
+		lc = logger.NewClient("go-mod-messaging", models.InfoLog)
+	}
+	clientOptions.SetOnConnectHandler(func(client pahoMqtt.Client) {
+		lc.Infof("MQTT connection established (ClientID: %s, Broker: %s)", clientConfiguration.ClientId,
+			clientConfiguration.BrokerURL)
+		onConnect(client)
+	})
 	clientOptions.SetConnectionLostHandler(func(client pahoMqtt.Client, err error) {
-		log.Printf("WARNING: MQTT connection lost (ClientID: %s, Broker: %s), error: %v",
-			clientConfiguration.ClientId, clientConfiguration.BrokerURL, err)
+		lc.Warnf("MQTT connection lost (ClientID: %s, Broker: %s), error: %v, type: %s, keepalive: %ds. "+
+			"See the MQTT broker container logs for the disconnect reason",
+			clientConfiguration.ClientId, clientConfiguration.BrokerURL, err, connLostType(err),
+			clientConfiguration.KeepAlive)
 	})
 	clientOptions.SetReconnectingHandler(func(client pahoMqtt.Client, opts *pahoMqtt.ClientOptions) {
-		log.Printf("INFO: MQTT reconnecting (ClientID: %s, Broker: %s)", clientConfiguration.ClientId,
+		lc.Infof("MQTT reconnecting (ClientID: %s, Broker: %s)", clientConfiguration.ClientId,
 			clientConfiguration.BrokerURL)
 	})
 	tlsConfiguration, err := pkg.GenerateTLSForClientClientOptions(
@@ -370,6 +386,21 @@ func createClientOptions(
 	clientOptions.SetTLSConfig(tlsConfiguration)
 
 	return clientOptions, nil
+}
+
+// connLostType classifies the error paho passes to the connection-lost handler.
+func connLostType(err error) string {
+	var netErr net.Error
+	switch {
+	case errors.Is(err, io.EOF):
+		return "peer closed"
+	case errors.As(err, &netErr):
+		return "network error"
+	case strings.Contains(err.Error(), "pingresp not received"):
+		return "keepalive timeout"
+	default:
+		return "other"
+	}
 }
 
 func (mc *Client) PublishBinaryData(data []byte, topic string) error {
