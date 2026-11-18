@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/edgexfoundry/go-mod-core-contracts/v4/clients/logger"
+
 	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg/mqtt"
 	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg/nats"
 	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg/nats/jetstream"
@@ -43,14 +45,19 @@ const (
 // NewMessageClient is a factory function to instantiate different message client depending on
 // the "Type" from the configuration
 func NewMessageClient(msgConfig types.MessageBusConfig) (MessageClient, error) {
+	return NewMessageClientWithLogger(msgConfig, nil)
+}
 
+// NewMessageClientWithLogger is NewMessageClient with a service logger for MQTT connection lifecycle logs.
+// A nil logger uses a default logger.
+func NewMessageClientWithLogger(msgConfig types.MessageBusConfig, lc logger.LoggingClient) (MessageClient, error) {
 	if msgConfig.Broker.IsHostInfoEmpty() {
 		return nil, fmt.Errorf("unable to create messageClient: Broker info not set")
 	}
 
 	switch lowerMsgType := strings.ToLower(msgConfig.Type); lowerMsgType {
 	case MQTT:
-		return mqtt.NewMQTTClient(msgConfig)
+		return mqtt.NewMQTTClient(msgConfig, lc)
 	case NatsCore:
 		return nats.NewClient(msgConfig)
 	case NatsJetStream:

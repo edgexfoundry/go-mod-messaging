@@ -22,6 +22,9 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
+	"io"
+	"net"
 	"reflect"
 	"strconv"
 	"strings"
@@ -30,6 +33,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/edgexfoundry/go-mod-core-contracts/v4/clients/logger"
 
 	"github.com/edgexfoundry/go-mod-messaging/v4/internal/pkg"
 	"github.com/edgexfoundry/go-mod-messaging/v4/pkg/types"
@@ -274,7 +279,7 @@ func (MockMessage) Ack() {
 
 // mockClientCreator higher-order function which creates a function that constructs a MockMQTTClient
 func mockClientCreator(connect MockToken, publish MockToken, subscribe MockToken) ClientCreator {
-	return func(config types.MessageBusConfig, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error) {
+	return func(config types.MessageBusConfig, _ logger.LoggingClient, handler pahoMqtt.OnConnectHandler) (pahoMqtt.Client, error) {
 		return MockMQTTClient{
 			connect:       connect,
 			publish:       publish,
@@ -291,7 +296,7 @@ func TestInvalidClientOptions(t *testing.T) {
 		Protocol: "    ",
 	}}
 
-	client, _ := NewMQTTClient(invalidOptions)
+	client, _ := NewMQTTClient(invalidOptions, nil)
 	err := client.Connect()
 	require.Error(t, err)
 }
@@ -311,7 +316,7 @@ func TestInvalidTlsOptions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			options.Optional = test.optionalConfig
-			client, _ := NewMQTTClient(options)
+			client, _ := NewMQTTClient(options, nil)
 			err := client.Connect()
 			require.Error(t, err)
 		})
@@ -1145,7 +1150,7 @@ func TestClient_Unsubscribe(t *testing.T) {
 }
 
 func TestClient_Disconnect(t *testing.T) {
-	client, _ := NewMQTTClient(TestMessageBusConfig)
+	client, _ := NewMQTTClient(TestMessageBusConfig, nil)
 
 	err := client.Connect()
 	// Expecting a timeout error since creating mqtt client now at the beginning of the Connect() function
@@ -1329,7 +1334,7 @@ func TestCreateClientOptions(t *testing.T) {
 		},
 	}
 
-	options, err := createClientOptions(config, nil, nil, nil, nil, nil)
+	options, err := createClientOptions(config, nil, nil, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, config.ClientId, options.ClientID)
@@ -1355,7 +1360,7 @@ func TestCreateClientOptionsQos(t *testing.T) {
 	for _, testCase := range tests {
 		t.Run(strconv.Itoa(testCase.qos), func(t *testing.T) {
 			config := MQTTClientConfig{MQTTClientOptions: MQTTClientOptions{Qos: testCase.qos}}
-			options, err := createClientOptions(config, nil, nil, nil, nil, nil)
+			options, err := createClientOptions(config, nil, nil, nil, nil, nil, nil, nil)
 			if testCase.expectError {
 				require.Error(t, err)
 				return
@@ -1364,4 +1369,38 @@ func TestCreateClientOptionsQos(t *testing.T) {
 			assert.EqualValues(t, testCase.qos, options.WillQos)
 		})
 	}
+}
+
+func TestConnLostType(t *testing.T) {
+	assert.Equal(t, "peer closed", connLostType(io.EOF))
+	assert.Equal(t, "network error", connLostType(&net.OpError{Op: "read", Err: errors.New("connection reset by peer")}))
+	assert.Equal(t, "keepalive timeout", connLostType(errors.New("pingresp not received, disconnecting")))
+	assert.Equal(t, "other", connLostType(errors.New("something else")))
+}
+
+// recordingLogger keeps formatted Warnf messages so tests can inspect the connection lost warning.
+type recordingLogger struct {
+	logger.MockLogger
+	warns []string
+}
+
+func (r *recordingLogger) Warnf(msg string, args ...interface{}) {
+	r.warns = append(r.warns, fmt.Sprintf(msg, args...))
+}
+
+func TestConnectionCallbacks(t *testing.T) {
+	lc := &recordingLogger{}
+	connects := 0
+	config := MQTTClientConfig{
+		BrokerURL:         "tcp://localhost:1883",
+		MQTTClientOptions: MQTTClientOptions{ClientId: "test", KeepAlive: 10},
+	}
+	options, err := createClientOptions(config, nil, nil, nil, nil, nil, lc, func(pahoMqtt.Client) { connects++ })
+	require.NoError(t, err)
+
+	options.OnConnect(nil)
+	options.OnConnectionLost(nil, io.EOF)
+	require.Len(t, lc.warns, 1)
+	assert.Contains(t, lc.warns[0], "keepalive: 10s")
+	assert.Equal(t, 1, connects, "wrapped connect handler should still run")
 }
