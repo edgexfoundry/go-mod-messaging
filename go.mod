@@ -3,7 +3,7 @@ module github.com/edgexfoundry/go-mod-messaging/v4
 go 1.27
 
 require (
-	github.com/eclipse/paho.mqtt.golang v1.5.1
+	github.com/eclipse/paho.mqtt.golang v1.5.2
 	github.com/edgexfoundry/go-mod-core-contracts/v4 v4.1.0-dev.54
 	github.com/fxamacker/cbor/v2 v2.10.0
 	github.com/google/uuid v1.6.0

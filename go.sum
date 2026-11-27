@@ -1,5 +1,5 @@
-github.com/eclipse/paho.mqtt.golang v1.5.1 h1:/VSOv3oDLlpqR2Epjn1Q7b2bSTplJIeV2ISgCl2W7nE=
-github.com/eclipse/paho.mqtt.golang v1.5.1/go.mod h1:1/yJCneuyOoCOzKSsOTUc0AJfpsItBGWvYpBLimhArU=
+github.com/eclipse/paho.mqtt.golang v1.5.2 h1:4pcXsR3nR9gJuHCpBC8UF6rTehpIoHrYRm+hGOCq7ZM=
+github.com/eclipse/paho.mqtt.golang v1.5.2/go.mod h1:rDbBdvBJ0K2cDnnazZcu0/cu7y3bFiICNVUOUWHnOOg=
 github.com/edgexfoundry/go-mod-core-contracts/v4 v4.1.0-dev.54 h1:glkVqqBTtBD7f8RPfqtfHvMbUve3cjYONELLUVX8G8o=
 github.com/edgexfoundry/go-mod-core-contracts/v4 v4.1.0-dev.54/go.mod h1:p27om5jX9uCaIX0KcG5y+OrWITxFsaZzI942XwwqvMg=
 github.com/fxamacker/cbor/v2 v2.10.0 h1:HVF3T5vYwLqO81ebPirWEPNv2SMrUMD3HLnKgEr6uWE=
